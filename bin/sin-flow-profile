@@ -1,0 +1,238 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+FLOW_HOME="${FLOW_HOME:-$HOME/.claude/sin-flow}"
+PROFILES="$FLOW_HOME/profiles"
+
+usage() {
+  cat >&2 <<'EOF'
+usage: sin-flow-profile key [DIR]
+       sin-flow-profile model strong|mid|cheap|<stage> [DIR]
+       sin-flow-profile list
+       sin-flow-profile <key> dir|file|get FIELD|section HEADING
+       sin-flow-profile validate [--all | KEY...]
+EOF
+  exit 2
+}
+
+slug_of() {
+  local url
+  url=$(git -C "$1" remote get-url origin 2>/dev/null) || return 1
+  url=${url%.git}
+  url=${url#*github.com[:/]}
+  printf '%s\n' "$url"
+}
+
+toplevel_of() { git -C "$1" rev-parse --show-toplevel 2>/dev/null; }
+
+main_checkout_of() {
+  local common
+  common=$(git -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 1
+  dirname "$common"
+}
+
+frontmatter() { awk 'NR==1 && $0=="---" {inside=1; next} inside && $0=="---" {exit} inside {print}' "$1"; }
+
+field_in() {
+  frontmatter "$1" | awk -v f="$2" '
+    index($0, f ":") == 1 {
+      v = substr($0, length(f) + 2)
+      sub(/^[ \t]+/, "", v)
+      sub(/[ \t]+#.*$/, "", v)
+      sub(/[ \t]+$/, "", v)
+      if (v ~ /^".*"$/) v = substr(v, 2, length(v) - 2)
+      print v
+      exit
+    }'
+}
+
+expand_home() { case "$1" in "~"/*) printf '%s\n' "$HOME/${1#\~/}" ;; *) printf '%s\n' "$1" ;; esac; }
+
+team_file_for() {
+  local key="$1" top
+  top=$(toplevel_of "$PWD") || return 1
+  [ -f "$top/.claude/flow.md" ] || return 1
+  [ "$(field_in "$top/.claude/flow.md" key)" = "$key" ] || return 1
+  printf '%s\n' "$top/.claude/flow.md"
+}
+
+key_for_dir() {
+  local dir="${1:-$PWD}" slug top f
+  slug=$(slug_of "$dir") || return 1
+  for f in "$PROFILES"/*/profile.md; do
+    [ -f "$f" ] || continue
+    if [ "$(field_in "$f" repo.slug)" = "$slug" ]; then
+      field_in "$f" key
+      return 0
+    fi
+  done
+  top=$(toplevel_of "$dir") || return 1
+  if [ -f "$top/.claude/flow.md" ]; then
+    field_in "$top/.claude/flow.md" key
+    return 0
+  fi
+  return 1
+}
+
+get_field() {
+  local key="$1" field="$2" v="" team
+  if [ -f "$PROFILES/$key/profile.md" ]; then
+    v=$(field_in "$PROFILES/$key/profile.md" "$field")
+  fi
+  if [ -z "$v" ] && team=$(team_file_for "$key"); then
+    v=$(field_in "$team" "$field")
+  fi
+  [ -n "$v" ] || return 1
+  printf '%s\n' "$v"
+}
+
+model_default() { case "$1" in strong) echo opus ;; mid) echo sonnet ;; cheap) echo haiku ;; *) return 1 ;; esac; }
+
+user_field() {
+  [ -f "$FLOW_HOME/user.md" ] || return 0
+  sed -n "s/^$1:[[:space:]]*//p" "$FLOW_HOME/user.md" | sed 's/[[:space:]]#.*//; s/[[:space:]]*$//; s/^"//; s/"$//' | head -1
+}
+
+model_field() {
+  local name="$1" dir="$2" key v=""
+  if key=$(key_for_dir "$dir" 2>/dev/null); then v=$(cd "$dir" && get_field "$key" "models.$name" || true); fi
+  [ -n "$v" ] || v=$(user_field "models\.$name")
+  printf '%s' "$v"
+}
+
+resolve_model() {
+  local name="$1" dir="$2" v="" tier="$1"
+  case "$name" in
+    strong|mid|cheap) ;;
+    setup|sync|ingest|plan|exec|review|learning) v=$(model_field "$name" "$dir"); tier=strong ;;
+    *) echo "model must be a tier (strong, mid, cheap) or a stage (setup, sync, ingest, plan, exec, review, learning): $name" >&2; exit 2 ;;
+  esac
+  [ -n "$v" ] || v=$(model_field "$tier" "$dir")
+  [ -n "$v" ] || v=$(model_default "$tier")
+  case "$v" in
+    opus|sonnet|haiku|fable) printf '%s\n' "$v" ;;
+    *) echo "models.$name: '$v' is not one of opus, sonnet, haiku, fable" >&2; exit 2 ;;
+  esac
+}
+
+section_of() {
+  awk -v h="$2" '
+    /^## / { inside = (index($0, "## " h) == 1); if (inside) { print; next } }
+    inside { print }' "$1"
+}
+
+validate_key() {
+  local key="$1" here="${2:-}" f="$PROFILES/$1/profile.md" errs=() notes=() slug doc src env_file main var
+  if [ ! -f "$f" ]; then
+    printf 'FAIL %s: no profile at %s\n' "$key" "$f"
+    return 1
+  fi
+  [ "$(field_in "$f" key)" = "$key" ] || errs+=("key field does not match the folder name")
+  slug=$(field_in "$f" repo.slug) || true
+  [ -n "$slug" ] || errs+=("repo.slug missing")
+  doc=$(field_in "$f" measure.doc) || true
+  if [ -z "$doc" ]; then
+    errs+=("measure.doc missing (a path or none)")
+  elif [ "$doc" != "none" ]; then
+    case "$doc" in
+      /*|"~"/*) [ -f "$(expand_home "$doc")" ] || errs+=("measure.doc $doc does not exist") ;;
+      *)
+        if [ -n "$here" ]; then
+          [ -f "$here/$doc" ] || errs+=("measure.doc $doc not in $here")
+        else
+          notes+=("measure.doc relative, checked inside the checkout")
+        fi ;;
+    esac
+  fi
+  for src in $(frontmatter "$f" | sed -n 's/^sources\.\([A-Za-z0-9_-]*\)\.env_file:.*/\1/p' | sort -u); do
+    env_file=$(field_in "$f" "sources.$src.env_file")
+    var=$(field_in "$f" "sources.$src.var") || true
+    case "$env_file" in
+      /*|"~"/*) env_file=$(expand_home "$env_file") ;;
+      *)
+        if [ -z "$here" ]; then
+          notes+=("sources.$src.env_file relative, checked inside the checkout")
+          continue
+        fi
+        main=$(main_checkout_of "$here")
+        env_file="$main/$env_file" ;;
+    esac
+    if [ ! -f "$env_file" ]; then
+      errs+=("sources.$src: $env_file missing")
+      continue
+    fi
+    [ "$(stat -c %a "$env_file" 2>/dev/null || stat -f %Lp "$env_file")" = "600" ] || errs+=("sources.$src: $env_file is not chmod 600")
+    if [ -n "$var" ] && ! grep -q "^$var=" "$env_file"; then
+      errs+=("sources.$src: variable $var not in $env_file")
+    fi
+    if git -C "$(dirname "$env_file")" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+      git -C "$(dirname "$env_file")" check-ignore -q "$env_file" || errs+=("sources.$src: $env_file is not git-ignored")
+    fi
+  done
+  if [ ${#errs[@]} -gt 0 ]; then
+    printf 'FAIL %s: %s\n' "$key" "$(IFS=';'; echo "${errs[*]}")"
+    return 1
+  fi
+  if [ ${#notes[@]} -gt 0 ]; then
+    printf 'OK %s (%s)\n' "$key" "$(IFS=';'; echo "${notes[*]}")"
+  else
+    printf 'OK %s\n' "$key"
+  fi
+}
+
+validate_here() {
+  local key top problems=()
+  command -v gh >/dev/null || problems+=("gh missing → brew install gh")
+  command -v jq >/dev/null || problems+=("jq missing → brew install jq")
+  gh auth status >/dev/null 2>&1 || problems+=("gh not logged in → gh auth login")
+  [ -d "$FLOW_HOME/work" ] || problems+=("$FLOW_HOME/work missing → run /sin-flow:setup")
+  top=$(toplevel_of "$PWD") || true
+  if [ -n "$top" ]; then
+    if key=$(key_for_dir "$top"); then
+      local out
+      out=$(validate_key "$key" "$top") || problems+=("$out")
+    else
+      problems+=("no profile for $(slug_of "$top" || basename "$top") → run /sin-flow:setup")
+    fi
+  fi
+  if [ ${#problems[@]} -gt 0 ]; then
+    printf '%s\n' "${problems[@]}"
+    return 1
+  fi
+}
+
+[ $# -ge 1 ] || usage
+
+case "$1" in
+  key)
+    key_for_dir "${2:-$PWD}" || { echo "no profile for $(slug_of "${2:-$PWD}" 2>/dev/null || echo "${2:-$PWD}")" >&2; exit 1; } ;;
+  list)
+    for f in "$PROFILES"/*/profile.md; do [ -f "$f" ] && printf '%s\t%s\n' "$(field_in "$f" key)" "$(field_in "$f" repo.slug)"; done ;;
+  validate)
+    shift
+    if [ $# -eq 0 ]; then
+      validate_here
+    else
+      [ "$1" = "--all" ] && set -- $(ls "$PROFILES")
+      rc=0
+      top=$(toplevel_of "$PWD") || top=""
+      here_key=""
+      [ -n "$top" ] && here_key=$(key_for_dir "$top" 2>/dev/null || true)
+      for k in "$@"; do
+        if [ "$k" = "$here_key" ]; then validate_key "$k" "$top" || rc=1; else validate_key "$k" || rc=1; fi
+      done
+      exit $rc
+    fi ;;
+  model) [ $# -ge 2 ] || usage; resolve_model "$2" "${3:-$PWD}" ;;
+  -h|--help) usage ;;
+  *)
+    key="$1"
+    [ $# -ge 2 ] || usage
+    case "$2" in
+      dir) printf '%s\n' "$PROFILES/$key" ;;
+      file) printf '%s\n' "$PROFILES/$key/profile.md" ;;
+      get) [ $# -ge 3 ] || usage; get_field "$key" "$3" ;;
+      section) [ $# -ge 3 ] || usage; section_of "$PROFILES/$key/profile.md" "$3" ;;
+      *) usage ;;
+    esac ;;
+esac

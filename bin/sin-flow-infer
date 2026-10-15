@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+FLOW_HOME="${FLOW_HOME:-$HOME/.claude/sin-flow}"
+write_key=""
+if [ "${1:-}" = "--write" ]; then
+  write_key="${2:?--write needs a key}"
+  shift 2
+fi
+dir=$(git -C "${1:-$PWD}" rev-parse --show-toplevel)
+url=$(git -C "$dir" remote get-url origin)
+url=${url%.git}
+slug=${url#*github.com[:/]}
+today=$(date +%F)
+if git -C "$dir" remote get-url fork >/dev/null 2>&1; then upstream=1; else upstream=0; fi
+
+infer() {
+  echo "## Inferred $today (not config — re-inferred on every /sin-flow:setup run)"
+  echo "repo: $slug (git remote origin)."
+
+  local view prs default issues projects merges cfg_base bases authors
+  if view=$(gh repo view "$slug" --json defaultBranchRef,hasIssuesEnabled,hasProjectsEnabled,squashMergeAllowed,mergeCommitAllowed,rebaseMergeAllowed 2>/dev/null); then
+    default=$(jq -r '.defaultBranchRef.name' <<<"$view")
+    issues=$(jq -r 'if .hasIssuesEnabled then "enabled" else "disabled" end' <<<"$view")
+    projects=$(jq -r 'if .hasProjectsEnabled then "enabled" else "disabled" end' <<<"$view")
+    merges=$(jq -r '[(if .squashMergeAllowed then "squash" else empty end), (if .mergeCommitAllowed then "merge" else empty end), (if .rebaseMergeAllowed then "rebase" else empty end)] | join(", ")' <<<"$view")
+  else
+    default="unknown"; issues="unknown"; projects="unknown"; merges="unknown"
+  fi
+  prs=$(gh pr list -R "$slug" --state merged --limit 20 --json baseRefName,author 2>/dev/null || echo '[]')
+  bases=$(jq -r 'group_by(.baseRefName) | map("\(.[0].baseRefName) \(length)") | join(", ")' <<<"$prs")
+  authors=$(jq -r '[.[].author.login] | unique | length' <<<"$prs")
+  cfg_base=""
+  if [ -f "$dir/docs/orchestrator/config.yml" ]; then
+    cfg_base=$(sed -n 's/^[[:space:]]*base_branch:[[:space:]]*["'\'']\{0,1\}\([^"'\'' #]*\).*/\1/p' "$dir/docs/orchestrator/config.yml" | head -1)
+  fi
+  local base_line="base: $default (gh repo view)"
+  [ -n "$bases" ] && base_line="$base_line; last 20 merged PRs by base: $bases"
+  [ -n "$cfg_base" ] && base_line="$base_line; docs/orchestrator/config.yml base_branch: $cfg_base"
+  local others
+  others=$(jq -r --arg d "$default" '[.[].baseRefName | select(. != $d)] | unique | join(", ")' <<<"$prs")
+  if [ -n "$others" ] && [ "$(jq -r --arg d "$default" '[.[] | select(.baseRefName == $d)] | length' <<<"$prs")" = "0" ]; then
+    base_line="$base_line — CONFLICT: no merged PR targets $default → ask"
+  elif [ -n "$cfg_base" ] && [ "$cfg_base" != "$default" ]; then
+    base_line="$base_line — CONFLICT with config.yml → ask"
+  fi
+  echo "$base_line."
+  echo "tracker: GitHub issues $issues, Projects $projects (gh repo view)."
+  echo "merge: allowed $merges (gh repo view) → user preference applies when squash is allowed."
+  if [ "$upstream" = 1 ]; then
+    echo "team: upstream — maintainers merge (remote fork)."
+  elif [ "$authors" -gt 1 ]; then
+    echo "team: yes — $authors distinct authors in the last 20 merged PRs."
+  elif [ "$authors" = "1" ]; then
+    echo "team: solo — 1 author in the last $(jq length <<<"$prs") merged PRs."
+  else
+    echo "team: not inferable — no merged PRs."
+  fi
+
+  local f ci_files="" gate_files="" stack="" dev="" s
+  for f in "$dir"/.github/workflows/*.yml "$dir"/.github/workflows/*.yaml "$dir/.circleci/config.yml"; do
+    if [ -f "$f" ]; then ci_files="${ci_files:+$ci_files, }${f#"$dir"/}"; fi
+  done
+  gate_files=$ci_files
+  for f in "$dir/lefthook.yml" "$dir/docs/orchestrator/config.yml"; do
+    if [ -f "$f" ]; then gate_files="${gate_files:+$gate_files, }${f#"$dir"/}"; fi
+  done
+  if [ -n "$gate_files" ]; then echo "gate files (setup names the gates): $gate_files."; fi
+  if [ -z "$ci_files" ]; then
+    if [ -f "$dir/Gemfile" ]; then
+      stack='`bundle exec rspec`'
+      if grep -q rubocop "$dir/Gemfile"; then stack="$stack, \`bundle exec rubocop\`"; fi
+      if grep -q brakeman "$dir/Gemfile"; then stack="$stack, \`bundle exec brakeman\`"; fi
+    fi
+    if [ -f "$dir/package.json" ]; then
+      for s in lint test build; do
+        if jq -e --arg s "$s" '(.scripts // {}) | has($s)' "$dir/package.json" >/dev/null; then stack="${stack:+$stack, }\`npm run $s\`"; fi
+      done
+    fi
+    if [ -n "$stack" ]; then echo "gates (stack fallback, no CI found): $stack."; else echo "gates: no CI and no known stack — ask."; fi
+  fi
+  if [ -f "$dir/package.json" ]; then
+    s=$(jq -r '.scripts.dev // empty' "$dir/package.json")
+    if [ -n "$s" ]; then dev="\`npm run dev\` → $s"; fi
+  fi
+  if [ -f "$dir/bin/dev" ]; then dev="${dev:+$dev; }\`bin/dev\`"; fi
+  if [ -f "$dir/Procfile.dev" ]; then dev="${dev:+$dev; }Procfile.dev"; fi
+  if [ -n "$dev" ]; then echo "dev server: $dev."; fi
+  if [ -f "$dir/.claude/sensitive-paths.txt" ]; then echo "sensitive: .claude/sensitive-paths.txt."; else echo "sensitive: none declared (.claude/sensitive-paths.txt absent)."; fi
+  if [ "$upstream" = 1 ]; then
+    echo "notes: $FLOW_HOME/work/<key>/<id>/; no mirror (upstream repo)."
+  elif [ -n "$issues" ] && [ "$issues" = "enabled" ]; then
+    echo "notes: $FLOW_HOME/work/<key>/<id>/; plan mirrored to the issue (issues enabled)."
+  else
+    echo "notes: $FLOW_HOME/work/<key>/<id>/; no mirror (issues $issues)."
+  fi
+}
+
+block=$(infer)
+
+if [ -z "$write_key" ]; then
+  printf '%s\n' "$block"
+  exit 0
+fi
+
+profile="$FLOW_HOME/profiles/$write_key/profile.md"
+[ -f "$profile" ] || { echo "no profile at $profile" >&2; exit 1; }
+tmp=$(mktemp)
+BLOCK="$block" awk '
+  BEGIN { block = ENVIRON["BLOCK"] }
+  /^## Inferred/ { print block; skipping = 1; done = 1; next }
+  skipping && /^## / { skipping = 0 }
+  !skipping { print }
+  END { if (!done) { print ""; print block } }
+' "$profile" >"$tmp"
+mv "$tmp" "$profile"
+echo "updated ## Inferred in $profile"

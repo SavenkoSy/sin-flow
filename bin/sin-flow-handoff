@@ -1,0 +1,131 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+FLOW_HOME="${FLOW_HOME:-$HOME/.claude/sin-flow}"
+adapters="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/handoff"
+
+detect() {
+  if [ -n "${TMUX:-}" ]; then echo tmux
+  elif [ -n "${CMUX_WORKSPACE_ID:-}" ]; then echo cmux
+  else
+    case "${TERM_PROGRAM:-}" in
+      iTerm.app) echo iterm ;;
+      ghostty) echo ghostty ;;
+      WarpTerminal) echo warp ;;
+      Orca) echo orca ;;
+      *) echo none ;;
+    esac
+  fi
+}
+
+q() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
+
+probe=""
+cwd=""
+name=""
+model=""
+goal=""
+prompt=""
+opts=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --detect) detect; exit 0 ;;
+    --probe) probe="--probe"; shift ;;
+    --new-workspace) opts+=("$1"); shift ;;
+    --cwd|--name|--model|--goal|--prompt) opts+=("$1" "${2:?$1 needs a value}"); printf -v "${1#--}" '%s' "$2"; shift 2 ;;
+    --) shift; break ;;
+    -*) echo "unknown option: $1" >&2; exit 2 ;;
+    *) break ;;
+  esac
+done
+if [ -n "$prompt" ]; then
+  case "$prompt" in -*) echo "--prompt must not start with -" >&2; exit 2 ;; esac
+  [ $# -eq 0 ] || { echo "--prompt takes no stage or target: $*" >&2; exit 2; }
+  stage=""
+  target=""
+  target_dir="$PWD"
+  extra=""
+else
+  [ $# -ge 2 ] || { echo "usage: sin-flow-handoff [--detect] [--probe] [--new-workspace] [--cwd DIR] [--name NAME] [--model M (default: models.<stage>, else models.strong)] [--goal TEXT] (--prompt TEXT | <sin-flow:stage|stage> <path | review: PR number or URL> [extra])" >&2; exit 2; }
+  stage="sin-flow:${1#sin-flow:}"
+  if [ "$stage" = sin-flow:review ] && [[ "$2" =~ ^([0-9]+|https://github\.com/[^/]+/[^/]+/pull/[0-9]+/?)$ ]]; then
+    target="$2"
+    target_dir="$PWD"
+  else
+    [ -e "$2" ] || { echo "no such file: $2" >&2; exit 1; }
+    target="$(cd "$(dirname "$2")" && pwd)/$(basename "$2")"
+    target_dir="$(dirname "$target")"
+  fi
+  shift 2
+  extra="${1:+ $*}"
+fi
+
+if [ -n "$prompt" ]; then
+  text="${goal:+/goal $goal To reach the condition: }$prompt"
+elif [ -n "$goal" ]; then
+  text="/goal $goal To reach the condition, invoke the skill $stage with the Skill tool, argument: $target$extra"
+else
+  text="/$stage $target$extra"
+fi
+FLOW_CWD=$(cd "${cwd:-$target_dir}" && (git rev-parse --show-toplevel 2>/dev/null || pwd))
+FLOW_NAME="${name:-${stage#sin-flow:}}"
+FLOW_NAME="${FLOW_NAME:-continue-$$}"
+profile_key=$("$(dirname "$adapters")/sin-flow-profile" key "$FLOW_CWD" 2>/dev/null) || profile_key=""
+model_name="${stage#sin-flow:}"
+FLOW_MODEL="${model:-$("$(dirname "$adapters")/sin-flow-profile" model "${model_name:-strong}" "$FLOW_CWD")}" || exit 2
+FLOW_CONFIG_DIR="${FLOW_CONFIG_DIR:-}"
+[ -n "$FLOW_CONFIG_DIR" ] || [ -z "$profile_key" ] || FLOW_CONFIG_DIR=$("$(dirname "$adapters")/sin-flow-profile" "$profile_key" get claude.config_dir 2>/dev/null) || FLOW_CONFIG_DIR=""
+case "$FLOW_CONFIG_DIR" in "~"/*) FLOW_CONFIG_DIR="$HOME/${FLOW_CONFIG_DIR#\~/}" ;; esac
+[ -z "$FLOW_CONFIG_DIR" ] || [ -d "$FLOW_CONFIG_DIR" ] || { echo "FLOW_CONFIG_DIR=$FLOW_CONFIG_DIR is not a directory: no tab opened" >&2; exit 2; }
+FLOW_PROMPT="${FLOW_CONFIG_DIR:+CLAUDE_CONFIG_DIR=$(q "$FLOW_CONFIG_DIR") }claude -n $(q "$FLOW_NAME") --model $(q "$FLOW_MODEL") $(q "$text")"
+export FLOW_CWD FLOW_NAME FLOW_MODEL FLOW_PROMPT FLOW_CONFIG_DIR
+line="cd $(q "$FLOW_CWD") && $FLOW_PROMPT"
+
+print_line() {
+  local copied=""
+  if [ -z "$probe" ]; then
+    for tool in pbcopy wl-copy "xclip -selection clipboard"; do
+      command -v "${tool%% *}" >/dev/null 2>&1 || continue
+      printf '%s' "$line" | $tool 2>/dev/null && copied=" (copied to the clipboard with ${tool%% *})"
+      break
+    done
+  fi
+  echo "paste into a new terminal tab$copied:"
+  echo "$line"
+}
+
+handoff="auto"
+if [ -f "$FLOW_HOME/user.md" ]; then
+  value=$(sed -n 's/^handoff:[[:space:]]*//p' "$FLOW_HOME/user.md" | sed 's/[[:space:]]#.*//; s/^"//; s/"$//' | head -1)
+  [ -n "$value" ] && handoff="$value"
+fi
+case "$handoff" in "~"/*) handoff="$HOME/${handoff#\~/}" ;; esac
+
+args=()
+case "$handoff" in
+  same-session) echo "continue in this session: $([ -n "$prompt" ] && echo "$text" || echo "/$stage $target$extra")"; exit 0 ;;
+  print) print_line; exit 0 ;;
+  auto)
+    terminal=$(detect)
+    launcher="$adapters/$terminal.sh"
+    [ -x "$launcher" ] || { print_line; exit 0; }
+    [ -z "$probe" ] || args=("$probe")
+    ;;
+  *)
+    [ -x "$handoff" ] || { echo "handoff: $handoff is not executable; fix handoff: in $FLOW_HOME/user.md" >&2; exit 2; }
+    launcher="$handoff"
+    [ -z "$probe" ] || args=("$probe")
+    args+=(${opts[@]+"${opts[@]}"})
+    [ -n "$prompt" ] || args+=("$stage" "$target" "$@")
+    ;;
+esac
+
+rc=0
+"$launcher" ${args[@]+"${args[@]}"} || rc=$?
+if [ "$rc" -eq 0 ]; then
+  [ -n "$probe" ] || echo "opened: ${terminal:-$(basename "$launcher")} tab \"$FLOW_NAME\" in $FLOW_CWD"
+  exit 0
+fi
+echo "$(basename "$launcher") exited $rc: no tab opened" >&2
+print_line
+exit "$rc"
