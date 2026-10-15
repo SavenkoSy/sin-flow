@@ -1,0 +1,7 @@
+{
+  "name": "sin-flow-visual-check",
+  "private": true,
+  "dependencies": {
+    "playwright": "^1.63.0"
+  }
+}

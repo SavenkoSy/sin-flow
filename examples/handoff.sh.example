@@ -1,0 +1,5 @@
+#!/bin/bash
+set -euo pipefail
+line="cd $(printf %q "$FLOW_CWD") && $FLOW_PROMPT"
+if [ "${1:-}" = --probe ]; then echo "$line"; exit 0; fi
+osascript -e 'on run argv' -e 'tell application "Terminal" to do script (item 1 of argv)' -e 'end run' "$line" > /dev/null

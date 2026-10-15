@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+pr=${1:?usage: merge.sh <PR number|url> [squash|merge|rebase]}
+method=${2:-squash}
+case "$method" in squash | merge | rebase) ;; *) echo "unknown merge method: $method"; exit 1 ;; esac
+if ! checks=$(gh pr checks "$pr" --watch --fail-fast 2>&1); then
+  grep -q 'no checks reported' <<< "$checks" || { echo "$checks"; exit 1; }
+fi
+read -r branch base < <(gh pr view "$pr" --json headRefName,baseRefName -q '"\(.headRefName) \(.baseRefName)"')
+cd "$(git worktree list --porcelain | awk 'NR == 1 {print $2}')"
+gh pr merge "$pr" "--$method" || { echo "PR $pr NOT merged — nothing deleted"; exit 1; }
+[ "$(gh pr view "$pr" --json state -q .state)" = MERGED ] || { echo "PR $pr NOT merged — nothing deleted"; exit 1; }
+git push origin --delete "$branch" 2> /dev/null || true
+if [ "$(git branch --show-current)" != "$base" ]; then
+  git fetch origin "$base:$base" || echo "$base not updated: git fetch origin $base:$base failed"
+elif [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+  echo "$base not updated: the main checkout has local changes"
+else
+  git pull --ff-only || echo "$base not updated: git pull --ff-only failed"
+fi
+tree=$(git worktree list --porcelain | awk -v b="branch refs/heads/$branch" '/^worktree / {w = $2} $0 == b {print w}')
+[ -z "$tree" ] || git worktree remove "$tree" || echo "worktree kept, not clean: $tree"
+git branch -D "$branch" || echo "local branch kept: $branch"
+gh pr view "$pr" --json mergeCommit -q .mergeCommit.oid | cut -c1-7

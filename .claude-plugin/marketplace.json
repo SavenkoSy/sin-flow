@@ -1,0 +1,16 @@
+{
+  "name": "sin-flow",
+  "owner": {
+    "name": "SavenkoSy"
+  },
+  "metadata": {
+    "description": "Marketplace for the sin-flow plugin."
+  },
+  "plugins": [
+    {
+      "name": "sin-flow",
+      "source": "./",
+      "description": "Ticket-to-PR flow for a live codebase: setup, sync, ingest, plan, exec, review and learning stages with their agents, hooks and CLIs."
+    }
+  ]
+}
