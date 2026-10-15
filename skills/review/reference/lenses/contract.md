@@ -59,8 +59,9 @@ to DECLINED:
 
 ## Sources
 
-- `bmad-code-org/BMAD-METHOD · skills/bmad-code-review/references/deletion-check.md` — "did it
-  carry behavior or a contract that the change neither re-established nor intentionally retired?"
+- `bmad-code-org/BMAD-METHOD · skills/bmad-code-review/references/deletion-check.md` — asks
+  whether a deleted line held behavior or a contract the change neither "re-established nor
+  intentionally retired".
 - `Piebald-AI/claude-code-system-prompts · system-prompts/skill-code-review-correctness-finder-angles.md`
   — Angle B (name the invariant a deleted line enforced, find where it is re-established) and
   Angle C (callers of each changed function).
