@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+[ $# -eq 1 ] && [ -f "$1" ] || { echo "usage: sin-flow-mirror <file>" >&2; exit 2; }
+sed -E \
+  -e '/^(worktree|measure):/d' \
+  -e '\|(^\|[^A-Za-z0-9_:/.-])(~\|/Users/[^/[:space:]]+)/[^[:space:]`)"]*(sin-flow/work/\|/worktrees/\|/evidence/)|d' \
+  -e 's|(^\|[^A-Za-z0-9_:/.-])(~\|/Users/[^/[:space:]]+)/([^[:space:]`)"]*/)?([^/[:space:]`)"]+)|\1\4|g' "$1"

@@ -69,11 +69,12 @@ The dispatching thread is the most expensive place in the chain when it fills wi
    `git status --short` and the ledger's hand-off section before anything else; a named PR URL means this session
    owns the post-PR phase and nothing is re-implemented.
 2. **Plan vs issue, before anything else.** The plan is mirrored when the header's `ticket:` is a GitHub issue and
-   the profile's `## Inferred` notes line says so (`notes.mirror` not `off`): the issue body when the user authored
-   it, the `<!-- sin-flow:plan -->` comment otherwise. Not mirrored → skip. Otherwise `gh` the mirror into `<workspace>/issue-plan.md` and `diff` it
-   against `plan.md`. They differ and the issue was edited after the file's mtime → the issue wins: write it over
-   the local file, ledger `plan: issue newer, taken`. The file newer → ledger `plan: local newer`; it is mirrored at
-   Finish.
+   the profile says so (`notes.mirror: on`; absent → the `## Inferred` notes line): the issue body when the user authored
+   it, the `<!-- sin-flow:plan -->` comment otherwise. Not mirrored → skip. Otherwise `gh` the mirror into
+   `<workspace>/issue-plan.md` and `diff` it against `sin-flow-mirror plan.md` — the mirror points at no local file.
+   They differ and the issue was edited after the file's mtime → the issue wins: write it over the local file, keep the
+   local header lines the mirror drops (`worktree:`, `measure:`), ledger
+   `plan: issue newer, taken`. The file newer → ledger `plan: local newer`; it is mirrored at Finish.
 3. **Read the plan once.** Header, verdicts, waves, Finish line. **`exit: hotfix`** in the header (a one-block plan
    from ingest) is one unit: `## Files` is its ownership, `## Tasks` its brief, `## Verification` its definition of
    done, `## Gates` the `commands` for every `sin-flow:shipper` gate; `builder: mid`, `audit: run`; review depth quick, one
@@ -201,8 +202,8 @@ surface`.
 2. **`sin-flow:shipper` mode `ship`**: branch, base, PR title in English (the plan's, translated when it is not, with the
    tracker prefix the profile's convention gives and `<ATTENTION>` when step 5 of Setup hit), `body_file`. It pushes
    the branch (never the base) and opens the PR; ledger its `PR:` and `MERGE:` (the user's merge method).
-3. **Mirror**. Set `status: shipped` in the plan header. Mirror on (Setup 2) → write `plan.md` back to the issue
-   copy it came from; over 60 000 bytes → the first 60 000 plus «continued in comments», the rest as comments. Append `Plan <id>: shipped <URL>` to the ledger.
+3. **Mirror**. Set `status: shipped` in the plan header. Mirror on (Setup 2) → write `sin-flow-mirror plan.md` back to
+   the issue copy it came from; over 60 000 bytes → the first 60 000 plus «continued in comments», the rest as comments. Append `Plan <id>: shipped <URL>` to the ledger.
 4. **Waiting plans.** No `spec:` line in the plan header → skip. Otherwise, for every plan in the spec's map with
    `after: <this id>`: same repo → `git -C <its worktree> rebase <this branch>` (it has no commits yet), then
    `sin-flow-handoff --cwd <its worktree> --name plan-<its id> --model <strong> sin-flow:plan <its plan path>`. This launches
@@ -230,38 +231,39 @@ merged PRs means team. **Team → the post-PR loop. Solo → the user's review.*
 
 ### Solo — the user's review
 
-1. Screenshots exist → the closing line of the final message names their folder (absolute path) — the user looks
-   and deletes them.
-2. **No server.** Bring the app up only when the user asks to look — then as the profile's `## Run` says, deep-linked to
+1. **No server.** Bring the app up only when the user asks to look — then as the profile's `## Run` says, deep-linked to
    what changed, and for each changed screen one line with the path a user takes to reach it from the start page
-   (sign-in and role included) — a link alone does not say how to get there. If you started one, shut it down once the user approves; if the user rejected something, it stays
-   up.
-3. A state the app cannot reach on its own (an empty table a check needs rows in, a role the user must be in) → hand the
+   (sign-in and role included) — a link alone does not say how to get there. If you started one, shut it down once
+   the user approves; if the user rejected something, it stays up.
+2. A state the app cannot reach on its own (an empty table a check needs rows in, a role the user must be in) → hand the
    user a console snippet that uses the repo's own write path, never raw inserts; run it only when the user says
    «you run it».
-4. **Wait for the user's verdict.** This is the one place where waiting is correct: shipping was pre-authorized,
+3. **Wait for the user's verdict.** This is the one place where waiting is correct: shipping was pre-authorized,
    judging is the user's. Do not declare the work done, do not start the next plan. The user's findings come back
-   **collected, not one at a time**: one implementer on the touched unit's `builder:` (mid when they span
-   units, strong only when the forcing list is hit), the visual check again when a rendered surface changed, then one `sin-flow:shipper` gate + `commit` (commit and push)
-   for the batch (a new commit, never an amend); ledger `Round <k>: complete (<sha>)`.
-5. **Merge on the user's word.** "merge", or an approval that says so → `ExitWorktree` if you are in one, then
-   `bash ${CLAUDE_PLUGIN_ROOT}/skills/exec/reference/merge.sh <PR> <MERGE from the ship block>` — it waits for checks,
-   merges by that method (squash when empty), deletes the remote and local branch, removes the worktree, fast-forwards
-   the local base without ever switching the main checkout's branch, and prints the merge commit. Ledger
-   `Plan <id>: merged <sha>`, `status: merged` in the plan header; one line back. Non-zero exit → paste its output and stop; never re-run its lines by hand (2026-10-13: a
-   hand-inlined copy deleted the branch after a failed merge and GitHub closed the PR).
+   **collected, not one at a time**: one implementer on the touched unit's `builder:` (mid when they span units,
+   strong only when the forcing list is hit), the visual check again when a rendered surface changed, then one
+   `sin-flow:shipper` gate + `commit` for the batch (a new commit, never an amend); ledger `Round <k>: complete (<sha>)`.
+4. **Merge on the user's word.** "merge", or an approval that says so → `ExitWorktree` with `action: keep` if you are in
+   one, then `bash ~/.claude/sin-flow/merge.sh <PR> <MERGE from the ship block>` — the user's copy of
+   `${CLAUDE_PLUGIN_ROOT}/examples/merge.sh.example` (absent → copy it there first, `chmod +x`). The example waits for
+   checks, merges by that method (squash when empty), deletes the remote and local branch, removes the worktree,
+   fast-forwards the local base without ever switching the main checkout's branch, and prints the merge commit; the
+   user's copy may keep the worktree or differ otherwise. Ledger
+   `Plan <id>: merged <sha>`, `status: merged` in the plan header; one line back. Exit 3 — the PR conflicts with its
+   base → the rebase round of Team step 1, then `merge.sh` once more, no question. Any other non-zero exit → paste its
+   output and stop; never re-run its lines by hand.
 
 ### Team — the post-PR loop
 
 The PR is ready until a point reproduces. The user does not merge here; the team does.
 
 1. **State.** `gh pr view <url> --json state,reviewDecision,reviews,comments,mergeStateStatus > <workspace>/pr.json`,
-   grep it. `BEHIND` or `DIRTY` → one rebase round onto the base — an `sin-flow:implementer` on `<mid>`, effort low, rebases and pushes with
-   `--force-with-lease` (the shipper never rewrites history) — your branch, not a question. Size the check by `git range-diff <old base>..<old head>
-   <new base>..HEAD`: only docs, deploy-notes numbering or generated API docs in it, and no new base commit touches
-   a non-doc file of the branch → the range-diff plus the repo's doc checks, then push — no full gate, CI runs the
-   suite. Any code or spec line,
-   or a base commit in a non-doc file the branch touches → `sin-flow:shipper` `gate`.
+   grep it. `BEHIND` or `DIRTY` → one rebase round onto the base — an `sin-flow:implementer` on `<mid>`, effort low,
+   rebases and pushes with `--force-with-lease` (the shipper never rewrites history) — your branch, not a question.
+   Size the check by `git range-diff <old base>..<old head> <new base>..HEAD`: only docs, deploy-notes numbering or
+   generated API docs in it, and no new base commit touches a non-doc file of the branch → the range-diff plus the
+   repo's doc checks, then push — no full gate, CI runs the suite. Any code or spec line, or a base commit in a
+   non-doc file the branch touches → `sin-flow:shipper` `gate`.
 2. **Bot review.** One call: does any of the repo's last 5 merged PRs carry a review-bot comment? None → ledger
    `bot: none (0 of 5 PR)`. Any → the bot's comments are a teammate's points: step 4.
 3. **The user's review** → one fix round. The user's questions about code → a `sin-flow:read-only-analyst`. A
@@ -275,12 +277,12 @@ The PR is ready until a point reproduces. The user does not merge here; the team
    - **A request for the plan, docs or evidence in the PR** → never a fix, never a docs commit; one reply, verbatim:
      «The plan and evidence are in #<issue> — everything is there.»
 
-   A rare or unobserved
-   case — a volume, a limit, a race, a row that may not exist — with zero rows is not reproduced. Every reply is
-   short, in English, and argues the PR is ready: what was checked, the number or the reason, «not changing; ready to
-   merge». Only reproduced points reach step 6; only a point that reopens a product decision goes to the user, all
-   such points in one question. Never ask the user whether to fix or guard a point — this step decides. The user
-   comes back after your final message → this step for everything posted since, then your answer.
+   A rare or unobserved case — a volume, a limit, a race, a row that may not exist — with zero rows is not
+   reproduced. Every reply is short, in English, and argues the PR is ready: what was checked, the number or the
+   reason, «not changing; ready to merge». Only reproduced points reach step 6; only a point that reopens a product
+   decision goes to the user, all such points in one question. Never ask the user whether to fix or guard a point —
+   this step decides. The user comes back after your final message → this step for everything posted since, then
+   your answer.
 5. **Base watcher** — every team PR, and any PR whose base is another feature branch. Before ending the turn, start
    one background Bash (`run_in_background`): every 10 min, up to 24 h, `git fetch -q origin` and
    `gh pr view <url> --json baseRefName,mergeStateStatus,reviews,comments`; it exits when `baseRefName` changed, the
@@ -342,8 +344,7 @@ effect outside this checkout that norms say to ask about, a plan so broken every
 - A measurement that contradicts the plan → `⚠ CORRECTION` at that place in the plan, and say so.
 - Never start a whole-suite gate while an implementer is live.
 - Hand over paths, not pasted content. Do not delete the workspace.
-- No watchdog auto-restart of a silent subagent: a stalled dispatch is a
-  `Ruling:` and a hand-off, never a blind re-dispatch.
+- A silent subagent is a `Ruling:`, never a blind re-dispatch.
 
 ## Hand-off — three triggers, one command
 

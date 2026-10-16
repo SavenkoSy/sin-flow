@@ -22,9 +22,6 @@ profile folder has `review-team.md` and `quick` when it does not. `quick` = cont
 was at that commit. `--base <sha>` sets the fork point explicitly — for a PR whose base branch was
 rewritten after that commit.
 
-Do not start benchmark runs unless the user asks; the first rounds were stopped on cost (≈ 54M
-cache-read tokens for one thorough run).
-
 You dispatch and relay. The package script, the pipeline and the agents do the work: you never read
 `diff.patch`, `findings/*.md` or the code, and you never re-judge a verdict.
 
@@ -51,10 +48,16 @@ review file headings are format: they stay English, in chat too.
    It prints only the package path. Non-zero → relay its stderr in one line and stop.
 4. Follow `$REF/pipeline.md` with that `PKG`. Its render step writes `$REVIEWS/$KEY-<pr>-$SHA8.md`
    (call it `REVIEW`) and records `Package: <PKG>` as its last line.
-5. **Post without asking** (high/med `reproduces` is posted, nothing else is):
-   every K row that is `high` or `med` and `reproduces` goes through Post, below, in this
-   invocation. `possible`, `invented` and every `low` are never posted. None qualifies → post nothing.
-6. Chat, below.
+5. **Settle before the verdict.** When the profile's `measure.doc` is not `none` and a K row is
+   `possible` at `med`, take those rows' `settle` lines (the second command in `$REF/pipeline.md` § 6)
+   and run each one yourself by `measure.doc`, its preflight first — a measurement is yours, never an
+   agent's. Each row gets one number with its query and filter. When the number refutes the row (zero
+   rows, a value that no writer sets), the row is `settled — <number, filter>` and does not count for
+   the verdict. When the number confirms the row, the number stays beside it. When the preflight fails
+   or `measure.doc` is `none`, relay as usual and add one line: the human step that the preflight names.
+6. **Post without asking:** every K row that is `high` or `med` and `reproduces` goes through Post,
+   below, in this invocation. Nothing else is posted. None qualifies → post nothing.
+7. Chat, below.
 
 ## Chat — in the chat language, plain
 
@@ -69,13 +72,15 @@ grep -cE '^- R[0-9]+ \|' "$REVIEW"
 grep '^lens .* failed' "$REVIEW"
 ```
 
-- **VERDICT** — the first line: `approve` when no K row is high or med and verify said
-  `blocking no`; else `don't approve — K<n>, …` (the high/med rows). Advice; the user decides.
+- **VERDICT** — the first line: `approve` when no K row is high or med (rows that step 5 settled do
+  not count) and verify said `blocking no`; else `don't approve — K<n>, …` (those rows). Advice; the
+  user decides.
 - **WHAT IT DOES** — the `## What it does` sentences.
 - **ENTRY POINT** — the `## Entry points` rows.
 - **FLOW** — the `## Flow` lines, then the three `## Read first` files.
 - **FINDINGS** — the high and med rows as a table `# · severity · reality · file:line · claim`
-  (`no high/med` when there are none); low as one line: `N more low — in the file`.
+  (`no high/med` when there are none); a row that step 5 measured shows its number in `reality`; low
+  as one line: `N more low — in the file`.
 - **REJECTED** — `N — in the file` (invented, needless validation, duplicates, pre-existing, nit without a rule).
 - A failed lens, if any, in one line.
 - The `REVIEW` path, absolute, on its own line.
@@ -83,7 +88,7 @@ grep '^lens .* failed' "$REVIEW"
 
 ## Post
 
-1. The numbers: Review step 5's selection, or the user's `/sin-flow:review post <n,…>` (`1,3` and `K1,K3`
+1. The numbers: Review step 6's selection, or the user's `/sin-flow:review post <n,…>` (`1,3` and `K1,K3`
    both mean K1 and K3), which posts exactly what the user numbered.
 2. `REVIEW` = the review file this session rendered; if none, the newest `$REVIEWS/$KEY-*.md` — name
    it in the relay. From its `REPO=… PR=… SHA=…` line take `REPO`, `PR`, `SHA`; from its last line
@@ -117,7 +122,7 @@ grep '^lens .* failed' "$REVIEW"
 2. Chat opens with one line: `approve` or `don't approve — K<n>, …`: each posted K row closed /
    open at the head, then the new high/med rows.
 3. Every K row closed and no new high/med row → Approve, below, without asking. Anything else → no
-   approve; the new high/med `reproduces` rows go through Post as in Review step 5.
+   approve; the new high/med `reproduces` rows go through Post as in Review step 6.
 
 ## Approve
 
