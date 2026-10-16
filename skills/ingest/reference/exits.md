@@ -42,7 +42,7 @@ story. `<slug>` kebab-case from the intent.
 Where the session started decides, in every repo (inbox #36, #38, #43, #44). Primary checkout: `git
 rev-parse --git-dir` equals `git rev-parse --git-common-dir`; otherwise the cwd is a linked worktree.
 
-**A linked worktree is reused** only when the cwd's main checkout is `<repo>`. In Orca (`TERM_PROGRAM=Orca`) any linked worktree is the workspace the
+**A linked worktree is reused** only when the cwd's main checkout is `<repo>`. In Orca (`sin-flow-handoff --detect` prints `orca`) any linked worktree is the workspace the
 user made for this work, whatever its name; elsewhere only one whose basename is the unit's id (`gh-<N>`,
 `<N-M>`, `epic-<N>`). It must be clean (`git status --porcelain` prints nothing) and, after `git fetch
 origin <base>`, `git rev-list --count origin/<base>..HEAD` is 0 — otherwise ask the user, never create a

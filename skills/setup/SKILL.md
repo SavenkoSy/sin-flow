@@ -23,8 +23,6 @@ Chat with the user in `chat_language` from `~/.claude/sin-flow/user.md`, or in t
 - **One question per turn**, in prose, only where the repo and GitHub are silent or contradict each other.
 - **Nothing changes without a yes** after install — a check only reports.
 - Read-only everywhere in the product repo: setup writes only under `~/.claude/sin-flow/` (and project-local settings after a yes).
-- **`CTX GUARD` in a tool result:** setup has no hand-off — finish the step in flight, tell the user in one line to re-run
-  `/sin-flow:setup` in a new session (it is idempotent and picks up what is written), and stop.
 
 ## Resolve
 
@@ -39,15 +37,21 @@ Chat with the user in `chat_language` from `~/.claude/sin-flow/user.md`, or in t
    created here, and nothing is pushed by setup or by the Stop hook.
 2. `command -v gh git jq bash`, `gh auth status`. A miss is a row with its fix (`brew install jq`, `gh auth login`).
 3. Show the preferences with defaults — `chat_language`, `merge: squash`, `after_review: new-commit`,
-   `branch_prefix: ""`, `handoff: auto`, `learning_dir: ~/.claude/sin-flow/learning`, `learning_runs: 10`,
+   `branch_prefix: ""`, `handoff: auto`, `context_guard: 40`, `learning_dir: ~/.claude/sin-flow/learning`, `learning_runs: 10`,
    `learning_cwd:` (empty → `learning_dir`), `work_remote: ""`,
    `models.strong: opus`, `models.mid: sonnet`, `models.cheap: haiku`,
    `reviews_dir: ~/.claude/sin-flow/reviews` — ask once "keep the defaults?" — a user whose account has no Opus sets
-   `models.strong: sonnet` — write `~/.claude/sin-flow/user.md`.
-4. Hand-off, decided once: `sin-flow-handoff --detect` names the terminal it has a tab adapter for, or prints `none`.
-   A name → ask "should the flow open new <terminal> tabs for the next stage itself?" —
-   yes → `handoff: auto`. `none`, or no → offer to copy `${CLAUDE_PLUGIN_ROOT}/examples/handoff.sh.example` to
-   `~/.claude/sin-flow/handoff.sh` (`chmod +x`; it opens a new macOS Terminal window, the user may adapt it) — yes →
+   `models.strong: sonnet`. Then ask `context_guard` once, as its own question: "a plan, exec, ingest, sync, review or
+   learning session hands its work to a fresh session when its context reaches N % of the 1M window — keep 40?" →
+   write `context_guard: <N>`. Write `~/.claude/sin-flow/user.md`.
+4. Hand-off, decided once: `sin-flow-handoff --detect` prints a terminal name or `none — checked: …`.
+   A name → ask "should the flow open new <terminal> tabs for the next stage itself?" — yes → `handoff: auto`,
+   no → `handoff: print`.
+   `none` → quote the printed line as is (never add a reason of your own) and ask "which terminal do you run Claude Code
+   in: tmux, cmux, iTerm, Ghostty, Warp, Orca, or other?". A named one → `sin-flow-handoff --check <name>`: `ok` →
+   `handoff: <name>`; anything else → tell the user the printed reason in one line and write `handoff: print`.
+   `other` → offer to copy `${CLAUDE_PLUGIN_ROOT}/examples/handoff.sh.example` to `~/.claude/sin-flow/handoff.sh`
+   (`chmod +x`; it opens a new macOS Terminal window, the user may adapt it) — yes →
    `handoff: ~/.claude/sin-flow/handoff.sh`, no → `handoff: print`.
 5. Offer `Read(~/.claude/sin-flow/**)`, `Bash(sin-flow-profile *)`, `Bash(sin-flow-infer *)`, `Bash(sin-flow-handoff *)` in
    user settings — add only on a yes.
@@ -59,14 +63,14 @@ an absent one keeps its default:
 | field | default | meaning |
 |---|---|---|
 | `chat_language` | absent → the language the user writes in | language of the chat; files, commits, PRs and issues stay English |
-| `handoff` | `auto` | how a stage starts the next one: `auto` — a new tab in the detected terminal, else print · `same-session` · `print` — print the ready command and copy it to the clipboard · a path to the user's own script |
+| `handoff` | `auto` | how a stage starts the next one: `auto` — a new tab in the detected terminal, else print · `same-session` · `print` — print the ready command and copy it to the clipboard · `tmux`, `cmux`, `iterm`, `ghostty`, `warp`, `orca` — that terminal's adapter, when detection cannot tell · a path to the user's own script |
 | `learning_dir` | `~/.claude/sin-flow/learning` | where `/sin-flow:learning` keeps digests, inbox and ledger |
 | `learning_runs` | `10` | how many undigested `sin-flow:exec` runs start a learning session when an exec session ends |
 | `learning_cwd` | `learning_dir` | where that learning session starts; its `CLAUDE.md`, else `<learning_dir>/ledger.md`, is the hand-off path |
 | `merge` | `squash` | merge method for the user's own PRs |
 | `after_review` | `new-commit` | how review fixes land on an open PR: a new commit on top |
 | `branch_prefix` | `""` | first segment of the convention branch `<prefix>/<type>/<id>/<slug>`; empty → no segment |
-| `context_window` | `200000` | tokens in the model's context window; the context guard uses it only when no status line reports the percentage |
+| `context_guard` | `40` | percent of the 1M-token context window at which plan, exec, ingest, sync, review and learning hand off or stop; `CTX_GUARD_THRESHOLD` overrides it for one session |
 | `models.strong` | `opus` | plan, exec and learning sessions, every hand-off, the review lenses on the strong tier, exec's fix round 3. One of `opus`, `sonnet`, `haiku`, `fable` |
 | `models.mid` | `sonnet` | read-only analysts, implementers, shipper, review-poster, the review lenses on the mid tier |
 | `models.cheap` | `haiku` | the board agent |
@@ -140,7 +144,7 @@ one fix. `✗` = a stage cannot work; `!` = it can, marked "not measured".
 | layer | checks | fix offered |
 |---|---|---|
 | flow | `claude plugin list` shows `sin-flow` enabled; `sin-flow-profile`, `sin-flow-infer`, `sin-flow-handoff` on PATH; the Stop hook `work-commit.sh` in the plugin's `hooks/hooks.json`; `gh auth status`; `git`, `jq`, `bash` | `claude plugin install sin-flow@sin-flow`; `gh auth login`; `brew install …` |
-| user | `~/.claude/sin-flow/{profiles,work,reviews}` exist; `git -C ~/.claude/sin-flow status --porcelain` empty or committable; `work_remote` set → `git ls-remote` reachable, unset → `!` "notes are local only"; `user.md` read; `handoff:` is `auto`, `same-session`, `print` or an executable path, and under `auto` `sin-flow-handoff --detect` names a terminal (`none` → `!` "the hand-off prints the command"); `sin-flow-profile model strong`, `… mid`, `… cheap` each print an alias (exit 2 → `✗`, fix: the value it names); `tail -3 ~/.claude/sin-flow/stop-commit.log` has no `failed`; `tmutil destinationinfo` → warning only | `git init`; `chmod +x <handoff path>`; "set up Time Machine" |
+| user | `~/.claude/sin-flow/{profiles,work,reviews}` exist; `git -C ~/.claude/sin-flow status --porcelain` empty or committable; `work_remote` set → `git ls-remote` reachable, unset → `!` "notes are local only"; `user.md` read; `handoff:` is `auto`, `same-session`, `print`, `tmux`, `cmux`, `iterm`, `ghostty`, `warp`, `orca` or an executable path; under a terminal name `sin-flow-handoff --check <name>` prints `ok` (else `!` with the printed reason, fix: install it or `handoff: print`); under `auto` `sin-flow-handoff --detect` names a terminal (`none` → `!` quoting the `--detect` line, "the hand-off prints the command"); `sin-flow-profile model strong`, `… mid`, `… cheap` each print an alias (exit 2 → `✗`, fix: the value it names); `tail -3 ~/.claude/sin-flow/stop-commit.log` has no `failed`; `tmutil destinationinfo` → warning only | `git init`; `chmod +x <handoff path>`; "set up Time Machine" |
 | project | `sin-flow-profile validate` (required keys, paths, `sources.*` env files: present, `600`, git-ignored, variable present); `gh repo view <slug>`; `git ls-remote --heads origin <base>`; every gate command's binary on PATH; `sin-flow-infer` vs `## Inferred` — base or `gate files:` changed?; the gates named again from those files vs the stored `gates` lines — changed?; each source's preflight/verify | `sin-flow-infer --write <key>`, then name the gates; `chmod 600 <file>`; "add to .gitignore"; "open the tunnel: <tunnel>" |
 
 A source that is unreachable now (tunnel closed, VPN off, SSO expired) is a `!` row with its human step, never a failure.

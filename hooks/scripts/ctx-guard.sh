@@ -16,6 +16,7 @@ say() {
   exit 0
 }
 
+window=1000000
 limit_thr=${LIMIT_GUARD_THRESHOLD:-90}
 limit_7d_thr=${LIMIT_GUARD_7D_THRESHOLD:-98}
 limit_marker="$dir/$sid.limit-guard"
@@ -37,17 +38,18 @@ if [ -n "$own" ]; then
 fi
 
 [ -n "$stage_line" ] || exit 0
+[ "$skill" != sin-flow:setup ] || exit 0
 guard="$dir/$sid.guard"
 used=$(jq -r '.used_pct // empty' "$sj" 2>/dev/null)
 if [ -z "$used" ] && [ -f "$tp" ]; then
-  window=$(awk -F': *' '$1 == "context_window" { print $2; exit }' "$HOME/.claude/sin-flow/user.md" 2>/dev/null)
-  case "$window" in ''|*[!0-9]*) window=200000 ;; esac
   tokens=$(tail -n 400 "$tp" | jq -rs '
     map(select(.type == "assistant" and .message.usage != null)) | last // empty
     | .message.usage | (.input_tokens // 0) + (.cache_read_input_tokens // 0) + (.cache_creation_input_tokens // 0)' 2>/dev/null)
   case "$tokens" in ''|*[!0-9]*) ;; *) used=$(( tokens * 100 / window )) ;; esac
 fi
-thr=${CTX_GUARD_THRESHOLD:-40}
+configured=$(awk -F': *' '$1 == "context_guard" { print $2; exit }' "$HOME/.claude/sin-flow/user.md" 2>/dev/null)
+case "$configured" in ''|*[!0-9]*) configured=40 ;; esac
+thr=${CTX_GUARD_THRESHOLD:-$configured}
 last_ctx=0
 [ -f "$guard" ] && last_ctx=$(sed -n 1p "$guard")
 last_ctx=${last_ctx:-0}
@@ -64,7 +66,6 @@ case "$skill" in
   sin-flow:plan) rule="hand off now per the skill's CTX GUARD rule: let the in-flight dispatch finish, put every measured number in evidence/<unit>.md, run sin-flow-handoff with sin-flow:plan, the same plan path and \"continue: from Step <n>\", then end the turn; never hand a half-measured plan to sin-flow:exec." ;;
   sin-flow:sync) rule="follow the skill's CTX GUARD rule: finish the in-flight dispatch; a batch already taken gets its hand-off to sin-flow:plan now; otherwise tell the user in one line that the talk continues in a new /sin-flow:sync <key> session, then stop." ;;
   sin-flow:review) rule="follow the skill's CTX GUARD rule: finish the step in flight and its chat (the review file is the trail), then tell the user in one line that the next /sin-flow:review command belongs in a new session, then stop." ;;
-  sin-flow:setup) rule="follow the skill's CTX GUARD rule: finish the step in flight, then tell the user in one line to re-run /sin-flow:setup in a new session (it is idempotent), then stop." ;;
   sin-flow:learning) rule="follow the skill's CTX GUARD rule: let the in-flight readers finish, write the digest and the ledger entry for the sessions they covered, then tell the user in one line to run /sin-flow:learning with the same mode in a new session, then stop." ;;
   *) rule="follow the skill's CTX GUARD rule." ;;
 esac
