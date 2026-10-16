@@ -139,6 +139,7 @@ Ingest, sync, plan and exec start the next stage in a new terminal tab. `handoff
 
 - `auto` (default): a tab through the adapter for the terminal you run in, or `print` when there is no adapter.
 - `same-session`: continue in the current session.
+- `tmux`, `cmux`, `iterm`, `ghostty`, `warp` or `orca`: that terminal's adapter, for when `auto` cannot tell where you run; setup asks and checks it with `sin-flow-handoff --check` (the command is on PATH; `tmux` and `cmux` also need a session inside them; the app is installed for `iterm`, `ghostty`, `warp`).
 
 In Claude Desktop the setting is ignored: ingest and sync start the next stage as a Desktop session, and every later stage continues in that session. Add `"mcp__ccd_session__start_session"` to `permissions.allow`, and keep the ingest conversation on screen so Desktop can ask you to trust the new worktree.
 - `print`: print the ready command and copy it to the clipboard.
@@ -153,8 +154,10 @@ the command instead. With `--probe` it prints what it would run and opens nothin
 `~/.claude/sin-flow/handoff.sh`.
 
 Shipped adapters, in `bin/handoff/`: `tmux`, `cmux`, `iterm`, `ghostty`, `warp`, `orca`. Adding a terminal is
-one script there plus one line in `detect()` in `bin/sin-flow-handoff`. `sin-flow-handoff --detect` names the
+one script there, its name in `terminals`, one line in `detect()` and one in `--check` in `bin/sin-flow-handoff`. `sin-flow-handoff --detect` names the
 adapter it would use.
+
+`context_guard` (default 40) in `user.md` is the percent of the 1M-token context window at which a stage hands off to a fresh session; setup never stops on it.
 
 #### Models
 
