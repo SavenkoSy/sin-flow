@@ -116,8 +116,8 @@ title, worktree, `after:`) and the decisions every unit shares. No parent issue 
 
 ## Mirror to the issue
 
-Only when the unit is an issue and mirroring is on (issues enabled and the repo is a team's, unless
-the profile says `notes.mirror: off`); never in upstream mode. Nothing from `work/` is ever `git add`ed.
+Only when the unit is an issue and the profile says `notes.mirror: on` (absent → the `## Inferred` notes
+line); never in upstream mode. Nothing from `work/` is ever `git add`ed.
 Every issue body, mirror and comment is self-contained: no local path (`~/`, `/Users/`, a scratchpad),
 code cited as a permalink at the base SHA, a local source or evidence file summarized in the text.
 

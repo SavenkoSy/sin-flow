@@ -21,6 +21,12 @@ at ingest; plan and exec ask the user nothing. This stage measures the flow on t
 
 A skill line a session broke at no cost to either number is not a finding — at most a Deletions candidate.
 
+Learning improves the user's workflow: it finds what to automate, what the user keeps doing by hand, what their
+sessions show they need. Every finding names its **layer** first — the user's files (`user.md`, their copies of the
+`examples/`, `profiles/<key>/`) hold how the flow works for this user; the plugin holds the mechanism and the
+defaults every user starts from. A habit of one user never becomes a plugin rule. Only in author mode does a finding
+also ask whether the mechanism itself failed — and then it goes to the plugin, in its own apply script.
+
 One procedure covers every repo. The repo is a column, not a separate flow: a failure mode seen in two or
 more repos is a sin-flow:* skill problem; a mode seen in one repo only is first a profile problem.
 
@@ -181,7 +187,7 @@ Body:
 - **author** — the plugin is loaded in place from a git checkout the user can commit to: `${CLAUDE_PLUGIN_ROOT}`
   is not under a `plugins/cache/` folder and is inside a git work tree with a writable git dir. Proposals may
   target the flow layer — `skills/`, `agents/`, `hooks/`, `bin/` of that checkout — as well as `user.md` and
-  `profiles/<key>/`. After the user's "yes", `apply.sh` edits the checkout; then tell the user to run
+  `profiles/<key>/`. After the user's "yes", `apply-plugin.sh` edits the checkout; then tell the user to run
   `/reload-plugins`. Committing is the user's step: never commit, push or open a PR in the checkout.
 - **user** — the plugin runs from the plugin cache, which an update overwrites. Proposals are applied only to
   `~/.claude/sin-flow/user.md` and `~/.claude/sin-flow/profiles/<key>/`, after a "yes". A proposal whose target is
@@ -210,9 +216,13 @@ the user approves it as a whole.
 
 One proposal per numbered entry, each with:
 
+- **layer** — `user` (`~/.claude/sin-flow/user.md`, the user's copy of an `examples/` script), `profile`
+  (`~/.claude/sin-flow/profiles/<key>/`) or `plugin` (the mechanism, for every user). A finding that is one user's
+  habit or preference is `user` or `profile`, whatever mode the run is in;
 - **target** — `${CLAUDE_PLUGIN_ROOT}/skills/<stage>/SKILL.md:<line>`, an agent `${CLAUDE_PLUGIN_ROOT}/agents/<name>.md:<line>`,
   a lens `${CLAUDE_PLUGIN_ROOT}/skills/review/reference/lenses/<lens>.md:<line>`, a hook path, `${CLAUDE_PLUGIN_ROOT}/bin/…`,
-  a profile `~/.claude/sin-flow/profiles/<key>/profile.md`, or `~/.claude/sin-flow/user.md`. Never another file;
+  a profile `~/.claude/sin-flow/profiles/<key>/profile.md`, `~/.claude/sin-flow/user.md`, or the user's copy of an
+  `examples/` script under `~/.claude/sin-flow/`. Never another file;
 - **now** — the current text, verbatim, ≤ 6 lines;
 - **proposed** — the replacement, verbatim;
 - **evidence** — the digest section and the count it rests on, with the repos;
@@ -224,7 +234,8 @@ One proposal per numbered entry, each with:
 
 Every proposal the mode lets this run apply is a file before the chat report: the whole proposed copy of each
 target in `LD/<date>/flow-<stage>/proposed/` (all approved together), `patches.diff`, `targets.tsv` (target path,
-`shasum -a 256` of the live file when the copy was made), and `apply.sh`, which:
+`shasum -a 256` of the live file when the copy was made), and the apply scripts — `apply-user.sh` for the `user`
+and `profile` layers, `apply-plugin.sh` for the `plugin` layer, approved and run separately — each of which:
 
 1. checks every target's live sha against `targets.tsv` and stops, changing nothing, when one differs — another
    session edited it; rebase the copy onto the live file and rewrite the row;
@@ -232,7 +243,7 @@ target in `LD/<date>/flow-<stage>/proposed/` (all approved together), `patches.d
    `${CLAUDE_PLUGIN_ROOT}` or `~/.claude/sin-flow`; `mkdir -p` the folder, and a second edit the same day reuses
    the backup — then copies the proposed file over it and checks it with `cmp`.
 
-When two stages propose to the same file, the copies are merged into one before `apply.sh` is written.
+When two stages propose to the same file, the copies are merged into one before the apply scripts are written.
 Nothing is edited before the user's approval — "do it" or "go" in the launch request approves the run, not a
 diff they have not seen.
 
@@ -240,8 +251,8 @@ The user approves by number, or all at once — "all", "yes", "apply" or "your c
 list approve every number in it. Silence, "not now" or a question is not approval. Then:
 
 1. A partial approval, or a scope change in their line, is made in the copies first.
-2. `bash <abs path>/apply.sh`, once — never piecemeal edits of a live file. Denied → stop and give the user
-   the one line to run: `! bash <abs path>/apply.sh`.
+2. `bash <abs path>/apply-user.sh`, then `apply-plugin.sh` in author mode, once each — never piecemeal edits of a live file. Denied → stop and give the user
+   the one line to run: `! bash <abs path>/apply-<layer>.sh`.
 3. A `⚠ CORRECTION` note in the digest's proposal entry if the applied text differs from the proposed one,
    and why.
 4. Author mode, a flow-layer target applied → tell the user to run `/reload-plugins` and that the commit is
@@ -293,7 +304,7 @@ the chat language, in this order, and then it stops:
 - **WHAT HAPPENED** — one sentence, cause → effect: the mechanism, an arrow, then what the user saw.
 - **EVIDENCE** — the two numbers (user touches, post-PR defects) for the covered sessions, split by repo, and
   the `file:line` behind the cause, ≤ 3 lines.
-- **WHAT I PROPOSE** — one list, ≤ 6 lines, «how it works now → how it will be», one line per thing the user of
+- **WHAT I PROPOSE** — two lists, «your settings» then «the plugin, for everyone», ≤ 6 lines in all, «how it works now → how it will be», one line per thing the user of
   the flow experiences, with every proposal that changes it folded in; plain words, no proposal numbers, no
   identifiers. User mode: one more line naming `proposals-for-author.md` and the blocks added.
 - **FINAL MESSAGE** — one covered exec session's final message, its `===` block copied whole from
@@ -324,6 +335,6 @@ Open, not fixed by this procedure:
   readers (inbox #39 item 2).
 - `scripts/dump.sh` clips TOOL lines and `exit=` RESULT lines at 140–300 characters, so long worktree paths
   are cut (inbox #39 item 4).
-- Another session can edit a target skill mid-run; `apply.sh` refuses on a changed sha, but nothing stops the
+- Another session can edit a target skill mid-run; the apply scripts refuse on a changed sha, but nothing stops the
   edit itself and the copies must be rebased by hand (inbox #39 item 7).
-- The auto-mode classifier blocks even a read-only probe run of `apply.sh` (inbox #39 item 8).
+- The auto-mode classifier blocks even a read-only probe run of an apply script (inbox #39 item 8).

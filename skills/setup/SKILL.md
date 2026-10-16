@@ -54,6 +54,8 @@ Chat with the user in `chat_language` from `~/.claude/sin-flow/user.md`, or in t
    `other` → offer to copy `${CLAUDE_PLUGIN_ROOT}/examples/handoff.sh.example` to `~/.claude/sin-flow/handoff.sh`
    (`chmod +x`; it opens a new macOS Terminal window, the user may adapt it) — yes →
    `handoff: ~/.claude/sin-flow/handoff.sh`, no → `handoff: print`.
+   Copy `${CLAUDE_PLUGIN_ROOT}/examples/merge.sh.example` to `~/.claude/sin-flow/merge.sh` when absent (`chmod +x`): the
+   merge step of sin-flow:exec runs that copy, and the user adapts it — for example to keep the worktree after the merge.
 5. Offer `Read(~/.claude/sin-flow/**)`, `Bash(sin-flow-profile *)`, `Bash(sin-flow-infer *)`, `Bash(sin-flow-handoff *)` in
    user settings — add only on a yes.
 
@@ -110,7 +112,8 @@ nothing; a non-zero exit makes `sin-flow-handoff` print the command instead. Its
 4. Write `~/.claude/sin-flow/profiles/<key>/profile.md`: frontmatter with `key`, `repo.slug`, `repo.path` (the main
    checkout, `dirname "$(git rev-parse --path-format=absolute --git-common-dir)"`, `$HOME` written as `~`), `repo.fork` (the slug of remote `fork`, only when it exists), `measure.doc`
    and only the deviations the user gave; then `sin-flow-infer --write <key>` fills `## Inferred` and you name the gates into it
-   (below); add `## Measure` in one or two lines.
+   (below); add `## Measure` in one or two lines. Write `notes.mirror: on` into the frontmatter when the Inferred notes line
+   says mirrored and the team has more than one author, else `notes.mirror: off` — a default the user flips.
    Show the file. A personal measurement doc lives beside it as `measure.md`.
 5. Hand back to the stage that called setup, at the step it stopped on.
 

@@ -3,6 +3,10 @@ set -euo pipefail
 pr=${1:?usage: merge.sh <PR number|url> [squash|merge|rebase]}
 method=${2:-squash}
 case "$method" in squash | merge | rebase) ;; *) echo "unknown merge method: $method"; exit 1 ;; esac
+if [ "$(gh pr view "$pr" --json mergeStateStatus -q .mergeStateStatus)" = DIRTY ]; then
+  echo "PR $pr conflicts with its base — rebase it, then run merge.sh again; nothing merged"
+  exit 3
+fi
 if ! checks=$(gh pr checks "$pr" --watch --fail-fast 2>&1); then
   grep -q 'no checks reported' <<< "$checks" || { echo "$checks"; exit 1; }
 fi

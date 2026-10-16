@@ -23,8 +23,7 @@ Chat with the user in `chat_language` from `~/.claude/sin-flow/user.md`, or in t
 ## Hard boundaries
 
 - **Never write application code, never commit, never push.** Code is written by `sin-flow:exec` (and
-  its implementers); commits and PRs by the `sin-flow:shipper` agent it dispatches. This skill writes seeds,
-  one-block plans, evidence, support recipes, reply drafts and findings — all outside the repo.
+  its implementers); commits and PRs by the `sin-flow:shipper` agent it dispatches.
 - **Never execute anything that writes to a live system** — production, stage, a shared dev
   database. Measurement is read-only; a data-fix recipe is written to disk and run by a human.
 - **Never run an app console, a runner or a one-off script against a live database** — not to
@@ -124,9 +123,10 @@ the condition, the query, the job, the component — at `file:line`. When the pr
 response: the consumer side often decides whether the bug is ours at all.
 
 More than two files → fan out `sin-flow:read-only-analyst` agents (`<mid>`), one narrow question each, all in
-one message, `file:line` in a reply of ≤ 40 lines; keep only judgement here. An agent's report is a
+one message, `file:line` in a reply of ≤ 40 lines; relay only its conclusion, never paste the report. An agent's report is a
 reading, not a fact, until step 3 measures it or you read the lines yourself. Every claim carried
-forward is tagged **measured**, **read at `file:line`** or **inferred**.
+forward is tagged **measured**, **read at `file:line`** or **inferred**. A "no" in chat is a claim
+too ("nothing to move", "the code is not the cause"): say what you read and what you did not read.
 
 History while you are there: `gh pr list --repo <slug> --state merged --search "<keyword>"`,
 `git log -S '<condition>' --oneline -- <file>`. A bug fixed once before is a regression or a release
@@ -172,7 +172,6 @@ and say so in the first message: "not measured" is honest; a silent skip is not.
 - **`CTX GUARD` in a tool result means hand off now:** verdict `plan`, seed with what is verified and
   every open point under `## Open decisions`, then the hand-off. A half-measured seed in
   `sin-flow:plan`'s hands beats a full one this session can no longer afford.
-- **An agent's report is never pasted.** Relay its conclusion; its file is the detail.
 
 ## 4. Talk to the user
 
@@ -220,7 +219,8 @@ Never `AskUserQuestion`.
 State the exit in one line with its reason — «hotfix: one condition in one file, every decision
 locked, no doc says otherwise» — **and run it in the same turn.** The exit, the owning epic and the
 id are yours; the user's word changes a verdict, it does not start one. Upstream mode and a rule from § AI ban → `investigation`, tell the user. The one wait: a question that would
-change the verdict is still open — ask it, then act.
+change the verdict or the seed is still open — ask it, then act. After the tab opens, do not edit the
+seed; send a new fact to the plan tab in one message.
 
 | Exit | When | Produces | Hands to |
 |---|---|---|---|

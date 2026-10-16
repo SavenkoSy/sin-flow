@@ -277,16 +277,16 @@ taken. Exec never halts on either.
 **Finish line** — copy the paragraph from the template verbatim, filling branch and base. It is
 standing authorization; a plan that ends at "ready to commit" is unfinished.
 
-**Mirror.** The local `plan.md` is the truth. When the profile's `notes:` line in `## Inferred` says
-the plan is mirrored (issues on, `notes.mirror` not `off`, never in upstream mode): the user's own issue → its
+**Mirror.** The local `plan.md` is the truth. When the profile says the plan is mirrored (`notes.mirror: on`;
+absent → the `## Inferred` notes line; never in upstream mode): the user's own issue → its
 body (`gh issue edit <N> --body-file mirror.md`); anyone else's → one comment starting
 `<!-- sin-flow:plan -->`, created once and edited in place
 (`gh api -X PATCH repos/<slug>/issues/comments/<id> -F body=@mirror.md`). Over 60 000 bytes → the first
 60 000 plus `continued in comments`, the rest as comments. Each new evidence file → one
-`gh issue comment --body-file`, from its own stripped copy. A mirror carries no local path: build it with
-`sed -E 's#(~|/Users/[^/[:space:]]+)/[^[:space:]`)"]*/([^/[:space:]`)"]+)#\2#g' plan.md > mirror.md` — a path
-becomes its file name; the local file keeps the full path. A multi-ticket plan goes to every ticket's issue. Nothing from
-`work/` is ever `git add`ed.
+`gh issue comment --body-file`, from its own `sin-flow-mirror` copy. An issue never points at a local file:
+`sin-flow-mirror plan.md > mirror.md` drops every line that points at the notes, a worktree or evidence, and turns
+any other path into its file name; the local file keeps everything.
+A multi-ticket plan goes to every ticket's issue.
 
 ## Step 7 — Plan audit before hand-off
 
@@ -353,6 +353,6 @@ This stage writes no auto-memory: what the next run needs is in the plan and its
 ## What this skill never does
 
 - Edit application code or commit anything — but it MUST launch `sin-flow:exec`, which does.
-- File follow-up issues, write a deferred-work file, close a ticket, or move one to `Blocked`.
+- File follow-up issues or write a deferred-work file.
 - Put a no-code ticket's id in the PR title, or write a change for a ticket it did not measure.
 - Let an agent's report stand where a probe contradicts it.

@@ -176,7 +176,9 @@ a new commit on top — this is the review-fix path.
    no `--assignee`, no `--milestone`, no assignee retry. Otherwise `gh pr create --base <base> --head <branch> --assignee @me --title '<title>' --body-file <path>`, plus
    `--milestone '<milestone>'` when `tracker.board` is set and the `Ref #<N>` issue has one
    (`gh issue view <N> -R <repo.slug> --json milestone`);
-   title = the convention subject. `--assignee` fails → `gh pr edit <url> --add-assignee @me`.
+   `--reviewer '<review.request>'` when the profile sets `review.request`;
+   title = the convention subject. `--assignee` fails → `gh pr edit <url> --add-assignee @me`; `--reviewer` fails →
+   `gh pr edit <url> --add-reviewer '<review.request>'`, and a failure there is a `NOTE`, never a block.
 
 ## Return block — your last message, nothing else
 
