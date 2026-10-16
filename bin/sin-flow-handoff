@@ -140,12 +140,20 @@ print_line() {
 }
 
 if [ "${CLAUDE_CODE_ENTRYPOINT:-}" = claude-desktop ]; then
-  cat <<EOF
-Claude Desktop has no tabs. On a turn the user typed (ingest, sync): call mcp__ccd_session__start_session with
-initiation user_asked, context fresh, use_worktree false, cwd $FLOW_CWD, name $FLOW_NAME, model $FLOW_MODEL,
-prompt $text — and nothing below. Otherwise, or when the app refuses the start:
-continue in this session: $([ -n "$prompt" ] && echo "$text" || echo "/$stage $target$extra")
-EOF
+  next=$([ -n "$prompt" ] && echo "$text" || echo "/$stage $target$extra")
+  due="$FLOW_HOME/desktop-learning-due"
+  if [ "$stage" = sin-flow:learning ]; then printf '%s\t%s\n' "$FLOW_CWD" "$next" > "$due"; exit 3; fi
+  start="mcp__ccd_session__start_session with initiation user_asked, context fresh, use_worktree false"
+  echo "Claude Desktop has no tabs, and only a turn the user typed (ingest, sync) can start a session."
+  if [ "$stage" = sin-flow:exec ]; then
+    echo "A linked session named $FLOW_NAME exists and is not this one: SendMessage to its local_ id from the \"Linked sessions now\" list (a name does not resolve), message \"Invoke the skill $stage with the Skill tool, argument: $target$extra\" and stop here."
+  else
+    echo "Exec waits in its own session: $start, cwd $FLOW_CWD, name exec-${FLOW_NAME#plan-}, model $("$(dirname "$adapters")/sin-flow-profile" model exec "$FLOW_CWD"), prompt \"Wait: $FLOW_NAME sends you the exec command.\""
+  fi
+  echo "On a turn the user typed: $start, cwd $FLOW_CWD, name $FLOW_NAME, model $FLOW_MODEL, prompt \"$next\"."
+  if [ -f "$due" ]; then IFS=$'\t' read -r lcwd lnext < "$due"; rm -f "$due"; echo "Also: $start, cwd $lcwd, name learning, prompt \"$lnext\"."; fi
+  echo "Each start done: stop here. Otherwise, or when the app refuses:"
+  echo "continue in this session: $next"
   exit 0
 fi
 
