@@ -3,7 +3,7 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export PATH="$root/bin:$PATH"
-unset FLOW_CONFIG_DIR
+unset FLOW_CONFIG_DIR CLAUDE_CODE_ENTRYPOINT
 scratch=$(mktemp -d)
 trap 'rm -rf "$scratch"' EXIT
 

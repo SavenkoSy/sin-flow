@@ -100,6 +100,15 @@ if [ -f "$FLOW_HOME/user.md" ]; then
   [ -n "$value" ] && handoff="$value"
 fi
 case "$handoff" in "~"/*) handoff="$HOME/${handoff#\~/}" ;; esac
+if [ "${CLAUDE_CODE_ENTRYPOINT:-}" = claude-desktop ]; then
+  cat <<EOF
+Claude Desktop has no tabs. On a turn the user typed (ingest, sync): call mcp__ccd_session__start_session with
+initiation user_asked, context fresh, use_worktree false, cwd $FLOW_CWD, name $FLOW_NAME, model $FLOW_MODEL,
+prompt $text — and nothing below. Otherwise, or when the app refuses the start:
+continue in this session: $([ -n "$prompt" ] && echo "$text" || echo "/$stage $target$extra")
+EOF
+  exit 0
+fi
 
 args=()
 case "$handoff" in
