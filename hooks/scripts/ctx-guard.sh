@@ -47,7 +47,7 @@ if [ -z "$used" ] && [ -f "$tp" ]; then
     | .message.usage | (.input_tokens // 0) + (.cache_read_input_tokens // 0) + (.cache_creation_input_tokens // 0)' 2>/dev/null)
   case "$tokens" in ''|*[!0-9]*) ;; *) used=$(( tokens * 100 / window )) ;; esac
 fi
-configured=$(awk -F': *' '$1 == "context_guard" { print $2; exit }' "$HOME/.claude/sin-flow/user.md" 2>/dev/null)
+configured=$(awk -F': *' '$1 == "context_guard" { print $2; exit }' "$HOME/.claude/sin-flow/user.md" 2>/dev/null | sed -E 's/[[:space:]]+#.*$//; s/"//g; s/[[:space:]]+$//')
 case "$configured" in ''|*[!0-9]*) configured=40 ;; esac
 thr=${CTX_GUARD_THRESHOLD:-$configured}
 last_ctx=0

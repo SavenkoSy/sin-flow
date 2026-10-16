@@ -115,7 +115,7 @@ rc=0
 out=$(PATH="$root/bin:/usr/bin:/bin" sin-flow-handoff --check orca) || rc=$?
 expect_eq "case 19 orca rc" 3 "$rc"
 expect_eq "case 19 orca" "orca: the orca command is not on PATH (Orca puts it in ORCA_CLI_BIN_DIR)" "$out"
-out=$(PATH="$fake:$root/bin:/usr/bin:/bin" sin-flow-handoff --check tmux)
+out=$(clean_env TMUX=/tmp/tmux-1,1,0 PATH="$fake:$root/bin:/usr/bin:/bin" sin-flow-handoff --check tmux)
 expect_eq "case 19 tmux" ok "$out"
 rc=0
 out=$(sin-flow-handoff --check foo) || rc=$?
@@ -165,4 +165,19 @@ expect_eq "case 23 detect" tmux "$out"
 out=$(clean_env sin-flow-handoff --probe --cwd "$plain" --prompt x)
 case "$out" in "tmux new-window"*) ;; *) fail "case 23 probe: got $out" ;; esac
 
-echo "ok: 23 cases"
+rc=0
+out=$(clean_env PATH="$fake:$safe_path" sin-flow-handoff --check tmux) || rc=$?
+expect_eq "case 24 tmux outside rc" 3 "$rc"
+expect_eq "case 24 tmux outside" "tmux: this session is not inside tmux" "$out"
+
+fresh_home auto
+out=$(clean_env TERM_PROGRAM=Foo __CFBundleIdentifier=com.apple.Terminal sin-flow-handoff --detect)
+expect_eq "case 25" "none — checked: TMUX unset, CMUX_WORKSPACE_ID unset, ORCA_TERMINAL_HANDLE unset, __CFBundleIdentifier=com.apple.Terminal, TERM_PROGRAM=Foo" "$out"
+
+for value in print same-session "$scratch/script.sh"; do
+  fresh_home "$value"
+  out=$(clean_env ORCA_TERMINAL_HANDLE=term_1 sin-flow-handoff --detect)
+  expect_eq "case 26 $value" orca "$out"
+done
+
+echo "ok: 26 cases"

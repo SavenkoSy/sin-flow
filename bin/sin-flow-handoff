@@ -4,6 +4,10 @@ set -euo pipefail
 FLOW_HOME="${FLOW_HOME:-$HOME/.claude/sin-flow}"
 adapters="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/handoff"
 
+terminals="tmux cmux iterm ghostty warp orca"
+
+is_terminal() { case " $terminals " in *" $1 "*) return 0 ;; esac; return 1; }
+
 detect() {
   if [ -n "${TMUX:-}" ]; then echo tmux
   elif [ -n "${CMUX_WORKSPACE_ID:-}" ]; then echo cmux
@@ -29,7 +33,10 @@ detect_report() {
 check_terminal() {
   local app
   case "$1" in
-    tmux) command -v tmux >/dev/null 2>&1 || { echo "tmux: the tmux command is not on PATH"; exit 3; } ;;
+    tmux)
+      command -v tmux >/dev/null 2>&1 || { echo "tmux: the tmux command is not on PATH"; exit 3; }
+      [ -n "${TMUX:-}" ] || { echo "tmux: this session is not inside tmux"; exit 3; }
+      ;;
     cmux)
       command -v cmux >/dev/null 2>&1 || { echo "cmux: the cmux command is not on PATH"; exit 3; }
       [ -n "${CMUX_WORKSPACE_ID:-}" ] || { echo "cmux: this session is not inside a cmux workspace"; exit 3; }
@@ -64,10 +71,7 @@ opts=()
 while [ $# -gt 0 ]; do
   case "$1" in
     --detect)
-      case "$handoff" in
-        tmux|cmux|iterm|ghostty|warp|orca) echo "$handoff" ;;
-        *) detect_report ;;
-      esac
+      is_terminal "$handoff" && echo "$handoff" || detect_report
       exit 0
       ;;
     --check) check_terminal "${2:?--check needs a terminal}" ;;
@@ -146,7 +150,9 @@ EOF
 fi
 
 args=()
-case "$handoff" in
+mode=$handoff
+! is_terminal "$handoff" || mode="@terminal"
+case "$mode" in
   same-session) echo "continue in this session: $([ -n "$prompt" ] && echo "$text" || echo "/$stage $target$extra")"; exit 0 ;;
   print) print_line; exit 0 ;;
   auto)
@@ -155,7 +161,7 @@ case "$handoff" in
     [ -x "$launcher" ] || { print_line; exit 0; }
     [ -z "$probe" ] || args=("$probe")
     ;;
-  tmux|cmux|iterm|ghostty|warp|orca)
+  "@terminal")
     terminal=$handoff
     launcher="$adapters/$terminal.sh"
     [ -z "$probe" ] || args=("$probe")

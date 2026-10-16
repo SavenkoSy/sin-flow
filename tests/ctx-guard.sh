@@ -50,4 +50,13 @@ expect_eq "case 5" "CTX GUARD: context at 45 % (threshold 40 %)" "$out"
 out=$(used_pct=55 run_guard plan 10000 "" | message)
 expect_eq "case 6" "CTX GUARD: context at 55 % (threshold 40 %)" "$out"
 
-echo "ok: 6 cases"
+out=$(run_guard plan 450000 "context_guard: abc" | message)
+expect_eq "case 7" "CTX GUARD: context at 45 % (threshold 40 %)" "$out"
+
+out=$(run_guard plan 450000 'context_guard: "50"  # note')
+expect_eq "case 8" "" "$out"
+
+out=$(run_guard plan 450000 'context_guard: 50   ')
+expect_eq "case 9" "" "$out"
+
+echo "ok: 9 cases"
