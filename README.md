@@ -139,6 +139,8 @@ Ingest, sync, plan and exec start the next stage in a new terminal tab. `handoff
 
 - `auto` (default): a tab through the adapter for the terminal you run in, or `print` when there is no adapter.
 - `same-session`: continue in the current session.
+
+In Claude Desktop the setting is ignored: ingest and sync start the next stage as a Desktop session, and every later stage continues in that session. Add `"mcp__ccd_session__start_session"` to `permissions.allow`, and keep the ingest conversation on screen so Desktop can ask you to trust the new worktree.
 - `print`: print the ready command and copy it to the clipboard.
 - a path to your own script.
 
