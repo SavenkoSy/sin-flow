@@ -21,8 +21,9 @@ The board state stays in `$(sin-flow-profile <key> dir)/board/` for each adapter
 
 ## Commands
 
-Each command takes the profile key as its second argument. On success, exit 0. On any other exit
-code, the pass stops and the digest shows the first line of stderr.
+Each command takes the profile key as the first argument after its command words: `$2` for `read`
+and `supports`, `$3` for each `write` command. On success, exit 0. On any other exit code, the pass
+stops and the digest shows the first line of stderr.
 
 | Command | Required | Does |
 |---|---|---|
@@ -59,7 +60,10 @@ Optional keys:
 |---|---|---|
 | `u` | string | the URL of the ticket |
 | `updated` | ISO time | the last change; the briefs refresh when it is newer than their stamp |
-| `light` | `green`, `yellow`, `red` or `null` | the light that the tracker holds now |
+| `light` | `green`, `yellow`, `red` or `null` | the light that the tracker holds now. Required on each ticket when `supports` lists `light` |
+
+When `supports` lists `light`, `read` gives the `light` key on each ticket, `null` when the tracker
+has no light. Without it, sync cannot see a light that a teammate changed, and writes over it.
 
 The adapter returns the light words `green`, `yellow` and `red` itself. The built-in adapter maps
 the board option labels to these words (`triage-rules.md` § Light).
@@ -87,11 +91,11 @@ A read-only adapter for a fictional tracker `acme`. It reads a JSON export from 
 set -euo pipefail
 
 EXPORT="$HOME/acme/export.json"
-STATE="$(sin-flow-profile "$2" dir)/board/state.json"
 
 case "$1" in
   supports) ;;
   read)
+    STATE="$(sin-flow-profile "$2" dir)/board/state.json"
     jq --argjson statuses "$(jq -c '.scope.statuses' "$STATE")" \
        --argjson filter "$(jq -c '.scope.assigneeFilter // {}' "$STATE")" '
       [.issues[]
@@ -104,6 +108,9 @@ case "$1" in
   *) echo "acme adapter: no command $1" >&2; exit 2 ;;
 esac
 ```
+
+A `write` branch reads the key from `$3`: `write light <key> <n> <light>` gives `$4` = `<n>` and
+`$5` = `<light>`.
 
 ## See also
 

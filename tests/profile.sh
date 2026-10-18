@@ -88,6 +88,13 @@ mk p "tracker.adapter: $adapter"
 run sin-flow-profile validate p
 expect_eq "executable adapter" "OK p" "$out"
 
+adapter_dir="$scratch/trackers"
+mkdir -p "$adapter_dir"
+mk p "tracker.adapter: $adapter_dir"
+run sin-flow-profile validate p
+expect_eq "directory adapter rc" 1 "$rc"
+expect_has "directory adapter" "tracker.adapter $adapter_dir is not an executable file" "$out"
+
 home_dir=$(mktemp -d "$scratch/userhome.XXXXXX")
 cp "$adapter" "$home_dir/adapter.sh"
 mk p 'tracker.adapter: ~/adapter.sh'
@@ -135,5 +142,22 @@ run sin-flow-profile resolve q
 expect_eq "other key in repo" "key: q · tracker: acme#1 · from: argument · cwd profile: widgets" "$out"
 run sin-flow-profile resolve
 expect_eq "cwd key" "key: widgets · tracker: none · from: cwd · cwd profile: widgets" "$out"
+
+mkdir -p "$repo/.claude"
+printf -- '---\nkey: team\ntracker.board: acme#2\n---\n' > "$repo/.claude/flow.md"
+run sin-flow-profile resolve team
+expect_eq "team key argument rc" 0 "$rc"
+expect_eq "team key argument" "key: team · tracker: acme#2 · from: argument · cwd profile: widgets" "$out"
+
+printf -- '---\nkey: widgets\ntracker.board: acme#2\ntracker.adapter: %s\ntracker.write.light: on\ntracker.write.assign: on\ntracker.write.status: on\ngroup_by: label\n---\n' "$adapter" > "$repo/.claude/flow.md"
+for field in tracker.write.light tracker.write.assign tracker.write.status group_by tracker.adapter; do
+  run sin-flow-profile widgets get "$field"
+  expect_eq "$field not from team file rc" 1 "$rc"
+  expect_eq "$field not from team file" "" "$out"
+done
+run sin-flow-profile widgets get tracker.board
+expect_eq "board from team file" "acme#2" "$out"
+run sin-flow-profile resolve widgets
+expect_eq "resolve ignores team adapter" "key: widgets · tracker: acme#2 · from: argument · cwd profile: widgets" "$out"
 
 echo "ok: $cases cases"

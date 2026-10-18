@@ -57,8 +57,9 @@ dispatch prompt as `resolved: <line>`.
 `/sin-flow:sync <key> new`, and stop.
 
 Read the switches with `sin-flow-profile <key> get <field> || true`: `tracker.write.light`,
-`tracker.write.assign`, `tracker.write.status` and `group_by`. An absent switch is `off`; an absent
-`group_by` is `milestone`. When `sin-flow-profile <key> get tracker.adapter` prints a path, run
+`tracker.write.assign`, `tracker.write.status` and `group_by`. The CLI reads these four and
+`tracker.adapter` from `profile.md` only, never from the team file `.claude/flow.md`. An absent
+switch is `off`; an absent `group_by` is `milestone`. When `sin-flow-profile <key> get tracker.adapter` prints a path, run
 `<adapter> supports <key>` (`~` expanded). A step it does not list is `off`. A non-zero exit → one
 line with the first line of its stderr, and stop. Give the result in each dispatch prompt as
 `writes: light=<on|off> assign=<on|off> status=<on|off>` and `group_by: <mode>`.
@@ -149,7 +150,8 @@ Then the table, which is the part the user reads first — one row per group, em
 | Group | 🟢 | 🟡 | 🔴 |
 |---|---|---|---|
 
-In `group_by: rules`, the groups are the batches of `board/rules.md`, as before. In the other
+In `group_by: rules`, the groups are the batches of `board/rules.md`, as before. After a switch to
+`rules`, the agent gives a batch to each ticket that has none, or parks it. In the other
 modes, the field that `group_by` names gives the groups. Inside a group, tickets sort by resolved
 priority `High`, `Medium`, `Low`, then empty, then by number.
 
@@ -238,7 +240,7 @@ for 8 tickets. and then for 3."*
 - Rank batches by how much 🟢 unstarted work each holds; **lead with the recommendation**, one line.
 - Name the **clusters inside a batch that share a file** — those must travel in one branch.
 - Flag any ticket in the recommended batch that is **not code in the profile's repo**.
-- Deferred tickets are excluded from the proposal.
+- Deferred tickets and the `Claimed` group are excluded from the proposal.
 
 Then **stop.** Do not assign, do not move statuses, do not write a plan, do not launch anything,
 do not ask whether to proceed.
@@ -373,7 +375,8 @@ mean someone is holding the ticket — QA, In progress, In review, Blocked — a
 the page answers *"what can I pick up next"*, not *"what is the team holding"*. `Reopened` stays
 filtered to the user (`scope.assigneeFilter`): someone else's regression is not the user's to
 re-fix. If `tracker.write.status` is off, a claimed ticket stays in scope and shows in the
-`Claimed` group.
+`Claimed` group. A claimed ticket that leaves scope and comes back, for example as a reopen after
+QA, loses its claim and goes back to its own group.
 Movement belongs in the chat report, never on the page.
 
 **An excluded status is never spoken about either** (*"no status — don't even talk about it or

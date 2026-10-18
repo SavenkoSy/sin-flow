@@ -80,7 +80,7 @@ get_field() {
   if [ -f "$PROFILES/$key/profile.md" ]; then
     v=$(field_in "$PROFILES/$key/profile.md" "$field")
   fi
-  if [ -z "$v" ] && team=$(team_file_for "$key"); then
+  if [ -z "$v" ] && [[ $field != tracker.write.* && $field != group_by && $field != tracker.adapter ]] && team=$(team_file_for "$key"); then
     v=$(field_in "$team" "$field")
   fi
   [ -n "$v" ] || return 1
@@ -120,7 +120,7 @@ resolve_line() {
   local arg="${1:-}" key from cwd_key tracker keys f
   cwd_key=$(key_for_dir "$PWD" 2>/dev/null) || cwd_key=""
   keys=$(for f in "$PROFILES"/*/profile.md; do [ -f "$f" ] && field_in "$f" key; done | tr '\n' ' ' || true)
-  if [ -n "$arg" ] && [ -f "$PROFILES/$arg/profile.md" ]; then
+  if [ -n "$arg" ] && { [ -f "$PROFILES/$arg/profile.md" ] || team_file_for "$arg" >/dev/null; }; then
     key="$arg"; from=argument
   elif [ -z "$arg" ] && [ -n "$cwd_key" ]; then
     key="$cwd_key"; from=cwd
@@ -172,7 +172,7 @@ validate_key() {
   case "$v" in ""|epic|milestone|priority|label|rules) ;; *) errs+=("group_by '$v' is not one of epic, milestone, priority, label, rules") ;; esac
   v=$(field_in "$f" tracker.adapter) || true
   case "$v" in ""|/*|"~"/*) ;; *) errs+=("tracker.adapter $v is not an absolute or ~ path") ;; esac
-  if [ -n "$v" ] && [ ! -x "$(expand_home "$v")" ]; then errs+=("tracker.adapter $v is not an executable file"); fi
+  if [ -n "$v" ] && { [ ! -f "$(expand_home "$v")" ] || [ ! -x "$(expand_home "$v")" ]; }; then errs+=("tracker.adapter $v is not an executable file"); fi
   for src in $(frontmatter "$f" | sed -n 's/^sources\.\([A-Za-z0-9_-]*\)\.env_file:.*/\1/p' | sort -u); do
     env_file=$(field_in "$f" "sources.$src.env_file")
     var=$(field_in "$f" "sources.$src.var") || true

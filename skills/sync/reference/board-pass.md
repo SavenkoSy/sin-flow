@@ -56,7 +56,8 @@ improving on them is not.
 - **Never write prose anywhere.** Not on the page, not in `classification.json`, not in the digest.
   Every line you emit fills a slot in the templates at the bottom of this file.
 - **Never flip an existing classification.** An entry already in `classification.json` is carried
-  over byte-for-byte, even if the ticket changed.
+  over byte-for-byte, even if the ticket changed. The one exception is step 5: in `rules` mode, you
+  add a missing `b`.
 - **Never mark 🔴 yourself.** You may write red only when the ticket body or a comment *names* the
   upstream issue, repo or vendor in so many words — that is transcription. Everything else that
   smells upstream goes to `UNSURE`.
@@ -149,6 +150,8 @@ board. A claimed ticket in the fresh read is open and on the board. For a claime
 from the read: with the built-in adapter, run the issue-side query under **Reference** with `state`
 added, and remove the entry when the issue is closed or has no item on
 `scope.projectNumber`. With `tracker.adapter`, the read is the only source: remove the entry.
+Also remove the entry when its ticket is in the fresh read but not in the previous snapshot: the
+ticket left scope and came back, for example as a reopen after QA, and is free again.
 
 ## 4. Refresh the ticket briefs
 
@@ -207,6 +210,11 @@ Choose a batch only when `group_by: rules`. In the other modes, do not write `b`
 `classification.json`, and a missing batch is not a reason to park: step 7 takes the group from the
 ticket's own fields. Resolve the priority in each mode (`triage-rules.md` § Priority).
 
+When `group_by: rules`, also give a batch to each in-scope ticket whose `classification.json` entry
+has no `b`: a pass in another mode wrote that entry. Choose the batch from the table as for a new
+ticket, add only `b`, and keep every other key of the entry byte-for-byte. When the table does not
+decide, add nothing and park the ticket with an `UNSURE` line.
+
 `classification.json` keeps **every** issue it has ever judged, including out-of-scope ones — a
 ticket returning from QA keeps the batch and light it already had. Only `DATA` is status-filtered.
 
@@ -217,7 +225,9 @@ duplicate is an `UNSURE`, not a decision.
 
 When `light=off`, skip this step and put `light: not written (switch off)` in the digest's `NOTES`
 slot. With `tracker.adapter`, run `<adapter> write light <key> <n> <green|yellow|red>` for each
-item and not the mutation below.
+item and not the mutation below. When a ticket of the read has no `light` key, write nothing for it
+and put `light: <prefix><n> not in read` in `NOTES`: without the board's value, a write can remove
+a teammate's change.
 
 One aliased mutation (shape under **Reference**), before the page is regenerated: `projectId` =
 `scope.projectId`, `fieldId` = `scope.lightFieldId`, `singleSelectOptionId` =
