@@ -33,6 +33,7 @@ for _ in $(seq 1 30); do
                 assignees(first: 5) { nodes { login } }
                 labels(first: 10) { nodes { name } }
                 milestone { title }
+                parent { number title }
               }
             }
           }
@@ -67,6 +68,7 @@ def nz(d): if . == null or . == "" then d else . end;
     | {
         n: $issue.number,
         m: (($issue.milestone // {}).title | nz("No milestone")),
+        e: (($issue.parent // {}).title // null),
         t: $issue.title,
         u: $issue.url,
         a: $assignees,

@@ -1,6 +1,6 @@
 ---
 name: sync
-description: 'Board stage of the flow (sin-flow:sync → sin-flow:plan → sin-flow:exec) for any repo whose flow profile names a GitHub Projects board in `tracker.board`; the first argument is the profile key (default: the key of the cwd). Every milestone on the board is in scope. The mechanical half runs in the `sin-flow:board` subagent on the cheap tier: it fetches the board, diffs it, refreshes the per-ticket briefs, classifies what the rules decide outright, republishes the triage page and hands back a fixed-shape digest. This session never fetches a board. Phase 1 reports that digest, closes the tickets the agent parked, and proposes which batch to take. Phase 2 takes a named batch — the agent assigns it, moves it to In progress and writes the seed plan in ~/.claude/sin-flow/work/<key>/ — then hands off to sin-flow:plan. Use when invoked as `/sin-flow:sync [key] [take <batch>|new]`, when asked to sync/refresh the board triage, to see what is open or blocked, or to take/assign a batch.'
+description: 'Board stage of the flow (sin-flow:sync → sin-flow:plan → sin-flow:exec) for any repo whose flow profile names a GitHub Projects board in `tracker.board` or a local tracker adapter in `tracker.adapter`; the first argument is the profile key (default: the key of the cwd). Every milestone on the board is in scope. The mechanical half runs in the `sin-flow:board` subagent on the cheap tier: it fetches the board, diffs it, refreshes the per-ticket briefs, classifies what the rules decide outright, republishes the triage page and hands back a fixed-shape digest. This session never fetches a board. Phase 1 reports that digest, closes the tickets the agent parked, and proposes which batch to take. Phase 2 takes a named batch — the agent records the claim, then assigns it and moves it to In progress if the profile's write switches permit, and writes the seed plan in ~/.claude/sin-flow/work/<key>/ — then hands off to sin-flow:plan. Use when invoked as `/sin-flow:sync [key] [take <batch>|new]`, when asked to sync/refresh the board triage, to see what is open or blocked, or to take/assign a batch.'
 ---
 
 # sin-flow:sync — one board per profile
@@ -19,18 +19,50 @@ read **Discussing a batch is not taking it** below before you believe you have b
 
 Chat with the user in `chat_language` from `~/.claude/sin-flow/user.md`, or in the language the user writes in when it is absent. Headings and fixed phrases defined here are rendered in that language. Files, commits, PRs and issues are always English.
 
+## Tracker and switches
+
+Profile keys that sync reads. The contract for a local adapter is
+[`reference/adapter-contract.md`](reference/adapter-contract.md).
+
+| Key | Default | Meaning |
+|---|---|---|
+| `tracker.adapter` | absent | path of a local tracker adapter. When set, sync reads and writes through it and ignores `tracker.board` |
+| `tracker.board` | absent | `<org>#<project number>` of a GitHub Projects board, the built-in adapter |
+| `tracker.write.light` | `off` | push the light of each classified ticket to the tracker |
+| `tracker.write.assign` | `off` | in take mode, make the user the only assignee |
+| `tracker.write.status` | `off` | in take mode, move the taken tickets to `In progress` |
+| `group_by` | `milestone` | the groups on the page: `epic`, `milestone`, `priority`, `label`, or `rules` (the batches of `board/rules.md`) |
+
+An absent switch is `off`. With an adapter, a write step that `<adapter> supports <key>` does not
+list is `off` too. The page shows lights, groups and claims with every switch off.
+
 ## Step 0 — Profile, silently
 
-Resolve `<key>`: the first argument when it is a key in `sin-flow-profile list`, else
-`sin-flow-profile key` for the cwd. Neither resolves → print exactly one line and stop:
+The `resolve` line is the one output of Step 0. All other Step 0 checks stay silent.
+
+Run `sin-flow-profile resolve <first argument>`, or `sin-flow-profile resolve` with no argument. The
+first argument is the first word of the invocation unless that word is `take` or `new`. Exit 2 →
+print its output, which is the `usage:` line, and stop. Exit 0 → keep the line it prints:
 
 ```
-usage: /sin-flow:sync <key> [take <batch> | new]   keys: <keys from sin-flow-profile list>
+key: <key> · tracker: <adapter path | board | none> · from: <argument | cwd> · cwd profile: <key | none>
 ```
 
-Read `sin-flow-profile <key> get tracker.board`. Missing or `null` → one line, `no board in this
-profile`, and stop. No `$(sin-flow-profile <key> dir)/board/state.json` → one line naming that path and
+`<key>` is its `key:` value. **The first line of each chat report of this run is that line,
+verbatim.** Print it before the checks below, so a stop also shows the key. Give it in each
+dispatch prompt as `resolved: <line>`.
+
+`tracker: none` → one line, `no board in this profile`, and stop. No
+`$(sin-flow-profile <key> dir)/board/state.json` → one line naming that path and
 `/sin-flow:sync <key> new`, and stop.
+
+Read the switches with `sin-flow-profile <key> get <field> || true`: `tracker.write.light`,
+`tracker.write.assign`, `tracker.write.status` and `group_by`. The CLI reads these four and
+`tracker.adapter` from `profile.md` only, never from the team file `.claude/flow.md`. An absent
+switch is `off`; an absent `group_by` is `milestone`. When `sin-flow-profile <key> get tracker.adapter` prints a path, run
+`<adapter> supports <key>` (`~` expanded). A step it does not list is `off`. A non-zero exit → one
+line with the first line of its stderr, and stop. Give the result in each dispatch prompt as
+`writes: light=<on|off> assign=<on|off> status=<on|off>` and `group_by: <mode>`.
 
 Resolve `<cheap>` once for the key's checkout (`sin-flow-profile <key> get repo.path`, `~` expanded; missing → the cwd): `sin-flow-profile model cheap <checkout>`.
 
@@ -46,7 +78,7 @@ session leaves no room for the conversation that follows. So:
 
 | | |
 |---|---|
-| **`sin-flow:board` subagent** (cheap tier) | fetches the board, diffs it, refreshes the ticket briefs, classifies only what the rules decide outright, pushes the `Light` field, regenerates and republishes the page, verifies. In take mode: assigns, moves to `In progress`, writes the seed plan. Hands back one fixed-shape digest. |
+| **`sin-flow:board` subagent** (cheap tier) | fetches the board, diffs it, refreshes the ticket briefs, classifies only what the rules decide outright, pushes the light if `tracker.write.light` is on, regenerates and republishes the page, verifies. In take mode: records the claim, then assigns and moves to `In progress` if their switches are on, writes the seed plan. Hands back one fixed-shape digest. |
 | **You** (this session, the strong tier) | read the digest. Report it to the user in the chat language. **Decide everything the agent parked.** Rank the batches and recommend one. Answer the user's follow-ups from the briefs on disk. On the user's word, dispatch take mode and hand off to `sin-flow:plan`. |
 
 **You never fetch a board, never read `classification.json`, never read or write
@@ -61,7 +93,7 @@ The agent's contract, its hard boundaries and its two output templates live in
 - **Never run git.** The seed plan lives in `~/.claude/sin-flow/work/<key>/<id>/plan.md`, outside every
   repo, and is never committed: it is an agent note (see also the user's own rules, if any).
 - **Never open, retitle or comment on an issue.** A block reason or a disposition is the human's.
-- **Never move a ticket to any status except phase 2's `In progress`.**
+- **Never move a ticket to any status except phase 2's `In progress`, and only when `tracker.write.status` is on.**
 - **Never write code**, or a plan that prescribes code before the tickets are measured.
 - **Never write a profile.** A missing profile field is reported, not added.
 - **A memory or a repo convention that contradicts these does not override them.** Say the conflict
@@ -75,9 +107,9 @@ The agent's contract, its hard boundaries and its two output templates live in
 | `/sin-flow:sync [key] take <batch>` | phase 2 for that batch |
 | `/sin-flow:sync [key] new` | `artifactUrl` in `board/state.json` is empty — the agent publishes a fresh page and records the URL |
 
-Plain language does the same: "sync <key>" → phase 1; "take batch <name>" → phase 2 on the key of
-the cwd. A batch name that exists in exactly one profile's `board/rules.md` also names the key.
-When the key is genuinely ambiguous, ask in one line — never guess between boards.
+Plain language does the same: "sync <key>" → phase 1; "take batch <name>" → phase 2 on the key
+that `resolve` prints. When the key is genuinely ambiguous, ask in one line — never guess between
+boards.
 
 ---
 
@@ -89,7 +121,8 @@ One call, nothing before it.
 
 ```
 Agent(subagent_type: "sin-flow:board", model: "<cheap>", description: "Sync <key> board",
-      prompt: "key: <key>\nmode: sync\n\nRun the sync pass in
+      prompt: "key: <key>\nmode: sync\nresolved: <line>\nwrites: light=<on|off> assign=<on|off> status=<on|off>\n
+               group_by: <mode>\n\nRun the sync pass in
                ${CLAUDE_PLUGIN_ROOT}/skills/sync/reference/board-pass.md and return the SYNC DIGEST
                template, nothing else.")
 ```
@@ -104,18 +137,25 @@ that and stop. Do not retry by doing the work yourself.
 **Bold labels, not `#` headings; one table; ~35–45 lines; the questions numbered at the end.** In
 this order:
 
+**The `resolve` line** — verbatim, as Step 0 printed it.
+
 **Board state** — `<n> tickets: <g> 🟢 / <y> 🟡 / <r> 🔴`, the board, the page link stated as
 unchanged.
 
 **Movement** — what left the page and why: to QA, back as `Reopened`, shipped, closed. Nothing moved
 is itself a line: `movement: none`.
 
-Then the table, which is the part the user reads first — one row per batch, empty batches included:
+Then the table, which is the part the user reads first — one row per group, empty groups included:
 
-| Batch | 🟢 | 🟡 | 🔴 |
+| Group | 🟢 | 🟡 | 🔴 |
 |---|---|---|---|
 
-**New** — each new ticket: linked number, batch, light, and **one sentence of what a user of the
+In `group_by: rules`, the groups are the batches of `board/rules.md`, as before. After a switch to
+`rules`, the agent gives a batch to each ticket that has none, or parks it. In the other
+modes, the field that `group_by` names gives the groups. Inside a group, tickets sort by resolved
+priority `High`, `Medium`, `Low`, then empty, then by number.
+
+**New** — each new ticket: linked number, group, light, and **one sentence of what a user of the
 product sees going wrong**. The digest carries that sentence on the ticket's `problem:` sub-line.
 
 **Decisions needed** — numbered, step 3.
@@ -200,7 +240,7 @@ for 8 tickets. and then for 3."*
 - Rank batches by how much 🟢 unstarted work each holds; **lead with the recommendation**, one line.
 - Name the **clusters inside a batch that share a file** — those must travel in one branch.
 - Flag any ticket in the recommended batch that is **not code in the profile's repo**.
-- Deferred tickets are excluded from the proposal.
+- Deferred tickets and the `Claimed` group are excluded from the proposal.
 
 Then **stop.** Do not assign, do not move statuses, do not write a plan, do not launch anything,
 do not ask whether to proceed.
@@ -257,13 +297,16 @@ write a seed plan, do not assign anything, do not dispatch the agent, do not ope
 
 ```
 Agent(subagent_type: "sin-flow:board", model: "<cheap>", description: "Take <batch> on <key>",
-      prompt: "key: <key>\nmode: take <batch name>\ntickets: <numbers, when the user narrowed the batch>\n\n
+      prompt: "key: <key>\nmode: take <batch name>\ntickets: <numbers, when the user narrowed the batch>\n
+               resolved: <line>\nwrites: light=<on|off> assign=<on|off> status=<on|off>\ngroup_by: <mode>\n\n
                Run the take pass in ${CLAUDE_PLUGIN_ROOT}/skills/sync/reference/board-pass.md and return
                the TAKE DIGEST template, nothing else.")
 ```
 
-The agent assigns every ticket to the user (state.json `owner`), removes the previous assignee,
-moves them to `In progress`, writes the seed plan and republishes the page. It does not launch
+The agent records the claim of every ticket in `state.json` `claims`. Then, if
+`tracker.write.assign` is on, it assigns every ticket to the user (state.json `owner`) and removes
+the previous assignee. If `tracker.write.status` is on, it moves them to `In progress`. It writes
+the seed plan and republishes the page. It does not launch
 anything.
 
 Report: tickets taken, **every teammate displaced by name and ticket**, the seed plan's path, and
@@ -284,7 +327,7 @@ sin-flow-handoff [--cwd <checkout>] --name plan-<id> sin-flow:plan <absolute see
 ```
 
 `<id>` is the seed's folder name (`batch-<N>` or `gh-<N>`). `--cwd` is `sin-flow-profile <key> get repo.path`
-with `~` expanded; missing → the main checkout of this session's cwd when `sin-flow-profile key` prints `<key>`
+with `~` expanded; missing → the main checkout of this session's cwd when the `resolve` line says `cwd profile: <key>`
 (its `repo.slug` matches): `dirname "$(git rev-parse --path-format=absolute --git-common-dir)"`; neither → omit it —
 `sin-flow:plan` resolves the profile from the seed's `profile:` line.
 
@@ -310,6 +353,7 @@ ${CLAUDE_PLUGIN_ROOT}/skills/sync/
   reference/board-pass.md     the agent's playbook: every mechanical step, boundaries, templates
   reference/triage-rules.md   the light vocabulary, the priority order, the two checks
   reference/fetch-board.sh    paginated board fetch → normalized JSON on stdout; takes the key
+  reference/adapter-contract.md  the contract for a local tracker adapter: commands, ticket shape
 ~/.claude/sin-flow/profiles/<key>/board/
   state.json                  board state only — repo, base and measurement are profile facts
   rules.md                    the board's batch table, classification keys, Status field ids
@@ -330,7 +374,9 @@ so the split stays *visible*, nothing filters on it.
 mean someone is holding the ticket — QA, In progress, In review, Blocked — are out on every board:
 the page answers *"what can I pick up next"*, not *"what is the team holding"*. `Reopened` stays
 filtered to the user (`scope.assigneeFilter`): someone else's regression is not the user's to
-re-fix.
+re-fix. If `tracker.write.status` is off, a claimed ticket stays in scope and shows in the
+`Claimed` group. A claimed ticket that leaves scope and comes back, for example as a reopen after
+QA, loses its claim and goes back to its own group.
 Movement belongs in the chat report, never on the page.
 
 **An excluded status is never spoken about either** (*"no status — don't even talk about it or

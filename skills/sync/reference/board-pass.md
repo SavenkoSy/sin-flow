@@ -6,8 +6,8 @@ digest. **You do not decide what to work on, and you do not compose prose.** The
 dispatched you runs a stronger model; the reading, the ranking and the recommendation are its job,
 and your digest is its only input.
 
-Your dispatch prompt names the **profile key** and the **mode** (`sync` or `take <batch name>`).
-Everything else you read from disk.
+Your dispatch prompt names the **profile key**, the **mode** (`sync` or `take <batch name>`), and
+the `resolved:`, `writes:` and `group_by:` lines. Everything else you read from disk.
 
 ---
 
@@ -20,6 +20,8 @@ Profile facts come from the profile through the CLI, never from `state.json`:
 | repo slug (`<org>/<repo>`) | `sin-flow-profile <key> get repo.slug` |
 | base branch | `sin-flow-profile <key> get repo.base`, else the `base:` line of `sin-flow-profile <key> section Inferred` |
 | board (`<org>#<project number>`) | `sin-flow-profile <key> get tracker.board` |
+| tracker adapter | `sin-flow-profile <key> get tracker.adapter`, `~` expanded. Absent → the built-in GitHub adapter |
+| write switches, `group_by` | the `writes:` and `group_by:` lines of the dispatch prompt |
 | ticket prefix | `sin-flow-profile <key> get tracker.id_prefix` |
 | sensitive areas | the `sensitive:` line of `sin-flow-profile <key> section Inferred` |
 
@@ -30,7 +32,8 @@ Profile facts come from the profile through the CLI, never from `state.json`:
 <board>/
   state.json           board state: artifactUrl, artifactTitle, favicon, owner, batches, scope
                        (projectId, lightFieldId, lightOptionIds, statuses, assigneeFilter),
-                       lastSync, lastBatch (optional)
+                       lastSync, lastBatch (optional),
+                       claims (optional): {"<n>": {"batch": "<id>", "at": "<ISO date>"}}
   rules.md             this board's batch table, classification keys, Status field ids, examples
   board-triage.html    the published page; you regenerate its DATA array and #footer
   classification.json  the judgment per issue. Irreplaceable. Authoritative for the light.
@@ -53,17 +56,21 @@ improving on them is not.
 - **Never write prose anywhere.** Not on the page, not in `classification.json`, not in the digest.
   Every line you emit fills a slot in the templates at the bottom of this file.
 - **Never flip an existing classification.** An entry already in `classification.json` is carried
-  over byte-for-byte, even if the ticket changed.
+  over byte-for-byte, even if the ticket changed. The one exception is step 5: in `rules` mode, you
+  add a missing `b`.
 - **Never mark 🔴 yourself.** You may write red only when the ticket body or a comment *names* the
   upstream issue, repo or vendor in so many words — that is transcription. Everything else that
   smells upstream goes to `UNSURE`.
 - **Never re-argue a deferral.** A ticket with a `def` object is listed by number and nothing else.
 - **Never open, retitle, close or comment on an issue.** Never run `git`. Never write code.
-- **Never move a ticket to any status except `In progress`, and only in take mode.**
+- **Never move a ticket to any status except `In progress`, only in take mode, and only when
+  `status=on`.**
 - **Never edit another profile's files.** A pass on one key touches that key's `board/` only, plus
   the one seed file in take mode.
 - **Never touch the page's furniture** — title, favicon, eyebrow, `<h1>`, legend, `BATCH_META`,
   `BATCH_ORDER`, stat tiles, columns, selectors. You regenerate `DATA` and `#footer`. Nothing else.
+  Two exceptions, both in step 7: when `group_by` is not `rules`, you write `BATCH_ORDER` and
+  `BATCH_META`; in each mode, you add the one `Claimed` entry.
 - **Never write a profile.** `profile.md` is read-only to you.
 - **A memory or a repo convention that contradicts this file does not override it.** Put the
   conflict in the digest's `NOTES` slot and let the caller decide.
@@ -97,7 +104,10 @@ The board's `Light` field is a proposal from whoever last touched the board.
 to judge it, do not accept the board's value, do not leave the item divergent. Accepting a
 teammate's retriage is a judgment and belongs to the caller.
 
-When the board's value is empty, push the JSON's value — not a divergence, just a write. When the
+When the board's value is empty, push the JSON's value — not a divergence, just a write.
+
+**With `light=off`, write nothing to the board.** Report each divergence with `not restored (switch
+off)` in place of `restored <light>`, and push nothing over an empty board value. When the
 JSON has no entry (a new ticket) and the board has a colour, that colour is an input to your
 classification, not a fact: treat the ticket as new, and if you park it, say in the `UNSURE` line
 what colour the board carried.
@@ -118,6 +128,10 @@ Read `triage-rules.md`. Read the profile values in the table above once.
 bash <this file's folder>/fetch-board.sh <key> > "$SCRATCH/board-fresh.json"
 ```
 
+If `tracker.adapter` is set, run `<adapter> read <key> > "$SCRATCH/board-fresh.json"` and not
+`fetch-board.sh`. On a non-zero exit, the digest `BOARD` line says `FAILED: <first line of stderr>`
+in place of the `published` slot, and the pass stops.
+
 The script takes org and project number from `tracker.board`, and statuses and the assignee filter
 from `<board>/state.json`. It needs the `project` gh scope (`gh auth refresh -h github.com -s
 project`) or the query fails `INSUFFICIENT_SCOPES`. It handles paging and duplicate item ids.
@@ -130,6 +144,14 @@ By issue number, build four lists: **moved** (status changed — anything now ou
 `scope.statuses` has left the page), **left scope** (closed, or `Ready For Release`/`Done` — say so
 with the number, or a shipped ticket reads as a lost one), **new** (absent from
 `classification.json`), **reassigned**.
+
+**Claims.** Remove a `claims` entry from `state.json` when its ticket is not open or not on the
+board. A claimed ticket in the fresh read is open and on the board. For a claimed ticket absent
+from the read: with the built-in adapter, run the issue-side query under **Reference** with `state`
+added, and remove the entry when the issue is closed or has no item on
+`scope.projectNumber`. With `tracker.adapter`, the read is the only source: remove the entry.
+Also remove the entry when its ticket is in the fresh read but not in the previous snapshot: the
+ticket left scope and came back, for example as a reopen after QA, and is free again.
 
 ## 4. Refresh the ticket briefs
 
@@ -184,13 +206,28 @@ Only the caller removes a `def`, and only when the user says so.
 Each new ticket needs three values: **batch**, **light**, **resolved priority** (`triage-rules.md`
 gives the resolution order). Apply the table. When it does not decide, park the ticket.
 
+Choose a batch only when `group_by: rules`. In the other modes, do not write `b` into
+`classification.json`, and a missing batch is not a reason to park: step 7 takes the group from the
+ticket's own fields. Resolve the priority in each mode (`triage-rules.md` § Priority).
+
+When `group_by: rules`, also give a batch to each in-scope ticket whose `classification.json` entry
+has no `b`: a pass in another mode wrote that entry. Choose the batch from the table as for a new
+ticket, add only `b`, and keep every other key of the entry byte-for-byte. When the table does not
+decide, add nothing and park the ticket with an `UNSURE` line.
+
 `classification.json` keeps **every** issue it has ever judged, including out-of-scope ones — a
 ticket returning from QA keeps the batch and light it already had. Only `DATA` is status-filtered.
 
 Run the two checks `triage-rules.md` names before you add a row — duplicate, residual. A suspected
 duplicate is an `UNSURE`, not a decision.
 
-## 6. Push the light to the board
+## 6. Push the light to the board, only when `light=on`
+
+When `light=off`, skip this step and put `light: not written (switch off)` in the digest's `NOTES`
+slot. With `tracker.adapter`, run `<adapter> write light <key> <n> <green|yellow|red>` for each
+item and not the mutation below. When a ticket of the read has no `light` key, write nothing for it
+and put `light: <prefix><n> not in read` in `NOTES`: without the board's value, a write can remove
+a teammate's change.
 
 One aliased mutation (shape under **Reference**), before the page is regenerated: `projectId` =
 `scope.projectId`, `fieldId` = `scope.lightFieldId`, `singleSelectOptionId` =
@@ -203,6 +240,43 @@ Regenerate, don't hand-edit: `DATA` = board fields (`fetch-board.sh`) + judgment
 (`classification.json`). **One row per line**, so a diff reads per ticket. Refresh `#footer` (scope
 sentence + sync date). Everything else computes itself from `DATA`. Every batch card renders, empty
 or not — `renderBatchGrid` walks `BATCH_ORDER`, not the data. Do not tidy it away.
+
+**The group of each row.** Each `DATA` row gets `b`, its group, from `group_by`:
+
+| `group_by` | `b` |
+|---|---|
+| `rules` | `classification.json` `b`, as before |
+| `epic` | `e`, else `No epic` |
+| `milestone` | `m` |
+| `priority` | the resolved priority, without a `(inferred)` mark, else `No priority` |
+| `label` | the first entry of `l` in sorted order, else `No label` |
+
+In each mode, a ticket with a `claims` entry gets `b: "Claimed"`.
+
+Inside each group, sort the `DATA` rows by resolved priority `High`, `Medium`, `Low`, then empty,
+then by `n`. A `(inferred)` mark sorts with its level.
+
+**The furniture for the groups.** The page reads `BATCH_META[d.b].name`, so each `b` value needs a
+`BATCH_META` entry. An entry has `key`, `accent` (a CSS variable), `name` and `action`. A generated
+entry:
+
+- `key`: the group name in lower case, each run of non-alphanumeric characters as `-`;
+- `accent`: `var(--b-fe)` when the page defines `--b-fe`, else `#55606E`;
+- `name`: the group name;
+- `action`: `""`.
+
+When `group_by` is not `rules`:
+
+1. Before the first write of `BATCH_ORDER`, copy the page to `<board>/board-triage.rules.html`,
+   once. Never overwrite that copy.
+2. Write `BATCH_ORDER` again: the group names sorted A to Z, each `No …` group at the end, and
+   `Claimed` last.
+3. Write `BATCH_META` again: one generated entry for each group, in the shape of the current
+   entries, with no prose.
+
+When `group_by` is `rules`: if `<board>/board-triage.rules.html` exists and the page holds generated
+groups, copy `BATCH_ORDER` and `BATCH_META` back from that file. Add `Claimed` to `BATCH_ORDER` (last)
+and a generated `Claimed` entry to `BATCH_META` only when one row has `b: "Claimed"`.
 
 ## 8. Publish to the same URL
 
@@ -224,9 +298,9 @@ An empty `artifactUrl`: publish once **without** `url`, passing `favicon` and `a
 
 ## 9. Verify
 
-Re-run `fetch-board.sh` and confirm **zero divergences** against `classification.json`, ignoring
-the parked tickets. Anything still divergent is a failed write or a mid-sync edit — restore it the
-way step 6 does and put it in `NOTES`.
+Re-run the read of step 2 and, only when `light=on`, confirm **zero divergences** against
+`classification.json`, ignoring the parked tickets. Anything still divergent is a failed write or a
+mid-sync edit — restore it the way step 6 does and put it in `NOTES`.
 
 Update `lastSync` in `state.json` (`at`, `by`, `ticketCount`).
 
@@ -248,7 +322,16 @@ Append one tab-separated line to `<board>/runs.log`; never rewrite it:
 Runs only when the dispatch prompt names a batch. The batch is whatever `DATA` currently holds for
 that name — all of it, unless the prompt lists the ticket numbers, then exactly those.
 
-## 11. Assign every ticket in the batch to the user (state.json `owner`)
+## 11. Record the claim, then assign only when `assign=on`
+
+First, in each mode, write `claims[<n>] = {"batch": "<id>", "at": "<today>"}` into `state.json` for
+each ticket of the take. `<id>` is the seed id: derive it now, the way step 13 says. Keep every
+other key of `state.json`. The claim puts the ticket in the `Claimed` group of the page (step 7).
+
+When `assign=off`, assign nobody and put `assign: not written (switch off)` in the TAKE DIGEST
+`NOTES` slot. When `assign=on`, assign every ticket in the batch to the user (state.json `owner`).
+With `tracker.adapter`, run `<adapter> write assign <key> <n> <owner>`: each line it prints is a
+removed assignee. Else:
 
 ```bash
 gh issue edit <N> --repo <repo.slug> \
@@ -258,7 +341,11 @@ gh issue edit <N> --repo <repo.slug> \
 **Remove the previous assignee** (omit only when the ticket was unassigned). Re-read the assignees
 afterwards and list every teammate displaced, by name and ticket, in the digest.
 
-## 12. Move them to `In progress`
+## 12. Move them to `In progress`, only when `status=on`
+
+When `status=off`, skip this step and put `status: not written (switch off)` in the TAKE DIGEST
+`NOTES` slot. With `tracker.adapter`, run `<adapter> write status <key> <n> "In progress"` for each
+ticket and not the mutation.
 
 One aliased mutation: `projectId` from `state.json`, the `Status` field id and its `In progress`
 option id from `<board>/rules.md`. Item ids come from the issue-side query under **Reference**,
@@ -318,9 +405,11 @@ taken: <YYYY-MM-DD> by <owner> · base <sha>
 
 ## 14. Republish and hand back
 
-The taken tickets are now `In progress` and have left the page's scope. Re-run `fetch-board.sh`,
-regenerate `DATA`, update `#footer` and `lastSync.ticketCount`, publish to the same URL. Drop the
-taken blocks from `tickets.md`. Write and return the `TAKE DIGEST`, and append to `runs.log`:
+When `status=on`, the taken tickets are now `In progress` and have left the page's scope. When
+`status=off`, they stay in scope in the `Claimed` group: do not drop their blocks from
+`tickets.md`. Re-run the read of step 2, regenerate `DATA` (step 7), update `#footer` and
+`lastSync.ticketCount`, publish to the same URL. When `status=on`, drop the taken blocks from
+`tickets.md`. Write and return the `TAKE DIGEST`, and append to `runs.log`:
 
 ```
 <ISO date>	take	batch=<name>	taken=<n>	displaced=<n>	seed=<id>	publish=<ok|failed>
@@ -341,7 +430,8 @@ the caller must never put a ticket number in front of the user without saying wh
 ## SYNC DIGEST
 
 ```
-BOARD: <key> · <artifactUrl> · published <ok | FAILED: reason> · <n> rows in scope
+BOARD: <resolved line, verbatim> · <artifactUrl> · published <ok | FAILED: reason> · <n> rows in scope
+WRITES: light=<on|off> assign=<on|off> status=<on|off> · group_by: <mode>
 COUNTS: <batch> <n> (<g>🟢 <y>🟡 <r>🔴) · <batch> <n> (…) · …
 MOVED: <or none>
   <prefix><n> <old status> → <new status>
@@ -355,7 +445,7 @@ UNSURE — nothing written, you decide: <or none>
     problem: <the Problem sentence from this ticket's brief>
     comment: <the newest comment line from the brief, or "no comments">
 LIGHT DIVERGENCE — board value overwritten with classification.json's: <or none>
-  <prefix><n> · board <light> → restored <light> · <url>
+  <prefix><n> · board <light> → <restored <light> | not restored (switch off)> · <url>
     problem: <the Problem sentence from this ticket's brief>
 RED WAITING ON: <or none>
   <prefix><n> → <upstream issue | vendor | repo>
@@ -373,7 +463,8 @@ BRIEFS: <board>/tickets.md · <n> blocks
 ## TAKE DIGEST
 
 ```
-BOARD: <key> · batch <name> · <n> tickets taken · published <ok | FAILED: reason>
+BOARD: <resolved line, verbatim> · batch <name> · <n> tickets taken · published <ok | FAILED: reason>
+WRITES: light=<on|off> assign=<on|off> status=<on|off> · group_by: <mode>
 TAKEN: <prefix><n>, …
 DISPLACED: <login> off <prefix><n> · … <or none>
 SEED: <absolute path> · id <id> (previous highest batch <N-1>) · one file

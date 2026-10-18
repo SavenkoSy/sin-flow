@@ -306,10 +306,12 @@ not in the check. Re-mirror if the plan changed.
 - **comment the evidence** — the measurement verbatim, the mechanism, an executable re-verify, and
   any by-design behaviour that looks like a bug. Unproven reason it no longer reproduces → say it is
   unproven and list the candidates. Never a comment that reads as "QA was wrong".
-- with `tracker.board`: move Status to the board's QA column when verified fixed or verified
-  not-reproducible (ids in `~/.claude/sin-flow/profiles/<key>/board/state.json`); waiting on a person →
-  leave the status and write an `ingest-miss:` line; waiting on upstream → unassign, name the
-  upstream ticket and what unblocks it. **Never `Blocked`. Never close** — the close is not ours.
+- with `tracker.board` and `tracker.write.status: on`: if verified fixed or verified not-reproducible,
+  move Status to the board's QA column. The Status field and option ids are in
+  `~/.claude/sin-flow/profiles/<key>/board/rules.md`. A person blocks it: leave the status and write an
+  `ingest-miss:` line. Upstream blocks it: unassign only with `tracker.write.assign: on`. In each case,
+  name the upstream ticket and what unblocks it. A switch that is off or absent: no board write, and the
+  plan row says `board: not written (switch off)`. **Never `Blocked`. Never close** — the close is not ours.
 
 A local tracker: the disposition is the unit's row in the plan (`no code — <why>`).
 

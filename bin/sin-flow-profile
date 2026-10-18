@@ -8,6 +8,7 @@ usage() {
   cat >&2 <<'EOF'
 usage: sin-flow-profile key [DIR]
        sin-flow-profile model strong|mid|cheap|<stage> [DIR]
+       sin-flow-profile resolve [KEY]
        sin-flow-profile list
        sin-flow-profile <key> dir|file|get FIELD|section HEADING
        sin-flow-profile validate [--all | KEY...]
@@ -79,7 +80,7 @@ get_field() {
   if [ -f "$PROFILES/$key/profile.md" ]; then
     v=$(field_in "$PROFILES/$key/profile.md" "$field")
   fi
-  if [ -z "$v" ] && team=$(team_file_for "$key"); then
+  if [ -z "$v" ] && [[ $field != tracker.write.* && $field != group_by && $field != tracker.adapter ]] && team=$(team_file_for "$key"); then
     v=$(field_in "$team" "$field")
   fi
   [ -n "$v" ] || return 1
@@ -115,6 +116,24 @@ resolve_model() {
   esac
 }
 
+resolve_line() {
+  local arg="${1:-}" key from cwd_key tracker keys f
+  cwd_key=$(key_for_dir "$PWD" 2>/dev/null) || cwd_key=""
+  keys=$(for f in "$PROFILES"/*/profile.md; do [ -f "$f" ] && field_in "$f" key; done | tr '\n' ' ' || true)
+  if [ -n "$arg" ] && { [ -f "$PROFILES/$arg/profile.md" ] || team_file_for "$arg" >/dev/null; }; then
+    key="$arg"; from=argument
+  elif [ -z "$arg" ] && [ -n "$cwd_key" ]; then
+    key="$cwd_key"; from=cwd
+  else
+    printf 'usage: /sin-flow:sync <key> [take <batch> | new]   keys: %s\n' "${keys% }"
+    return 2
+  fi
+  tracker=$(get_field "$key" tracker.adapter || true)
+  [ -n "$tracker" ] || tracker=$(get_field "$key" tracker.board || true)
+  case "$tracker" in ""|null) tracker=none ;; esac
+  printf 'key: %s · tracker: %s · from: %s · cwd profile: %s\n' "$key" "$tracker" "$from" "${cwd_key:-none}"
+}
+
 section_of() {
   awk -v h="$2" '
     /^## / { inside = (index($0, "## " h) == 1); if (inside) { print; next } }
@@ -144,6 +163,16 @@ validate_key() {
         fi ;;
     esac
   fi
+  local sw v
+  for sw in light assign status; do
+    v=$(field_in "$f" "tracker.write.$sw") || true
+    case "$v" in ""|on|off) ;; *) errs+=("tracker.write.$sw '$v' is not on or off") ;; esac
+  done
+  v=$(field_in "$f" group_by) || true
+  case "$v" in ""|epic|milestone|priority|label|rules) ;; *) errs+=("group_by '$v' is not one of epic, milestone, priority, label, rules") ;; esac
+  v=$(field_in "$f" tracker.adapter) || true
+  case "$v" in ""|/*|"~"/*) ;; *) errs+=("tracker.adapter $v is not an absolute or ~ path") ;; esac
+  if [ -n "$v" ] && { [ ! -f "$(expand_home "$v")" ] || [ ! -x "$(expand_home "$v")" ]; }; then errs+=("tracker.adapter $v is not an executable file"); fi
   for src in $(frontmatter "$f" | sed -n 's/^sources\.\([A-Za-z0-9_-]*\)\.env_file:.*/\1/p' | sort -u); do
     env_file=$(field_in "$f" "sources.$src.env_file")
     var=$(field_in "$f" "sources.$src.var") || true
@@ -206,6 +235,7 @@ validate_here() {
 case "$1" in
   key)
     key_for_dir "${2:-$PWD}" || { echo "no profile for $(slug_of "${2:-$PWD}" 2>/dev/null || echo "${2:-$PWD}")" >&2; exit 1; } ;;
+  resolve) resolve_line "${2:-}" || exit $? ;;
   list)
     for f in "$PROFILES"/*/profile.md; do [ -f "$f" ] && printf '%s\t%s\n' "$(field_in "$f" key)" "$(field_in "$f" repo.slug)"; done ;;
   validate)

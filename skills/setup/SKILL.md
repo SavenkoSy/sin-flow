@@ -114,6 +114,9 @@ nothing; a non-zero exit makes `sin-flow-handoff` print the command instead. Its
    and only the deviations the user gave; then `sin-flow-infer --write <key>` fills `## Inferred` and you name the gates into it
    (below); add `## Measure` in one or two lines. Write `notes.mirror: on` into the frontmatter when the Inferred notes line
    says mirrored and the team has more than one author, else `notes.mirror: off` — a default the user flips.
+   If the profile gets a board, also write `tracker.write.light: off`, `tracker.write.assign: off`,
+   `tracker.write.status: off` and `group_by: milestone`. These are defaults that the user changes. The sync
+   skill's `## Tracker and switches` gives their meanings.
    Show the file. A personal measurement doc lives beside it as `measure.md`.
 5. Hand back to the stage that called setup, at the step it stopped on.
 
@@ -138,7 +141,7 @@ always without options or paths, once per entry.
   in `test_cmd`, `lint_cmd`, `security_cmd` or `branch_format` (`delivery.mission_branch_format` counts).
 
 Profile format: flat `group.key: value` lines (lists as `["a","b"]`), prose sections `## Inferred`, `## Measure`, `## Run`,
-`## Ship`, `## Tracker`, `## Never`. Required: `key`, `repo.slug`, `measure.doc`. Never a secret — pointers only.
+`## Ship`, `## Tracker`, `## Never`. Keys that setup may write: `tracker.adapter`, `tracker.write.light`, `tracker.write.assign`, `tracker.write.status`, `group_by`. Required: `key`, `repo.slug`, `measure.doc`. Never a secret — pointers only.
 
 ## Check (every later run)
 
