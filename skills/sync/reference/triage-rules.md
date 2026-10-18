@@ -41,7 +41,8 @@ behaviour rather than a defect, and coding against them wastes the batch. Same f
 question dressed as a bug.
 
 The board option labels are identical on every board (`🟢 Ready now | 🟡 Check first |
-🔴 Blocked upstream`), so `fetch-board.sh`'s light map is shared.
+🔴 Blocked upstream`), so `fetch-board.sh`'s light map is shared. A local adapter returns the
+light words `green`, `yellow`, `red` itself (`adapter-contract.md`).
 
 ## Priority
 
@@ -57,6 +58,8 @@ body, where QA writes a `## Severity / Priority` section in mixed formats (`Prio
 Escalating a stated priority is legitimate but must be marked — a `P2 (medium)` ticket whose
 feature is completely unreachable on mobile is triaged `High (inferred)`. Store the resolved value
 in `classification.json` so it isn't re-parsed (and re-argued) on every sync.
+
+The resolved priority is the sort key inside each group on the page, whatever `group_by` is.
 
 ## Two checks before adding a new row
 

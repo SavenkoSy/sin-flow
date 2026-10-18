@@ -46,7 +46,7 @@ and opens the PR without asking. You come back to a PR and a final message.
 | command | what it does |
 |---|---|
 | `/sin-flow:setup` | installs the user layer, onboards a repo, checks all layers; `add <source>` registers a read-only data source |
-| `/sin-flow:sync` | reads a GitHub Projects board, triages it, takes a batch and hands it to plan |
+| `/sin-flow:sync` | reads a GitHub Projects board, or a different tracker through a local adapter, triages it, takes a batch and hands it to plan |
 | `/sin-flow:ingest` | takes one request, verifies it in code and data, ends in one of five exits |
 | `/sin-flow:plan` | turns a seed into a measured plan, one block per ticket, then hands off to exec; never asks |
 | `/sin-flow:exec` | executes the plan with subagents in waves, runs the gates and a review, opens the PR without asking (upstream, from your fork, for an open-source repo) |
@@ -79,7 +79,7 @@ only the issue and the PR. The plan and the measurements stay with you.
 ## What it won't do
 
 - **Start from a blank repo.** It reads your history, CI and tracker to decide how to work. No history, nothing to read.
-- **Work outside GitHub.** Issues, Projects boards, PRs and reviews all go through `gh`. Slack and Rollbar are read only.
+- **Work outside GitHub.** Issues, Projects boards, PRs and reviews all go through `gh`. Slack and Rollbar are read only. A board write (light, assignee, status) occurs only if its profile switch is on. A new profile has all three off.
 - **Run without you at the start.** Ingest asks. Plan and exec don't.
 - **Post to Slack.** It reads Slack threads when Slack is connected; replies are drafts you post.
 - **Put its notes in your repo.** Seeds, plans and evidence stay in `~/.claude/sin-flow/`, never in a commit.
@@ -109,6 +109,9 @@ Everything of yours lives in `~/.claude/sin-flow/`:
 
 - `user.md`: preferences
 - `profiles/<key>/`: one per repo (base branch, CI gates, merge methods, tracker)
+  - `tracker.adapter`: a local adapter for a tracker other than GitHub Projects. The contract is in `skills/sync/reference/adapter-contract.md`.
+  - `tracker.write.light`, `tracker.write.assign`, `tracker.write.status`: switches for board writes. Each is `off` when absent.
+  - `group_by`: `epic`, `milestone`, `priority`, `label` or `rules`. It sets how sync groups tickets.
 - `work/<key>/<id>/`: seeds, plans, evidence, ledgers
 - `reviews/`: PR reviews
 - `runs.tsv`: one row per finished session

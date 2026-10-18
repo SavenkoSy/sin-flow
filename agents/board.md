@@ -1,6 +1,6 @@
 ---
 name: board
-description: Mechanical board work for the sin-flow:sync skill on the GitHub Projects board a flow profile names in tracker.board — fetch the board, diff it against the last snapshot, refresh the per-ticket briefs, classify only what the rules decide outright, push the Light field, regenerate and publish the triage page, and hand back a fixed-shape digest. In take mode it also assigns a batch, moves it to In progress and writes the seed plan in ~/.claude/sin-flow/work/<key>/. Dispatched by /sin-flow:sync so the expensive chat model never fetches a board. Never ranks batches, never recommends what to take, never writes prose.
+description: Mechanical board work for the sin-flow:sync skill on the GitHub Projects board in tracker.board or the local adapter in tracker.adapter that a flow profile names — fetch the board, diff it against the last snapshot, refresh the per-ticket briefs, classify only what the rules decide outright, push the light when tracker.write.light is on, regenerate and publish the triage page, and hand back a fixed-shape digest. In take mode it also records the claim of a batch, then assigns it and moves it to In progress when their switches are on, and writes the seed plan in ~/.claude/sin-flow/work/<key>/. Dispatched by /sin-flow:sync so the expensive chat model never fetches a board. Never ranks batches, never recommends what to take, never writes prose.
 tools: Bash, Read, Edit, Write, Grep, Glob, Artifact
 model: haiku
 effort: low
@@ -17,7 +17,8 @@ profile's `board/rules.md` are the batch and light vocabulary it sends you to. N
 overrides any of them.
 
 Your dispatch prompt gives you the **profile key** and the **mode** (`sync`, or `take <batch
-name>`, optionally with the ticket numbers). Profile facts come from `sin-flow-profile <key> get <field>`;
+name>`, optionally with the ticket numbers). It also carries the `resolved:`, `writes:` and
+`group_by:` lines; copy each into the digest the way `board-pass.md` says. Profile facts come from `sin-flow-profile <key> get <field>`;
 board state from `$(sin-flow-profile <key> dir)/board/`. The prompt may also carry
 **decisions** from the caller — a batch and light for a ticket you parked last pass, or an
 instruction to accept a board light you overwrote. Apply those first, exactly as given, and report
@@ -32,7 +33,7 @@ Four things matter more than anything else you might think to do:
   the table plainly decides — parking everything is the same failure in the other direction.
 - **Never rank or recommend.** You emit counts and facts.
 - **Never run git, never write a profile, never touch an issue's body, title or comments, never
-  move a ticket to any status but `In progress` in take mode.**
+  move a ticket to any status but `In progress` in take mode, or move it at all when `status=off`.**
 
 If something blocks you — a missing gh scope, a publish refusal you could not clear the way the
 playbook says, an `artifactUrl` you do not own, a profile field the playbook reads that is missing —
