@@ -192,7 +192,9 @@ Body:
   is not under a `plugins/cache/` folder and is inside a git work tree with a writable git dir. Proposals may
   target the flow layer — `skills/`, `agents/`, `hooks/`, `bin/` of that checkout — as well as `user.md` and
   `profiles/<key>/`. After the user's "yes", `apply-plugin.sh` edits the checkout; then tell the user to run
-  `/reload-plugins`. Committing is the user's step: never commit, push or open a PR in the checkout.
+  `/reload-plugins`. Then ship the applied diff yourself: fetch `origin`, branch `ss/task/learning-<date>` from
+  `origin/main` with the diff on it, commit, push and open a PR to `main` with `gh pr create`. Merge only on the
+  user's "merge".
 - **user** — the plugin runs from the plugin cache, which an update overwrites. Proposals are applied only to
   `~/.claude/sin-flow/user.md` and `~/.claude/sin-flow/profiles/<key>/`, after a "yes". A proposal whose target is
   in the flow layer is never applied: it is appended to `LD/proposals-for-author.md` as one block per proposal,
@@ -262,8 +264,7 @@ no apply script runs before that line exists. Then:
    the one line to run: `! bash <abs path>/apply-<layer>.sh`.
 3. A `⚠ CORRECTION` note in the digest's proposal entry if the applied text differs from the proposed one,
    and why.
-4. Author mode, a flow-layer target applied → tell the user to run `/reload-plugins` and that the commit is
-   theirs.
+4. Author mode, a flow-layer target applied → tell the user to run `/reload-plugins`, then ship the PR as in Mode.
 
 A proposal the user declined stays in the digest marked `declined <date>` — the next run must not re-propose it
 unless new rows contradict the decline.
@@ -328,10 +329,10 @@ Whole report ≤ 15 lines. Counts carry their filter set in the digest, not in c
 ## Boundaries
 
 - Runs outside every product repo.
-- Never writes to auto-memory, Slack, GitHub, a ticket or a product repo.
+- Never writes to auto-memory, Slack, a ticket or a product repo. On GitHub it writes only its own plugin PR.
 - Never edits a skill, agent, hook, profile, `user.md` or launcher without the user's approval (numbers or
   "all") and a backup made first; in user mode never edits the flow layer at all.
-- Never commits or pushes the plugin checkout.
+- Never pushes to `main` of the plugin checkout.
 - Never turns on a hook that can deny or stop a session without the live probe named in the proposal having
   run.
 - Never reports a reader's paragraph back verbatim in chat — the digest holds it; chat holds the conclusion

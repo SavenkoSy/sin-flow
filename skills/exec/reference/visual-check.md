@@ -42,6 +42,9 @@ How deep, by what the diff changed — the deepest kind present wins:
 - The server: start it as the profile's `## Run` says (or the repo README for a non-TTY shell). Never a second one
   while `lsof -nP -iTCP:<port> -sTCP:LISTEN` shows one. A change to app boot config needs a restart. Shut it down
   after the check — unless the user asked to look.
+- The port is held by a server whose cwd (`lsof -a -p <pid> -d cwd -Fn`) is another worktree → another session
+  runs its check. Never stop it. Run `lsof` again every 2 minutes for up to 30 minutes, then start yours. Still
+  held after 30 minutes → `VISUAL: blocked` with that worktree's name in the reason.
 - The script: `<workspace>/playwright/check.js`, outside the repo, never committed. It only holds the checks:
 
   ```js

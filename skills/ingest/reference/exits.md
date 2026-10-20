@@ -58,6 +58,8 @@ git -C <.result.worktree.path> branch -m <branch>
 orca terminal list --worktree path:<.result.worktree.path> --json | jq -r '.. | objects | select(has("handle") and (has("agentIdentity") | not)) | .handle'
 ```
 
+When `orca worktree create` returns `repo_not_found`, run `orca repo add --path <repo> --json` once and run the create again. When it fails again, use the Outside Orca block and append the inbox row SKILL.md § Hard boundaries names.
+
 Orca opens a plain shell as the new workspace's first terminal; the last line prints its handle. Keep it:
 once the hand-off prints `opened:` for this worktree, `orca terminal close --terminal <handle> --tab`, so the
 stage tab is the only one. Only that handle, only in a worktree this step created.

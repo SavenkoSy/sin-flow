@@ -150,7 +150,7 @@ fields (`${CLAUDE_PLUGIN_ROOT}/agents/shipper.md` § Prompt). Its return block (
 TAIL / PR / MERGE / NOTE`) is all you read. `STATUS: blocked` → its `NOTE` is a finding: rule or fix, never bypass.
 
 **Commit unit** — the profile's `git.commit_unit` (e.g. one commit per plan unit) → after the wave, `sin-flow:shipper` mode
-`local` per unit in wave order: the unit id, its title in English (translated when the plan's is not), its `FILES`,
+`local` per unit in wave order: the unit id, its title in English (translated when the plan's is not), its `FILES` (one path per line),
 one paragraph on what changed and why. No such key → nothing is committed until the final review.
 
 `Unit <u>: complete (<sha | uncommitted>, audit clean | skipped)` — move on without checking in. Do not stop between
@@ -323,8 +323,7 @@ Every flow stage that ships a PR ends with this message, and only this one. The 
 product does now, not how the run went. Plain words, in the chat language. A line or a heading is written only when
 it carries something; never one that says «none» or «nothing».
 
-Shape — ≤ 15 non-blank lines from the signature to the closing line. Write it to `<workspace>/final.md` first;
-`grep -c .` over 15 → merge or cut lines until it fits, then print it:
+Shape — ≤ 15 non-blank lines from the signature to the closing line:
 
 ```
 <ticket or plan id> · <PR link>
