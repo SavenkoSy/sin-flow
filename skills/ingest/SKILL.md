@@ -98,7 +98,7 @@ enable it; then the nearest enabled one is used. How each source is read: `refer
 
 Every run owns `~/.claude/sin-flow/work/<key>/<id>/` (`mkdir -p`). `<id>` is `gh-<N>` when issues are
 the tracker, `<N-M>` or `epic-<N>` when `tracker.id: N-M`, `<slug>` when `tracker.kind: local` and
-no id applies. With several units, the first unit's id names the run folder and the spec. Before the issue exists, `ingest-<slug>` stands in and is renamed once it does. The
+no id applies. With several units, each unit keeps its own folder, named by its own id. The first unit's id names only the spec and the run. Before the issue exists, `ingest-<slug>` stands in and is renamed once it does. The
 folder holds `plan.md`, `evidence/`, `reply.md`, `investigation.md` — nothing of it is ever
 `git add`ed. Status of a unit without a remote tracker lives in `status:` at the head of its
 `plan.md`, nowhere else.

@@ -97,12 +97,14 @@ branch: the `plan` cell, then its `branch:` line. Write it in the header as `bas
 the branch is only local, use the local ref, not `origin/`.
 
 **A unit that waits in another repo.** The `after:` row names another repo. Before Step 2, find the PR of the
-first unit with `gh pr list -R <its repo> --head <its branch> --state all --json url -q '.[0].url'`. If no PR
+first unit with `gh pr list -R <its repo> --head <its branch> --state all --json url,state -q '.[0]'`. If the
+PR is `CLOSED` and not merged, write one line to the user and stop. If no PR
 exists, write one line to the user: `Plan <id> waits for the PR of <first id> in <its repo>. It stops after 24 h.`
 Then start one background Bash with `run_in_background`, and end the turn:
-`deadline=$(( $(date +%s) + 86400 )); until [ -n "$(gh pr list -R <its repo> --head <its branch> --state all --json url -q '.[0].url')" ] || [ $(date +%s) -gt $deadline ]; do sleep 60; done`.
-If the loop ends with no PR, write `Plan <id> stopped: no PR of <first id> in 24 h.` and end. If the loop ends
-with a PR, write `gh pr diff <url>` to `<work>/first-pr.diff`. Write
+`deadline=$(( $(date +%s) + 86400 )); until [ -n "$(gh pr list -R <its repo> --head <its branch> --state all --json state -q '.[0].state')" ] || [ $(date +%s) -gt $deadline ]; do sleep 60; done`.
+Then run the lookup again. If the loop ends with no PR, write `Plan <id> stopped: no PR of <first id> in 24 h.` and end.
+If the PR is `CLOSED` and not merged, write one line to the user and stop. If the loop ends
+with an `OPEN` or `MERGED` PR, write `gh pr diff <url>` to `<work>/first-pr.diff`. Write
 `gh pr view <url> --json headRefName,headRefOid,files` to `<work>/first-pr.json`. Each Step 3 brief reads
 `first-pr.diff` in full. The base stays the profile base of this repo. The notification of the finished
 background Bash wakes the session. Then continue with Step 2.

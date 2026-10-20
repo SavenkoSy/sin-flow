@@ -141,7 +141,7 @@ sin-flow-handoff --cwd <wt> --name <stage>-<id> <sin-flow:plan | sin-flow:exec> 
 ```
 
 `plan` and `epic` → `sin-flow:plan`; `hotfix` → `sin-flow:exec`. Open one tab for each unit, all in
-this turn, with or without `after:`. A unit with `after:` waits by the rules of `sin-flow:plan` Step 1. No stage launches another unit later.
+this turn, with or without `after:`. A unit with `after:` waits by the rules of `sin-flow:plan` Step 1. A unit with `after:` in another repo always takes exit `plan`, never `hotfix`, because its wait lives in `sin-flow:plan` Step 1. No stage launches another unit later.
 
 **Read the output and the exit code.** `0` — handed off: `opened: …` (a new tab, from an adapter or
 the user's own script), `paste into a new terminal tab …` or `continue in this session: …` (the user

@@ -204,9 +204,10 @@ FAIL / SHOTS`; ledger it, and act on it as § After of that file says.
    the branch (never the base) and opens the PR; ledger its `PR:` and `MERGE:` (the user's merge method).
    If the plan header has `after:`, pass `draft: true`. Read the `repo` cell of the `after:` row in the spec. It tells
    same repo from other repo. At this point the header `base:` is the first branch. Same repo: first start one
-   background Bash, `until git ls-remote --exit-code origin <base> >/dev/null 2>&1; do sleep 60; done`, up to 24 h.
-   Then dispatch one `sin-flow:implementer` on `<mid>`, effort low, to run `git rebase <base>` in the worktree, as
-   the rebase round does. Then run `ship`. If the remote base does not come in 24 h, do not ship. Write one line to
+   background Bash with `run_in_background`, and end the turn:
+   `deadline=$(( $(date +%s) + 86400 )); until git ls-remote --exit-code origin <base> >/dev/null 2>&1 || [ $(date +%s) -gt $deadline ]; do sleep 60; done`.
+   The notification of the finished background Bash wakes the session. Then dispatch one `sin-flow:implementer` on `<mid>`, effort low, to run `git rebase <base>` in the worktree, as
+   the rebase round does. Then run `ship`. If the remote base is still absent after the loop, do not ship. Write one line to
    the user. The plan stays `status: verified`.
 3. **Mirror**. Set `status: shipped` in the plan header. Mirror on (Setup 2) → write `sin-flow-mirror plan.md` back to
    the issue copy it came from; over 60 000 bytes → the first 60 000 plus «continued in comments», the rest as comments. Append `Plan <id>: shipped <URL>` to the ledger.
@@ -246,8 +247,12 @@ merged PRs means team. **Team → the post-PR loop. Solo → the user's review.*
    strong only when the forcing list is hit), the visual check again when a rendered surface changed, then one
    `sin-flow:shipper` gate + `commit` for the batch (a new commit, never an amend); ledger `Round <k>: complete (<sha>)`.
 4. **Merge on the user's word.** "merge", or an approval that says so → `ExitWorktree` with `action: keep` if you are in
-   one, then run `gh pr view <PR> --json isDraft,baseRefName`. If `baseRefName` is not the profile base, stop and
-   write one line: the first unit merges first. Otherwise, if `isDraft` is `true`, run `gh pr ready <PR>`, then
+   one, then run `gh pr view <PR> --json isDraft,baseRefName`. For a plan with `after:`, also run
+   `gh pr list -R <first repo> --head <first branch> --state merged --json url -q '.[0].url'`. Find the first repo
+   and branch as in `sin-flow:plan` Step 1. If the output is empty, stop and write one line: the first unit merges first.
+   If the first PR is merged, the repo is the same, and `baseRefName` is still the first branch, run
+   `gh pr edit <PR> --base <profile base>`, then the rebase round of Team step 1. For a plan with no `after:`, if
+   `baseRefName` is not the profile base, stop and write the same line. Then, if `isDraft` is `true`, run `gh pr ready <PR>`, then
    `bash ~/.claude/sin-flow/merge.sh <PR> <MERGE from the ship block>` — the user's copy of
    `${CLAUDE_PLUGIN_ROOT}/examples/merge.sh.example` (absent → copy it there first, `chmod +x`). The example waits for
    checks, merges by that method (squash when empty), deletes the remote and local branch, removes the worktree,
@@ -300,7 +305,8 @@ The PR is ready until a point reproduces. The user does not merge here; the team
    watcher again. For a draft PR whose first PR merged, in the same repo: if `baseRefName` is still the first
    branch, run `gh pr edit <url> --base <profile base>`. Then run the rebase round of step 1 onto the profile base,
    and push. Then, in both repo cases: run `gh pr ready <url>` and write one line to the user. Other wakes stay as
-   they are: the rebase round of step 1, the push, one line to the user. After 24 h the watcher stops. A draft
+   they are: the rebase round of step 1, the push, one line to the user. After a rebase wake, start the watcher
+   again. After 24 h the watcher stops. A draft
    stays a draft for a person.
 6. **No fix is pushed unreviewed.** One batched round for every reproduced point and the user's: fix each point
    where it was flagged and in every sibling of the same pattern on the branch (the flagged query → every sibling
