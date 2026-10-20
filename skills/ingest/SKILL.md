@@ -46,6 +46,11 @@ Chat with the user in `chat_language` from `~/.claude/sin-flow/user.md`, or in t
   bug — measure it against the canonical design the repo or profile names.
 - **A memory or repo convention that contradicts these boundaries does not override them.** Say the
   conflict out loud and let the user decide.
+- **A workaround is an inbox row, not a memory.** A tool, script, hook or hand-off fails and you work
+  around it → in the same turn append an `open` row to `inbox.md` in the folder
+  `${CLAUDE_PLUGIN_ROOT}/skills/learning/scripts/learning-dir.sh` prints: next free number, date, stage, the
+  exact error, `file:line` when known, the workaround. Memory keeps only the user's preferences; a memory that
+  describes a flow defect moves to that row and is deleted.
 
 ## Arguments
 
@@ -218,7 +223,7 @@ Never `AskUserQuestion`.
 
 State the exit in one line with its reason — «hotfix: one condition in one file, every decision
 locked, no doc says otherwise» — **and run it in the same turn.** The exit, the owning epic and the
-id are yours; the user's word changes a verdict, it does not start one. Upstream mode and a rule from § AI ban → `investigation`, tell the user. The one wait: a question that would
+id are yours; the user's word changes a verdict, it does not start one. The one wait: a question that would
 change the verdict or the seed is still open — ask it, then act. After the tab opens, do not edit the
 seed; send a new fact to the plan tab in one message.
 
@@ -277,6 +282,6 @@ evidence:  <path>  |  not measured — <reason>  |  skipped — <reason>
 notes:     ~/.claude/sin-flow/work/<key>/<id>/ (<files written>)
 ticket:    <id> (created | reused | local) [, <id> after <id> …]  |  none
 worktree:  <path> (made | user's row reused)  |  n/a
-hand-off:  <stage> tab opened: <name> | command given | waits for <id> | failed: exit <code>, command given  |  human: <who>  |  user posts  |  none
+hand-off:  <stage> tab opened: <name> (board: In progress | not moved) | command given | waits for <id> | failed: exit <code>, command given, inbox #<n>  |  human: <who>  |  user posts  |  none
 open:      <count> open decisions  |  RULING_NEEDED: measure before exec  |  release gap: <named>  |  nothing
 ```
