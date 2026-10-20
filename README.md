@@ -178,6 +178,14 @@ Fable by default: `models.strong: fable`. A repo profile may set the same keys f
 runs under another Claude account. Plan on Fable, exec on Opus: `models.strong: opus` and `models.plan: fable`.
 `sin-flow-profile model strong` (or `model plan`) prints what the flow will use here.
 
+#### Codex as a second reviewer
+
+With `codex_review: on` in `user.md`, the exec review also runs [Codex CLI](https://github.com/openai/codex) as one
+more finder, read-only and without `AGENTS.md`. The verify pass judges its findings like every other finding. Then
+Codex gets one turn to contest the verdict with quoted code, and a `settle` pass gives the final status. Each run
+appends a row to `~/.claude/sin-flow/codex-trial.tsv`: Codex findings kept, and how many only Codex found. Without
+`codex` installed and logged in, the review goes on without it. `codex_watch: orca` shows the run live in an Orca tab.
+
 ### What's inside
 
 Seven skills, six agents (`board`, `implementer`, `read-only-analyst`, `reviewer`, `review-poster`,

@@ -79,6 +79,8 @@ an absent one keeps its default:
 | `models.cheap` | `haiku` | the board agent |
 | `models.<stage>` | `models.strong` | the session a hand-off opens for that stage (`setup`, `sync`, `ingest`, `plan`, `exec`, `review`, `learning`); its subagents keep the tiers |
 | `reviews_dir` | `~/.claude/sin-flow/reviews` | where `/sin-flow:review` writes review files |
+| `codex_review` | `off` | `on` → the exec review at the end of a unit also runs OpenAI Codex CLI as one more finder, then gives Codex one reply turn on the verdict (`skills/review/reference/pipeline.md` § 3). Needs `codex` installed and `codex login`; without them the review goes on and the last message says so |
+| `codex_watch` | `""` | `orca` → that Codex run shows live in an Orca tab named «codex review», and the workspace card shows its progress |
 | `work_remote` | `""` | a git remote for `~/.claude/sin-flow` (work notes and profiles); empty → local only |
 
 A repo profile may set the same `models.*` keys; it wins over `user.md` for that repo. `sin-flow-profile model <tier|stage>`

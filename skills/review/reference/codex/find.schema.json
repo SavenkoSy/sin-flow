@@ -1,0 +1,24 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["findings"],
+  "properties": {
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["file", "line", "checklists", "claim", "trigger", "evidence", "breaks"],
+        "properties": {
+          "file": { "type": "string" },
+          "line": { "type": "integer" },
+          "checklists": { "type": "array", "items": { "type": "string" } },
+          "claim": { "type": "string" },
+          "trigger": { "type": "string" },
+          "evidence": { "type": "string" },
+          "breaks": { "type": "string" }
+        }
+      }
+    }
+  }
+}
