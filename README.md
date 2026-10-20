@@ -162,6 +162,8 @@ adapter it would use.
 
 `context_guard` (default 40) in `user.md` is the percent of the 1M-token context window at which a stage hands off to a fresh session; setup never stops on it.
 
+`limit_guard` in `user.md` picks what a session does near a usage limit. `off` (the setup default) leaves it to Claude Code, which waits and continues after the reset. `on` adds the sin-flow LIMIT GUARD. Setup asks before it puts a small status line wrapper in your settings, and your own status line keeps working.
+
 #### Models
 
 The flow uses three tiers. The plugin ships the defaults; set any of them in `~/.claude/sin-flow/user.md`:

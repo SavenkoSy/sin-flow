@@ -16,12 +16,16 @@ say() {
   exit 0
 }
 
+user_pref() {
+  awk -F': *' -v k="$1" '$1 == k { print $2; exit }' "$HOME/.claude/sin-flow/user.md" 2>/dev/null | sed -E 's/[[:space:]]+#.*$//; s/"//g; s/[[:space:]]+$//'
+}
+
 window=1000000
 limit_thr=${LIMIT_GUARD_THRESHOLD:-90}
 limit_7d_thr=${LIMIT_GUARD_7D_THRESHOLD:-98}
 limit_marker="$dir/$sid.limit-guard"
 own=""
-[ -f "$limit_marker" ] || own=$(jq -r --argjson t "$limit_thr" --argjson w "$limit_7d_thr" '
+[ -f "$limit_marker" ] || [ "$(user_pref limit_guard)" = off ] || own=$(jq -r --argjson t "$limit_thr" --argjson w "$limit_7d_thr" '
   select(((.limit_5h // 0) >= $t) or ((.limit_7d // 0) >= $w))
   | [.config_home, "\(.limit_5h // "?") % of the 5-hour limit and \(.limit_7d // "?") % of the 7-day limit"]
   | @tsv' "$sj" 2>/dev/null)
@@ -47,7 +51,7 @@ if [ -z "$used" ] && [ -f "$tp" ]; then
     | .message.usage | (.input_tokens // 0) + (.cache_read_input_tokens // 0) + (.cache_creation_input_tokens // 0)' 2>/dev/null)
   case "$tokens" in ''|*[!0-9]*) ;; *) used=$(( tokens * 100 / window )) ;; esac
 fi
-configured=$(awk -F': *' '$1 == "context_guard" { print $2; exit }' "$HOME/.claude/sin-flow/user.md" 2>/dev/null | sed -E 's/[[:space:]]+#.*$//; s/"//g; s/[[:space:]]+$//')
+configured=$(user_pref context_guard)
 case "$configured" in ''|*[!0-9]*) configured=40 ;; esac
 thr=${CTX_GUARD_THRESHOLD:-$configured}
 last_ctx=0

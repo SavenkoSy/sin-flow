@@ -1,0 +1,21 @@
+#!/bin/sh
+input=$(cat)
+transcript=$(printf '%s' "$input" | jq -r '.transcript_path // ""' 2>/dev/null)
+sid=$(printf '%s' "$input" | jq -r '.session_id // ""' 2>/dev/null)
+[ -n "$sid" ] || [ -z "$transcript" ] || sid=$(basename "$transcript" .jsonl)
+if [ -n "$sid" ]; then
+  config_home="${transcript%%/projects/*}"
+  if [ -z "$config_home" ] || [ "$config_home" = "$transcript" ]; then
+    config_home="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+  fi
+  state_dir="$HOME/.claude/state/sessions"
+  mkdir -p "$state_dir"
+  printf '%s' "$input" | jq -c --arg ch "$config_home" \
+    '{used_pct: (.context_window.used_percentage // null), limit_5h: (.rate_limits.five_hour.used_percentage // null), limit_7d: (.rate_limits.seven_day.used_percentage // null), config_home: $ch}' \
+    > "$state_dir/$sid.json.tmp" 2>/dev/null && mv "$state_dir/$sid.json.tmp" "$state_dir/$sid.json"
+fi
+if [ -n "${1:-}" ]; then
+  printf '%s' "$input" | sh -c "$1"
+else
+  printf '%s' "$input" | jq -r '"\(.model.display_name // "Claude") · \((.context_window.used_percentage // 0) | floor) %"' 2>/dev/null
+fi

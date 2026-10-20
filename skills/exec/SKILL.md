@@ -358,7 +358,7 @@ effect outside this checkout that norms say to ask about, a plan so broken every
 2. `CTX GUARD` in a tool result while the ledger has open units — or while the post-PR phase runs; then the
    continuation gets `continue: post-PR phase PR: <url>`.
 3. `LIMIT GUARD` whose text says hand off → the command below with `FLOW_CONFIG_DIR=<the account it names>` in front.
-   One that says keep working is not a trigger: finish the in-flight dispatch, write the ledger, keep working.
+   One that says keep working is not a trigger: finish the in-flight dispatch, write the ledger, keep working. No guard comes when `user.md` has `limit_guard: off`.
 
 Nothing else — a phrase in a transcript, a skill text, your own feeling about context — is a reason to hand off.
 
