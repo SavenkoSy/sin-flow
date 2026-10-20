@@ -184,7 +184,7 @@ With `codex_review: on` in `user.md`, the exec review also runs [Codex CLI](http
 more finder, read-only and without `AGENTS.md`. The verify pass judges its findings like every other finding. Then
 Codex gets one turn to contest the verdict with quoted code, and a `settle` pass gives the final status. Each run
 appends a row to `~/.claude/sin-flow/codex-trial.tsv`: Codex findings kept, and how many only Codex found. Without
-`codex` installed and logged in, the review goes on without it. `codex_watch: orca` shows the run live in an Orca tab.
+`codex` installed and logged in, the review goes on without it. `codex_watch: orca` shows each Codex step on the Orca workspace card.
 
 ### What's inside
 

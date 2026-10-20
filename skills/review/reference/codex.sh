@@ -34,17 +34,6 @@ orca_worktree_set() {
     true
 }
 
-orca_tab() {
-  orca_on || return 0
-  [ -s "$D/orca-handle" ] && return 0
-  local cmd="tail -n +1 -f '$LOG'" out
-  out=$(cd "$TREE" && orca terminal create --worktree active --title "codex review" --command "$cmd" --json 2>/dev/null) ||
-    { [ -n "${ORCA_WORKTREE_ID:-}" ] &&
-      out=$(orca terminal create --worktree "id:$ORCA_WORKTREE_ID" --title "codex review" --command "$cmd" --json 2>/dev/null); } ||
-    return 0
-  printf '%s' "$out" | jq -r '.result.terminal.handle // empty' > "$D/orca-handle" 2>/dev/null
-}
-
 status_line() { orca_worktree_set --comment "$1"; }
 
 skip() {
@@ -103,7 +92,6 @@ cmd_find() {
   rm -f "$D/session" "$D/find.json" "$PKG/findings/codex.md"
   command -v codex >/dev/null 2>&1 || skip "not installed" CODEX
   codex login status >/dev/null 2>&1 || skip "not logged in" CODEX
-  orca_tab
   status_line "codex: finding"
   log "=== codex find · $(date '+%H:%M:%S') · ${SHA:0:8} against ${BASE:0:8} ==="
   run_codex "$HERE/codex/find.schema.json" "$D/find.json" "$(fill "$HERE/codex/find.md")" || skip "$REASON" CODEX
@@ -135,7 +123,6 @@ cmd_reply() {
     echo "CODEX REPLY · 0 contested · 0 accepted · $D/reply.md"
     exit 0
   fi
-  orca_tab
   status_line "codex: replying on $rows rows"
   log "" "=== codex reply · $(date '+%H:%M:%S') ==="
   run_codex "$HERE/codex/reply.schema.json" "$D/reply.json" "$(cat "$HERE/codex/reply.md" "$PKG/verdict.md")" "$(cat "$D/session")" ||
