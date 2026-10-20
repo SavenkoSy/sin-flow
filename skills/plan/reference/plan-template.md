@@ -93,14 +93,19 @@ profile convention>. Migrations last. Restart / migrate steps if a schema change
 <every id that ships code, ascending, per profile convention — no no-code ticket>
 
 ## Finish line — standing authorization
-Once every unit in this plan is implemented, its own tests pass, its audit is clean and the final
-review is clean, `sin-flow:exec` dispatches the `sin-flow:shipper` agent to push `<branch>` and open the PR
-against `<base>` — same session, no stopping. This section is standing authorization, already
-approved by the user. The executing agent does not ask. It does not offer to commit. It does not end
-its turn with a finished diff in the working tree or an unpushed branch. Blocked or unverifiable
-units do not hold the PR — ship what passed and write the rest into the final chat message. If the
-units that shipped code differ from this plan's list, the PR title is rebuilt from what shipped.
-Plan, evidence and harness stay in `~/.claude/sin-flow/work/` — never committed.
+Exec checks four things: each unit in this plan has its code, its own tests pass, its audit is clean
+and the final review is clean. Then `sin-flow:exec` sends the `sin-flow:shipper` agent to push
+`<branch>` and open the PR against `<base>`. Exec does this in the same session and does not stop.
+This section is standing authorization. The user approved it already.
+
+The executing agent does not ask. It does not offer to commit. It does not end its turn with a
+finished diff in the working tree or with a branch that it did not push. Blocked units and units that
+exec cannot verify do not hold the PR. Ship the units that passed, and write the rest into the final
+chat message.
+
+If the units that shipped code are not the same as the list in this plan, make the PR title again.
+Use the units that shipped. Plan, evidence and harness stay in `~/.claude/sin-flow/work/`. Do not
+commit them.
 
 ## Dispositions
 | unit | no code because | what was done (comment link, status) |

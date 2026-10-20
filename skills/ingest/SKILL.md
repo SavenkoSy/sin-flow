@@ -206,6 +206,10 @@ pick with why. Product decisions only — contract, semantics, what a number cou
 sees, a new column or param. Never names, file placement or spec structure: those are yours.
 Never `AskUserQuestion`.
 
+- **Look for the answer before you ask.** Before a question, check whether the code, the platform or
+  the docs already answer it. If one does, record it as your decision with its `file:line` or link,
+  and do not ask. Existing behaviour answers a question only when the request does not ask to change
+  it.
 - **Admin and low-usage internal surfaces get no questions and no design pass.** Reuse the closest
   existing pattern there and record it as your decision.
 - **The user's one-word answers are decisions.** "yes", "no", "the first" — record each, dated, under
@@ -225,7 +229,7 @@ Never `AskUserQuestion`.
 
 State the exit in one line with its reason — «hotfix: one condition in one file, every decision
 locked, no doc says otherwise» — **and run it in the same turn.** The exit, the owning epic and the
-id are yours; the user's word changes a verdict, it does not start one. The one wait: a question that would
+id are yours; the user's word changes a verdict, it does not start one, and it is never a hotfix criterion. The one wait: a question that would
 change the verdict or the seed is still open — ask it, then act. After the tab opens, do not edit the
 seed; send a new fact to the plan tab in one message.
 
@@ -246,12 +250,6 @@ seed; send a new fact to the plan tab in one message.
 4. no sensitive path — `.claude/sensitive-paths.txt` (or the profile's `sensitive_paths`) and the
    sensitive section of the repo's `CLAUDE.md`; a sensitive area stops the skill before any plan;
 5. no sibling unit it must wait for.
-
-The user's word is not a criterion: `sin-flow:exec` opens the PR; the merge is the user's.
-
-**A new user-facing surface is designed here before the exit hands off** — the `frontend-design`
-skill in this session, against the canonical look the repo names; never a separate tab, never the
-implementer for the look.
 
 The exact procedure per exit — ticket map, worktree, seed and one-block plan format, mirror to the
 issue (never in upstream mode), hand-off command and its exit codes, the support recipe, the reply draft, the finding — is

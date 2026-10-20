@@ -140,7 +140,10 @@ rm -f /tmp/flow-l1-$$.hashes
    `\restrict` / `\unrestrict` tokens, `-- Dumped from` / `-- Dumped by` lines, a dropped
    `-- Name: public; Type: SCHEMA` block. Keep only what a migration produced.
 4. Stage. With `FILES` → exactly those; a listed file with no change is a `NOTE`; a changed file not
-   listed is a leftover, unstaged, named in a `NOTE`. Without `FILES` → the files the paragraph
+   listed is a leftover, unstaged, named in a `NOTE`. Stage them one path per line:
+   `printf '%s\n' <path> <path> … | git add --pathspec-from-file=-`. Never pass them through an unquoted shell
+   variable, because zsh does not split it. Then `git diff --cached --name-only` must show every changed listed
+   path before the commit. Without `FILES` → the files the paragraph
    describes; unrelated repo tooling (`.claude/`, `CLAUDE.md`) goes in a separate second commit.
    L1 guard on both passes.
 5. `git commit` with the convention subject and the paragraph as the body; upstream mode: the caller's `trailer`,

@@ -97,13 +97,13 @@ branch: the `plan` cell, then its `branch:` line. Write it in the header as `bas
 the branch is only local, use the local ref, not `origin/`.
 
 **A unit that waits in another repo.** The `after:` row names another repo. Before Step 2, find the PR of the
-first unit with `gh pr list -R <its repo> --head <its branch> --state all --json url,state -q '.[0]'`. If the
-PR is `CLOSED` and not merged, write one line to the user and stop. If no PR
+first unit with `gh pr list -R <its repo> --head <its branch> --state all --json url,state -q '.[0]'`. After this
+lookup and after the second one below, if the PR is `CLOSED` and not merged, write one line to the user and stop. If no PR
 exists, write one line to the user: `Plan <id> waits for the PR of <first id> in <its repo>. It stops after 24 h.`
 Then start one background Bash with `run_in_background`, and end the turn:
 `deadline=$(( $(date +%s) + 86400 )); until [ -n "$(gh pr list -R <its repo> --head <its branch> --state all --json state -q '.[0].state')" ] || [ $(date +%s) -gt $deadline ]; do sleep 60; done`.
 Then run the lookup again. If the loop ends with no PR, write `Plan <id> stopped: no PR of <first id> in 24 h.` and end.
-If the PR is `CLOSED` and not merged, write one line to the user and stop. If the loop ends
+If the loop ends
 with an `OPEN` or `MERGED` PR, write `gh pr diff <url>` to `<work>/first-pr.diff`. Write
 `gh pr view <url> --json headRefName,headRefOid,files` to `<work>/first-pr.json`. Each Step 3 brief reads
 `first-pr.diff` in full. The base stays the profile base of this repo. The notification of the finished
@@ -293,7 +293,7 @@ read names, else plain `<title>`. The PR title lists every id that
 the seed left: `ingest-miss: <quoted line> → <the call> (rejected: <alternative>)`, reversible option
 taken. Exec never halts on either.
 
-**Finish line** — copy the paragraph from the template verbatim, filling branch and base. It is
+**Finish line** — copy the section from the template verbatim, filling branch and base. It is
 standing authorization; a plan that ends at "ready to commit" is unfinished.
 
 **Mirror.** The local `plan.md` is the truth. When the profile says the plan is mirrored (`notes.mirror: on`;
@@ -372,8 +372,7 @@ silent mechanism is never grounds for a blocking question.
 This stage writes no auto-memory: what the next run needs is in the plan and its evidence. A tool,
 script, hook or hand-off that fails and needs a workaround is a flow defect: in the same turn append one
 `open` row to `inbox.md` in the folder `${CLAUDE_PLUGIN_ROOT}/skills/learning/scripts/learning-dir.sh`
-prints, with the date, `plan`, the exact error text, `file:line` when known and the workaround. A memory
-entry is not the report.
+prints, with the date, `plan`, the exact error text, `file:line` when known and the workaround.
 
 ## What this skill never does
 
