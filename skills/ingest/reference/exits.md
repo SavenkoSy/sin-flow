@@ -23,7 +23,7 @@ another repo takes everything from that repo's profile.
   `ticket:` line. English. The body names the
   source, states the problem and the measured cause in a paragraph each, carries the evidence inline;
   it does not restate the ticket you read. Someone else's ticket is never closed or retitled, and a board
-  status is not touched — that is `sin-flow:sync`'s and `sin-flow:plan`'s. Rename `ingest-<slug>` → `gh-<N>`.
+  status moves only as § Hand-off says. Rename `ingest-<slug>` → `gh-<N>`.
 - **`tracker.kind: local`:** no remote unit. The id is `<N-M>` (next free in the owning epic — one
   above the highest id in the backlog and in `work/<key>/*/plan.md`, compared numerically per
   segment so `1-1` never reads as `1-10`) or `<slug>`; `status: ready-for-dev` in the plan header.
@@ -87,7 +87,7 @@ source: <issue URL | permalink | Rollbar item | "words" | screenshot path>
 ticket: <id>
 worktree: <absolute worktree path>
 spec: <absolute spec path>      (only when the map has more than one unit)
-after: <id>                     (only when this unit waits for another)
+after: <id>                     (only when this unit waits for another; the bare id, nothing else on the line)
 ```
 
 Sections, in this order; one with nothing to say carries one line saying so:
@@ -111,8 +111,10 @@ Sections, in this order; one with nothing to say carries one line saying so:
 10. `## Finish line` — one line: *the coding stage commits, pushes and opens the PR itself, in the same
     session, without asking.* It authorizes the downstream stages, never this skill.
 
-**More than one unit → one spec**, `~/.claude/sin-flow/work/<key>/<first id>/spec.md`: the map (id, repo,
-title, worktree, `after:`) and the decisions every unit shares. No parent issue on GitHub.
+**More than one unit → one spec**, `~/.claude/sin-flow/work/<key>/<first id>/spec.md`: a `## Map` table with
+exactly the columns `| id | repo | title | worktree | plan | after |`, one row per unit, then the decisions every
+unit shares. The `after` cell holds one bare id (`gh-12`) or `—`; `sin-flow:exec` matches that cell. No parent
+issue on GitHub.
 
 ## Mirror to the issue
 
@@ -144,12 +146,21 @@ the user's own script), `paste into a new terminal tab …` or `continue in this
 runs the printed command; relay it in one line); never start a second one on `0`. Non-zero — no tab
 opened: `1` bad path, `2` bad option or `handoff:` setting, anything else the launcher's own code, after
 which the command is printed and copied. Any non-zero:
-one line with the code and the printed command. `session: unknown` in the output means the tab is not
+one line with the code and the printed command, and the inbox row SKILL.md § Hard boundaries names. `session: unknown` in the output means the tab is not
 confirmed: never report it as opened. Name the row in `mode:` and the first suspect: a worktree path this
 account never opened stops the new tab on Claude Code's folder-trust prompt — tell the user to answer
 «Yes, I trust this folder» in that tab. Never
-kill a started stage without the user's explicit yes. Put the `opened:` or printed line in the report, then
-stop.
+kill a started stage without the user's explicit yes.
+
+**Board status.** `tracker.board` set and `tracker.write.status: on`: when the next stage is confirmed running
+(`opened:` with a new transcript), move each launched unit to `In progress` — the move of `sin-flow:sync` take
+mode (`skills/sync/reference/board-pass.md` § 12). `tracker.adapter` → `<adapter> write status <key> <n> "In
+progress"`. Otherwise the ids come from `profiles/<key>/board/rules.md` § Status field, else from `gh project view
+<n> --owner <o> --format json` and `gh project field-list <n> --owner <o> --format json`; the item id from `gh project
+item-add <n> --owner <o> --url <issue> --format json`; then `gh project item-edit --id <item> --project-id <project>
+--field-id <Status> --single-select-option-id <In progress>`. Upstream mode moves nothing.
+
+Put the `opened:` or printed line and the status move in the report, then stop.
 
 ## Exit `hotfix`
 

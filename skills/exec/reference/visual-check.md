@@ -8,7 +8,8 @@ spec could see — a load-more that reloaded the page under a rate-limit fuse. T
 
 - Any plan unit with `UI surface: yes`, or a hotfix whose diff touches a path in the profile's `ui.surface_paths`.
   Once per plan, after the final-review fixes are committed, before the PR.
-- Nothing rendered changed → no check; one ledger line `Visual check: skipped — no UI surface`.
+- Nothing rendered changed → no check; one ledger line `Visual check: skipped — no UI surface`. A small rendered
+  change (one label, one value) is a change: it gets the check.
 
 ## What
 
@@ -19,6 +20,22 @@ also gets `t.phone(page, '<name>')`, and once more with each sheet open as `t.ph
 the check that the page behind the sheet does not scroll (found by the user after two PRs). An item a browser
 cannot see (a crawler's behaviour, a production-only header, a CDN rule) is a `SKIP` with its reason, never a silent
 omission. Add the one or two places the implementer was least sure of even if the checklist missed them.
+
+How deep, by what the diff changed — the deepest kind present wins:
+
+- copy, style or layout only → a screenshot of each changed screen beside the target the plan names (a prototype, the
+  ticket's picture), and one line per difference;
+- a new or changed control → each one used once, as the user would, and what it does after;
+- a write (a form, an import, a setting) → done once on the test account the profile names, then read back on the page;
+- a page that shows new or changed data → the page with real rows, each new value checked against its source.
+
+## Where — the branch's code, before the merge
+
+- Local first: the app from this worktree as the profile's `## Run` or the UI section of its `measure.doc` says. The
+  local files exec linked in Setup 4 are already there; a missing secret is a setup fail, never a search through other
+  folders.
+- `ui.server` is the deployed base. Before the merge it shows the old code: a pass there is not a pass for this branch.
+  Use it before the merge only for an item the diff cannot change (sign-in, a page outside the change).
 
 ## How
 
@@ -60,10 +77,20 @@ omission. Add the one or two places the implementer was least sure of even if th
 ## After
 
 - Screenshots land in `<ui.screenshots>/<id>/` — the user looks and deletes them.
+- Two kinds of not green. `VISUAL: blocked` is a setup fail — no secret, no sign-in, the server or its database down.
+  `VISUAL: red` is a product fail. Blocked → one `Ruling:` that fixes the setup from the profile (the linked local files,
+  the sign-in route of `measure.doc`), then the check once more.
 - A `FAIL` is a fix round like a review finding: one implementer with every failure, then the check again, then
-  gate + commit. Before the PR, not after.
-- Every `SKIP` with its reason reaches the user (final message, NOT AS IN THE TICKET, as «not checked»); the PR body
-  does not carry it.
+  gate + commit. Before the PR, not after. Still red → those items are «not checked», and the PR ships.
+- Every `SKIP`, every «not checked» and a check still blocked reach the user in the final message, NOT AS IN THE
+  TICKET, as «not checked before the merge — checked on `<ui.server>` after it»; the PR body does not carry it.
+  Ledger `Visual check: <green | red | blocked | skipped — no UI surface>`.
+
+## After the merge
+
+The ledger says `blocked`, `red` or has a `SKIP`, and the merged diff changed a rendered surface → once the deploy of
+the merge commit is live on `ui.server`, the same check there, through the profile's sign-in route. A `FAIL` → a fix
+PR at once, from a one-block plan, and one line to the user. Green → one line to the user.
 
 ## Pitfalls met so far
 
@@ -74,3 +101,4 @@ omission. Add the one or two places the implementer was least sure of even if th
 - Sound: the user hears every ▶ a check taps (2026-10-06: «I do not want to hear that»). The harness mutes it — Chromium
   launches with `--mute-audio`, and an init script forces every media element in every frame to muted / volume 0.
   Always open pages through `t.newPage()`; a script that launches its own browser or context bypasses the mute.
+- Never print an env file or grep for a key. Load it into the process; a key on screen is in the transcript for good.

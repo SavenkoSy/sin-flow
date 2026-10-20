@@ -40,7 +40,7 @@ Run `sin-flow-profile validate` (resolves the profile from `git remote get-url o
 `profile:` line in the seed header). All green prints nothing. On a failure act as the setup design
 says: no profile → run `/sin-flow:setup` onboarding in this session, then continue; `gh` not logged in or
 `jq` missing → stop on one line with the fix; a gate not runnable → continue (plan does not run
-gates); measurement route down → Step 4's "unavailable" path.
+gates).
 
 Resolve the tiers once: `sin-flow-profile model strong` and `sin-flow-profile model mid`. `<strong>` and `<mid>`
 below are the aliases they print; pass the alias as `model`, never the tier word.
@@ -99,7 +99,9 @@ remove this repo's `.claude/worktrees/*` whose PR is merged or closed and whose 
 (`git worktree remove`, never `--force`), then
 `git worktree add .claude/worktrees/<id>-<slug> -b <branch> origin/<base>` with the branch from the
 profile's convention (`git.branch`, else `<prefix>/<type>/<id>/<slug>`) and write the path into the
-plan's `worktree:` line. When the branch already exists, note `resume` and do not recreate it. Every
+plan's `worktree:` line. When the branch already exists, note `resume` and do not recreate it. When it must
+sit on an unmerged branch or PR, `git merge --no-edit origin/<that head>` in the worktree moves it there; never
+`git reset --hard`. Every
 analyst and the auditor read code in that worktree, never in the shared checkout.
 
 **Read the seed.** It always carries the header (`profile:`, `repo:`, `base:`, `exit:`, `status:`, `branch:`,
@@ -179,6 +181,8 @@ Step 3. Down → one status line `<source> down — measuring when it is up`, st
 Steps 2–3 and the draft. If it fires before Step 6, measure. If not, every claim that needed it is
 `not measured — <source> unavailable (<reason>)`, stays `inferred`, gets its bounded query written
 as that unit's first exec step, and the header carries `RULING_NEEDED: measure before exec`.
+A probe the auto-mode classifier denies is the same path, with the reason `classifier denied`: do not
+retry it and do not ask; write its inbox row (Step 10) and go on with code reads and `work/` notes.
 
 **`measure.doc: none`** → every number is `not measured — no route`; claims stay `inferred`; numbers
 are never invented and never taken from a local or dev database as a volume claim.
@@ -350,11 +354,15 @@ silent mechanism is never grounds for a blocking question.
 
 **`CTX GUARD` in a tool result** hands this plan to a fresh `sin-flow:plan`: let the in-flight dispatch finish, put every measured number in `evidence/<unit>.md` with its query, run `sin-flow-handoff --cwd <worktree> --name plan-<id> --model <strong> sin-flow:plan <absolute plan path> "continue: from Step <n>"`, read its output as above and end the turn. Never hand a half-measured plan to `sin-flow:exec`.
 
-This stage writes no auto-memory: what the next run needs is in the plan and its evidence.
+This stage writes no auto-memory: what the next run needs is in the plan and its evidence. A tool,
+script, hook or hand-off that fails and needs a workaround is a flow defect: in the same turn append one
+`open` row to `inbox.md` in the folder `${CLAUDE_PLUGIN_ROOT}/skills/learning/scripts/learning-dir.sh`
+prints, with the date, `plan`, the exact error text, `file:line` when known and the workaround. A memory
+entry is not the report.
 
 ## What this skill never does
 
-- Edit application code or commit anything — but it MUST launch `sin-flow:exec`, which does.
+- Edit application code or commit anything.
 - File follow-up issues or write a deferred-work file.
 - Put a no-code ticket's id in the PR title, or write a change for a ticket it did not measure.
 - Let an agent's report stand where a probe contradicts it.

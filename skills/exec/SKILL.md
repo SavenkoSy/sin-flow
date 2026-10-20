@@ -86,7 +86,8 @@ The dispatching thread is the most expensive place in the chain when it fills wi
    (`EnterWorktree`). Otherwise, when this checkout is busy — a dirty tree, another branch, another session in it →
    `git worktree add .claude/worktrees/<id> -b <header's branch:> <base>`, `EnterWorktree`, everything there. No
    `branch:` line → `sin-flow:shipper` names it by convention on its first `local` / `commit`. Never work on the base branch.
-   Ledger `Base: <ref> (<why>)`.
+   Then each name in the profile's `repo.local_files` that this checkout lacks and `repo.path` has → `ln -s
+   <repo.path>/<name> <name>`; never a copy, never print one. Ledger `Base: <ref> (<why>)` and `Linked: <names>`.
 5. **Sensitive paths.** The repo's `.claude/sensitive-paths.txt` (or the profile's `sensitive_paths`): match the
    plan's files against it. A hit adds `<ATTENTION>` to the commit subject and the PR title, and the PR body names
    the area and old → new. Ledger the hit. That prefix is the whole mechanism: do not stop, and do not write the
@@ -185,10 +186,8 @@ waves. Do not ask.
 
 Follow `reference/visual-check.md` (one source; do not restate it). Dispatch one `sin-flow:implementer` (`<mid>`, medium) with
 that path, every unit's `### UI checklist`, the ledger's `Ruling:` lines that changed a rendered surface, the profile's
-`ui.*` values and `## Run`, and the label `<id>`. It returns `VISUAL / RESULT / FAIL / SHOTS`; ledger it. Red → one
-fix dispatch with every `FAIL:` line, the check again, then `sin-flow:shipper` gate + `local`. Still red → those items reach the
-final message as «not checked», and the PR ships. No rendered change → ledger `Visual check: skipped — no UI
-surface`.
+`ui.*` values, `## Run` and the UI section of its `measure.doc`, and the label `<id>`. It returns `VISUAL / RESULT /
+FAIL / SHOTS`; ledger it, and act on it as § After of that file says.
 
 ## Finish — ship, then report. The PR happens before the final message.
 
@@ -204,10 +203,12 @@ surface`.
    the branch (never the base) and opens the PR; ledger its `PR:` and `MERGE:` (the user's merge method).
 3. **Mirror**. Set `status: shipped` in the plan header. Mirror on (Setup 2) → write `sin-flow-mirror plan.md` back to
    the issue copy it came from; over 60 000 bytes → the first 60 000 plus «continued in comments», the rest as comments. Append `Plan <id>: shipped <URL>` to the ledger.
-4. **Waiting plans.** No `spec:` line in the plan header → skip. Otherwise, for every plan in the spec's map with
-   `after: <this id>`: same repo → `git -C <its worktree> rebase <this branch>` (it has no commits yet), then
-   `sin-flow-handoff --cwd <its worktree> --name plan-<its id> --model <strong> sin-flow:plan <its plan path>`. This launches
-   another plan's stage, not a hand-off of this session. Non-zero exit → one line with the command, go on.
+4. **Waiting plans.** No `spec:` line in the plan header → skip. Otherwise read the spec's map table (ingest writes it
+   with an `after` column): every row whose `after` cell starts with this id waits for it. Same repo → `git -C <its
+   worktree> rebase <this branch>` (it has no commits yet); another repo → no rebase. Then `sin-flow-handoff --cwd <its
+   worktree> --name plan-<its id> --model <strong> sin-flow:plan <its plan cell, else its id>`.
+   Ledger `Waiting plans: <ids> launched`, or `none (<n> rows, 0 after <id>)`. This launches another plan's stage, not
+   a hand-off of this session. Non-zero exit → one line with the command, go on.
 5. **The final message** (below), then the post-PR phase that fits the repo — same turn, no pause.
 
 **Never ask before pushing or opening the PR** — except § Upstream mode's first public write — and blocked units do not hold it: a plan where 8 of 9 units are
@@ -249,7 +250,8 @@ merged PRs means team. **Team → the post-PR loop. Solo → the user's review.*
    checks, merges by that method (squash when empty), deletes the remote and local branch, removes the worktree,
    fast-forwards the local base without ever switching the main checkout's branch, and prints the merge commit; the
    user's copy may keep the worktree or differ otherwise. Ledger
-   `Plan <id>: merged <sha>`, `status: merged` in the plan header; one line back. Exit 3 — the PR conflicts with its
+   `Plan <id>: merged <sha>`, `status: merged` in the plan header; one line back; then § After the merge of
+   `reference/visual-check.md`. Exit 3 — the PR conflicts with its
    base → the rebase round of Team step 1, then `merge.sh` once more, no question. Any other non-zero exit → paste its
    output and stop; never re-run its lines by hand.
 
@@ -345,6 +347,9 @@ effect outside this checkout that norms say to ask about, a plan so broken every
 - Never start a whole-suite gate while an implementer is live.
 - Hand over paths, not pasted content. Do not delete the workspace.
 - A silent subagent is a `Ruling:`, never a blind re-dispatch.
+- A tool, script, hook or hand-off fails and you work around it → in the same turn append an `open` row to
+  `inbox.md` in the folder `${CLAUDE_PLUGIN_ROOT}/skills/learning/scripts/learning-dir.sh` prints: date, `exec`, the
+  error text, `file:line` when known, the workaround. A flow defect never goes into memory.
 
 ## Hand-off — three triggers, one command
 

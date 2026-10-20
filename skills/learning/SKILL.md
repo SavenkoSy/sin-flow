@@ -104,6 +104,9 @@ duplicate row gave it) and drops covered rows unless `n` is given.
   digest, and returns only the ranked modes and the proposals (≤ 300 words). The main thread keeps its context
   for Proposals and Close the loop across all stages. At most 4 consolidators in flight; the next starts when
   one returns. A stage with fewer than 3 undigested rows is skipped and named in the ledger entry.
+  The last consolidator runs **self** (section Self) when 3 or more learning runs are undigested; it reads earlier
+  learning runs only, never this one. Plan the reader caps so self keeps its consolidator and readers inside the
+  20-subagent cap.
 - A question about one item of a stage list (the final message, a hand-off) → readers answer that item and
   items 3, 4, 6, and the digest names its sessions in §0, not in the header.
 - Workspace: `LD/<YYYY-MM-DD>/flow-<stage>/` with `dumps/` and `readers/`. Same day, second run →
@@ -289,6 +292,9 @@ Chat and Boundaries hold.
 - In `inbox.md`, mark every row this run turned into a proposal: `proposed <digest>`, then `applied <date>`,
   `declined <date>` or `for author <date>` — and append one row for flow `learning`: what in this skill got in
   the way this run, or "nothing". That row is what `/sin-flow:learning self` reads.
+- The run ends with an empty `inbox.md` table. Every closed row (`applied`, `declined`, `closed`) moves to
+  `inbox-archive.md` beside it. Each row still open goes to the user one at a time, with your pick, until it is
+  closed or archived. A new row takes the next number after the highest in both files.
 - `CTX GUARD` in a tool result: let the in-flight readers finish, write the digest and the ledger entry for the sessions
   they covered, then tell the user in one line to run `/sin-flow:learning <same mode>` in a new session — rows on no
   `Sessions covered:` block are picked up there — and stop.

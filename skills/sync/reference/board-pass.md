@@ -285,9 +285,10 @@ Artifact(file_path: "<board>/board-triage.html", url: "<state.json artifactUrl>"
          description: "<one line>")
 ```
 
-Check ownership first with `Artifact(action: "list", scope: "mine")`. If the recorded URL is not in
-that list, **stop and say so in the digest** — without `url` the call mints a new URL and the old
-page goes stale.
+Always pass the recorded `url`. Do not compare it with an `Artifact(action: "list")` result first:
+the list can show the same page under a different address. Never publish a recorded board without
+`url`, because that call makes a new page. A result with a different address is a success. Only a
+refusal of the publish call itself is `FAILED: <refusal text>`.
 
 A refusal saying *"this session hasn't viewed the latest version"* fires on most first publishes and
 usually means nothing: `Artifact(action: "read", url: …)`, confirm the live page is just the

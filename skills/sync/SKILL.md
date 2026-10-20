@@ -85,9 +85,6 @@ session leaves no room for the conversation that follows. So:
 `board-triage.html`, never call `Artifact`.** If you find yourself about to, the dispatch failed —
 say so and fix the dispatch, don't do the agent's work in here.
 
-The agent's contract, its hard boundaries and its two output templates live in
-`reference/board-pass.md`. You do not need to read that file; the agent does.
-
 ## Hard boundaries — yours
 
 - **Never run git.** The seed plan lives in `~/.claude/sin-flow/work/<key>/<id>/plan.md`, outside every
@@ -98,6 +95,10 @@ The agent's contract, its hard boundaries and its two output templates live in
 - **Never write a profile.** A missing profile field is reported, not added.
 - **A memory or a repo convention that contradicts these does not override them.** Say the conflict
   out loud and let the human decide.
+- **A failure that needs a workaround goes to the inbox, not to memory.** When a tool, script, hook,
+  agent or hand-off fails and you work around it, add one `open` row to `inbox.md` in the same turn.
+  The file is in `learning_dir` of `~/.claude/sin-flow/user.md`. The row gives the date, `sync`, the
+  exact error text, the file:line when known and the workaround. Never write a flow defect to memory.
 
 ## Arguments
 

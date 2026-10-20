@@ -103,6 +103,8 @@ nothing; a non-zero exit makes `sin-flow-handoff` print the command instead. Its
    PR authors, the CI, lefthook and orchestrator files (`gate files:`), a stack fallback when no CI file exists,
    dev server, sensitive paths.
 2. Find credential files: `ls -a <main checkout> | grep -E '^\.env\.[a-z0-9_]+_readonly$'`; for each, names only.
+   Find the app's local secret files: `git -C <main checkout> ls-files --others --ignored --exclude-standard` lines
+   whose file name starts with `.env`, minus `*.example` and `*_readonly`; names only, never the content.
 3. Ask, one per turn, only what is missing:
    - base — only when `sin-flow-infer` printed `CONFLICT`;
    - "Where do read-only numbers come from: a doc path or `none`?" — always, the route is never inferred;
@@ -110,7 +112,7 @@ nothing; a non-zero exit makes `sin-flow-handoff` print the command instead. Its
    - for each `.env.<source>_readonly`: "what is the source `<source>` for?" (one sentence → `purpose`);
    - UI stack found (next/react/rails views): "check the UI with Playwright? URL?" — optional.
 4. Write `~/.claude/sin-flow/profiles/<key>/profile.md`: frontmatter with `key`, `repo.slug`, `repo.path` (the main
-   checkout, `dirname "$(git rev-parse --path-format=absolute --git-common-dir)"`, `$HOME` written as `~`), `repo.fork` (the slug of remote `fork`, only when it exists), `measure.doc`
+   checkout, `dirname "$(git rev-parse --path-format=absolute --git-common-dir)"`, `$HOME` written as `~`), `repo.fork` (the slug of remote `fork`, only when it exists), `repo.local_files` (the step 2 secret files, repo-relative; exec links them into every worktree), `measure.doc`
    and only the deviations the user gave; then `sin-flow-infer --write <key>` fills `## Inferred` and you name the gates into it
    (below); add `## Measure` in one or two lines. Write `notes.mirror: on` into the frontmatter when the Inferred notes line
    says mirrored and the team has more than one author, else `notes.mirror: off` — a default the user flips.
