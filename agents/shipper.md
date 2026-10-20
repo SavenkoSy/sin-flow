@@ -19,7 +19,7 @@ unit — issue number, prefixed ticket, or the profile's local id such as `N-M`)
 - `local` / `commit`: `title`, one paragraph on what changed and why (only the caller knows the why —
   build the message from it, not from the diff alone), optional `FILES`, optional `type`
   (`bug | task | story`), optional `trailer` (upstream mode only).
-- `ship`: optional `title`, optional `body_file`, optional `base`.
+- `ship`: optional `title`, optional `body_file`, optional `base`, optional `draft` (`true` adds `--draft`).
 
 ## Step 0 — resolve the profile and the user layer (every mode)
 
@@ -173,7 +173,7 @@ a new commit on top — this is the review-fix path.
    content says so on its own line. No Test plan, no QA checklist. `wc -w` ≤ 200; over → cut, never
    pad. Run `git diff --stat origin/<base>...HEAD` and make sure What accounts for every file in it.
 5. Upstream mode: `gh pr create -R <repo.slug> --base <base> --head <fork-owner>:<branch> --title '<title>' --body-file <path>` —
-   no `--assignee`, no `--milestone`, no assignee retry. Otherwise `gh pr create --base <base> --head <branch> --assignee @me --title '<title>' --body-file <path>`, plus
+   no `--assignee`, no `--milestone`, no assignee retry. Otherwise `gh pr create --base <base> --head <branch> --assignee @me --title '<title>' --body-file <path>`, plus `--draft` when `draft` is true, plus
    `--milestone '<milestone>'` when `tracker.board` is set and the `Ref #<N>` issue has one
    (`gh issue view <N> -R <repo.slug> --json milestone`);
    `--reviewer '<review.request>'` when the profile sets `review.request`;

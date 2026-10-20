@@ -35,7 +35,7 @@ and opens the PR without asking. You come back to a PR and a final message.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/cycle-dark.png">
-  <img src="docs/img/cycle-light.png" alt="The sin-flow cycle. Setup runs once. Ingest takes one source and you answer its questions; Sync takes a batch from a board instead. Both hand off to Plan, which never asks. Exec runs implementers in waves, then an audit, the gate, a review and the PR. On the PR, you merge; in a team repo a post-PR loop follows. Review runs the same pipeline on any PR. Ingest can also exit as a hotfix, a data-fix, an answer or an investigation. After N exec runs, Learning proposes edits; you say yes or no, and the approved edits loop back into the flow." width="880">
+  <img src="docs/img/cycle-light.png" alt="The sin-flow cycle. Setup runs once. Ingest takes one or more sources and you answer its questions; Sync takes a batch from a board instead. Both hand off to Plan, which never asks. Exec runs implementers in waves, then an audit, the gate, a review and the PR. On the PR, you merge; in a team repo a post-PR loop follows. Review runs the same pipeline on any PR. Ingest can also exit as a hotfix, a data-fix, an answer or an investigation. After N exec runs, Learning proposes edits; you say yes or no, and the approved edits loop back into the flow." width="880">
 </picture>
 
 <picture>
@@ -47,13 +47,13 @@ and opens the PR without asking. You come back to a PR and a final message.
 |---|---|
 | `/sin-flow:setup` | installs the user layer, onboards a repo, checks all layers; `add <source>` registers a read-only data source |
 | `/sin-flow:sync` | reads a GitHub Projects board, or a different tracker through a local adapter, triages it, takes a batch and hands it to plan |
-| `/sin-flow:ingest` | takes one request, verifies it in code and data, ends in one of five exits |
+| `/sin-flow:ingest` | takes one or more sources, verifies them in code and data, ends in one of five exits |
 | `/sin-flow:plan` | turns a seed into a measured plan, one block per ticket, then hands off to exec; never asks |
 | `/sin-flow:exec` | executes the plan with subagents in waves, runs the gates and a review, opens the PR without asking (upstream, from your fork, for an open-source repo) |
 | `/sin-flow:review` | reviews any PR (quick or thorough), sorts findings into reproduces / possible / invented, posts the high and medium reproducing ones as one review |
 | `/sin-flow:learning` | reads the logged runs of every stage and proposes changes to the flow |
 
-On a solo repo, exec waits for your "merge" and merges (squash by default, or your `merge` preference in `user.md`). On a team repo, it follows the PR through review.
+On a solo repo, exec waits for your "merge" and merges (squash by default, or your `merge` preference in `user.md`). It takes a draft PR out of draft before the merge. On a team repo, it follows the PR through review.
 
 ## Five exits
 

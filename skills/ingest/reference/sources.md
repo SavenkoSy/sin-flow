@@ -1,6 +1,9 @@
 # sin-flow:ingest — reading each source
 
-Exactly one source per run. Which ones the repo enables: SKILL.md § Arguments.
+One run takes one or more sources. Read each source in full before the map.
+One ticket map covers all of them (`exits.md` § Ticket map).
+More than two sources: dispatch one `sin-flow:read-only-analyst` for each source. Send all briefs in one message, as § E2 does.
+Which ones the repo enables: SKILL.md § Arguments.
 
 | Source | How it is read | Notes |
 |---|---|---|
