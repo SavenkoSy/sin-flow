@@ -13,7 +13,9 @@ jq -r --arg hand "$keep" '
     | ($c | map(select(.type=="text")) | map(.text) | join("\n")) as $t
     | ($c | map(select(.type=="tool_result")) | length) as $nr
     | if ($t | test("<command-name>")) then "\(ts) CMD: \($t | cmdname) \($t | cmdargs)"
-      elif ($t | length) > 0 and (($t | startswith("<")) | not) then "\(ts) USER: \($t | if test("^(Base directory for this skill|Another Claude session|\\[Subagent|# )") then clip(700) else . end)"
+      elif ($t | test("^(Another Claude session|\\[Subagent)")) then "\(ts) AGENT: \($t | clip(700))"
+      elif ($t | startswith("Base directory for this skill")) then "\(ts) SKILL: \($t | clip(200))"
+      elif ($t | length) > 0 and (($t | startswith("<")) | not) then "\(ts) USER: \($t | if test("^# ") then clip(700) else . end)"
       elif $nr > 0 then ts as $ts | $c[] | select(.type=="tool_result") | (.content | if type=="array" then map(.text? // "") | join("\n") else tostring end) | [splits("\n") | select(test("^(tab|session|account|config|opened|continue in this session):|^exit=|^paste into a new terminal tab|^cd .* && claude -n |exited [0-9]+: no tab opened"))] | select(length > 0) | "\($ts) RESULT: \(join(" | ") | clip(300))"
       elif ($t | length) > 0 then "\(ts) USER(sys): \($t | clip(160))"
       else empty end
