@@ -90,9 +90,22 @@ different defect in the same code, and the reopen itself may be a stale deploy.
 
 `git fetch origin`. Base = the seed header's `base:`, else the profile's base (`repo.base` or
 `## Inferred`). Record the real SHA of `origin/<base>` — the seed's recorded base is usually stale and
-the header must not lie. When a unit depends on an unmerged branch or PR, that branch is the base and
-the PR still targets the profile base; never write "start after the merge" — nothing in the chain
-waits for a merge.
+the header must not lie. When a unit depends on an unmerged branch or PR in this repo, that branch is the base.
+The unit's PR is a draft against it. GitHub moves the PR to the profile base when a person deletes that branch
+after its merge. Never write "start after the merge". The header `after:` and the spec `## Map` row give that
+branch: the `plan` cell, then its `branch:` line. Write it in the header as `base: <that branch> @ <sha>`. If
+the branch is only local, use the local ref, not `origin/`.
+
+**A unit that waits in another repo.** The `after:` row names another repo. Before Step 2, find the PR of the
+first unit with `gh pr list -R <its repo> --head <its branch> --state all --json url -q '.[0].url'`. If no PR
+exists, write one line to the user: `Plan <id> waits for the PR of <first id> in <its repo>. It stops after 24 h.`
+Then start one background Bash with `run_in_background`, and end the turn:
+`deadline=$(( $(date +%s) + 86400 )); until [ -n "$(gh pr list -R <its repo> --head <its branch> --state all --json url -q '.[0].url')" ] || [ $(date +%s) -gt $deadline ]; do sleep 60; done`.
+If the loop ends with no PR, write `Plan <id> stopped: no PR of <first id> in 24 h.` and end. If the loop ends
+with a PR, write `gh pr diff <url>` to `<work>/first-pr.diff`. Write
+`gh pr view <url> --json headRefName,headRefOid,files` to `<work>/first-pr.json`. Each Step 3 brief reads
+`first-pr.diff` in full. The base stays the profile base of this repo. The notification of the finished
+background Bash wakes the session. Then continue with Step 2.
 
 **Own checkout.** A seed whose `worktree:` line names a checkout keeps it, on its branch. Otherwise
 remove this repo's `.claude/worktrees/*` whose PR is merged or closed and whose tree is clean
@@ -100,7 +113,7 @@ remove this repo's `.claude/worktrees/*` whose PR is merged or closed and whose 
 `git worktree add .claude/worktrees/<id>-<slug> -b <branch> origin/<base>` with the branch from the
 profile's convention (`git.branch`, else `<prefix>/<type>/<id>/<slug>`) and write the path into the
 plan's `worktree:` line. When the branch already exists, note `resume` and do not recreate it. When it must
-sit on an unmerged branch or PR, `git merge --no-edit origin/<that head>` in the worktree moves it there; never
+sit on an unmerged branch or PR, `git merge --no-edit <that head>` in the worktree moves it there (`origin/<that head>` only when the branch is on `origin`); never
 `git reset --hard`. Every
 analyst and the auditor read code in that worktree, never in the shared checkout.
 

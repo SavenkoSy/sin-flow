@@ -13,7 +13,7 @@ repo: <slug>
 base: <branch> @ <real sha>
 exit: <carried from the seed: plan | epic>
 branch: <branch per profile convention> (new | resume)
-source: <carried from the seed>
+source: <carried from the seed, one line for each source>
 ticket: <carried from the seed>
 worktree: <path>
 spec: <carried from the seed, when present>

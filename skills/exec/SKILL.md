@@ -82,7 +82,8 @@ The dispatching thread is the most expensive place in the chain when it fills wi
    does not start until the user says «without measuring» — every other unit goes on; say so in one line.
 4. **Base and branch.** Base = the plan header's `base:`, else the profile's base (`repo.base` or `## Inferred`).
    A base that is not ready never stops you: when the plan depends on an unmerged branch or PR, start from that
-   branch, otherwise from a freshly fetched `origin/<base>`. The header's `worktree:` exists → work there
+   branch, otherwise from a freshly fetched `origin/<base>`. That branch stays the header `base:`, and the PR is a
+   draft against it. After the first unit merges, the target is the profile base (`repo.base` or `## Inferred`). The header's `worktree:` exists → work there
    (`EnterWorktree`). Otherwise, when this checkout is busy — a dirty tree, another branch, another session in it →
    `git worktree add .claude/worktrees/<id> -b <header's branch:> <base>`, `EnterWorktree`, everything there. No
    `branch:` line → `sin-flow:shipper` names it by convention on its first `local` / `commit`. Never work on the base branch.
@@ -201,15 +202,15 @@ FAIL / SHOTS`; ledger it, and act on it as § After of that file says.
 2. **`sin-flow:shipper` mode `ship`**: branch, base, PR title in English (the plan's, translated when it is not, with the
    tracker prefix the profile's convention gives and `<ATTENTION>` when step 5 of Setup hit), `body_file`. It pushes
    the branch (never the base) and opens the PR; ledger its `PR:` and `MERGE:` (the user's merge method).
+   If the plan header has `after:`, pass `draft: true`. Read the `repo` cell of the `after:` row in the spec. It tells
+   same repo from other repo. At this point the header `base:` is the first branch. Same repo: first start one
+   background Bash, `until git ls-remote --exit-code origin <base> >/dev/null 2>&1; do sleep 60; done`, up to 24 h.
+   Then dispatch one `sin-flow:implementer` on `<mid>`, effort low, to run `git rebase <base>` in the worktree, as
+   the rebase round does. Then run `ship`. If the remote base does not come in 24 h, do not ship. Write one line to
+   the user. The plan stays `status: verified`.
 3. **Mirror**. Set `status: shipped` in the plan header. Mirror on (Setup 2) → write `sin-flow-mirror plan.md` back to
    the issue copy it came from; over 60 000 bytes → the first 60 000 plus «continued in comments», the rest as comments. Append `Plan <id>: shipped <URL>` to the ledger.
-4. **Waiting plans.** No `spec:` line in the plan header → skip. Otherwise read the spec's map table (ingest writes it
-   with an `after` column): every row whose `after` cell starts with this id waits for it. Same repo → `git -C <its
-   worktree> rebase <this branch>` (it has no commits yet); another repo → no rebase. Then `sin-flow-handoff --cwd <its
-   worktree> --name plan-<its id> --model <strong> sin-flow:plan <its plan cell, else its id>`.
-   Ledger `Waiting plans: <ids> launched`, or `none (<n> rows, 0 after <id>)`. This launches another plan's stage, not
-   a hand-off of this session. Non-zero exit → one line with the command, go on.
-5. **The final message** (below), then the post-PR phase that fits the repo — same turn, no pause.
+4. **The final message** (below), then the post-PR phase that fits the repo — same turn, no pause.
 
 **Never ask before pushing or opening the PR** — except § Upstream mode's first public write — and blocked units do not hold it: a plan where 8 of 9 units are
 green ships those 8, and the ninth is a line under NOT AS IN THE TICKET.
@@ -245,7 +246,9 @@ merged PRs means team. **Team → the post-PR loop. Solo → the user's review.*
    strong only when the forcing list is hit), the visual check again when a rendered surface changed, then one
    `sin-flow:shipper` gate + `commit` for the batch (a new commit, never an amend); ledger `Round <k>: complete (<sha>)`.
 4. **Merge on the user's word.** "merge", or an approval that says so → `ExitWorktree` with `action: keep` if you are in
-   one, then `bash ~/.claude/sin-flow/merge.sh <PR> <MERGE from the ship block>` — the user's copy of
+   one, then run `gh pr view <PR> --json isDraft,baseRefName`. If `baseRefName` is not the profile base, stop and
+   write one line: the first unit merges first. Otherwise, if `isDraft` is `true`, run `gh pr ready <PR>`, then
+   `bash ~/.claude/sin-flow/merge.sh <PR> <MERGE from the ship block>` — the user's copy of
    `${CLAUDE_PLUGIN_ROOT}/examples/merge.sh.example` (absent → copy it there first, `chmod +x`). The example waits for
    checks, merges by that method (squash when empty), deletes the remote and local branch, removes the worktree,
    fast-forwards the local base without ever switching the main checkout's branch, and prints the merge commit; the
@@ -287,11 +290,18 @@ The PR is ready until a point reproduces. The user does not merge here; the team
    your answer.
 5. **Base watcher** — every team PR, and any PR whose base is another feature branch. Before ending the turn, start
    one background Bash (`run_in_background`): every 10 min, up to 24 h, `git fetch -q origin` and
-   `gh pr view <url> --json baseRefName,mergeStateStatus,reviews,comments`; it exits when `baseRefName` changed, the
-   state is `BEHIND` / `DIRTY`, a review or comment by anyone but the PR author and a deploy bot is new since the last
-   check, or — only when the base is another feature branch — the base has commits the branch lacks. On wake → a new
-   review or comment: step 4, then start the watcher again; otherwise the rebase round of step 1, the push, one line
-   to the user.
+   `gh pr view <url> --json baseRefName,isDraft,mergeStateStatus,reviews,comments`. For a plan with `after:`, read the
+   `repo` cell of the `after:` row in the spec. Add to each check
+   `gh pr list -R <first repo> --head <first branch> --state merged --json url -q '.[0].url'`. It exits when
+   `baseRefName` changed, the state is `BEHIND` / `DIRTY`, a review or comment by anyone but the PR author and a
+   deploy bot is new since the last check, or — only when the base is another feature branch — the base has commits
+   the branch lacks. If the plan header has `after:`, it also exits when the PR of the first unit has state
+   `MERGED`. Find that PR as in `sin-flow:plan` Step 1. On wake → a new review or comment: step 4, then start the
+   watcher again. For a draft PR whose first PR merged, in the same repo: if `baseRefName` is still the first
+   branch, run `gh pr edit <url> --base <profile base>`. Then run the rebase round of step 1 onto the profile base,
+   and push. Then, in both repo cases: run `gh pr ready <url>` and write one line to the user. Other wakes stay as
+   they are: the rebase round of step 1, the push, one line to the user. After 24 h the watcher stops. A draft
+   stays a draft for a person.
 6. **No fix is pushed unreviewed.** One batched round for every reproduced point and the user's: fix each point
    where it was flagged and in every sibling of the same pattern on the branch (the flagged query → every sibling
    query; the flagged error list → every rescue of that client) — points fixed in one place only came back three
