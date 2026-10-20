@@ -133,7 +133,8 @@ Readers cannot write files: the dispatcher saves each report to `readers/<sid8>.
 - the paths (`.txt`, `.ctx`, `.guards`, `.long.txt` — every assistant text ≥ 300 chars, unclipped;
   `.agents.tsv` — one line per subagent with its model and cost; `.errors` — every failed or denied tool call;
   `.misses`; `.ledger-paths`; `rows.tsv`) and the dump format line (`MM-DD HH:MM KIND: text`; KIND = CMD, USER,
-  USER(sys), USER(queued), ASSISTANT, TOOL, RESULT, SYSTEM);
+  USER(sys), USER(queued), AGENT (a subagent hand-back), SKILL (the skill text loaded), ASSISTANT, TOOL, RESULT,
+  SYSTEM);
 - the session's row: repo, skill, `n`, account, and where it sits in its chain (n-th of N);
 - the repo's profile path, for a question the profile answers (gates, tracker, team or solo);
 - the user's question, if any, as the last heading;
@@ -229,6 +230,8 @@ One proposal per numbered entry, each with:
 - **now** — the current text, verbatim, ≤ 6 lines;
 - **proposed** — the replacement, verbatim;
 - **evidence** — the digest section and the count it rests on, with the repos;
+- **writers** — every place that writes or repeats the thing it fixes, found by `grep`, listed; a proposal that
+  changes fewer than all names the ones it leaves and why;
 - **effect** — the run-log column or digest count that must move, which way, within how many runs of the
   stage; the next digest's Effect check reads this line;
 - **blocking?** — `no` for text, thresholds, ordering; `yes` for anything that denies a tool call, exits
@@ -251,7 +254,8 @@ Nothing is edited before the user's approval — "do it" or "go" in the launch r
 diff they have not seen.
 
 The user approves by number, or all at once — "all", "yes", "apply" or "your call", in any language, said to the
-list approve every number in it. Silence, "not now" or a question is not approval. Then:
+list approve every number in it. Silence, "not now" or a question is not approval. The ledger quotes the approving line verbatim with its HH:MM;
+no apply script runs before that line exists. Then:
 
 1. A partial approval, or a scope change in their line, is made in the copies first.
 2. `bash <abs path>/apply-user.sh`, then `apply-plugin.sh` in author mode, once each — never piecemeal edits of a live file. Denied → stop and give the user
