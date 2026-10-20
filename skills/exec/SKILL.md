@@ -167,7 +167,8 @@ waves. Do not ask.
    Check `grep -c '^diff --git' <pkg>/diff.patch` against the union of all `FILES`, then
    `cat <workspace>/global-constraints.md >> <pkg>/rules.md`.
 4. **Run** `${CLAUDE_PLUGIN_ROOT}/skills/review/reference/pipeline.md` as written, every lens as `subagent_type: sin-flow:reviewer` with the lens table's
-   model. Each reviewer returns one line — ledger it. Read `<pkg>/verdict.md` only; never open `findings/`. Render
+   model. Each reviewer returns one line — ledger it, and each `codex.sh` line too: the `CODEX · found …` stats line
+   is the per-PR record of the Codex trial. Read `<pkg>/verdict.md` only; never open `findings/`. Render
    the review file into the reviews folder (user preference) as `<key>-<branch>.md`.
 5. **Rows → one fix dispatch.** `reproduces` rows and `possible` rows of every severity go into ONE fix dispatch,
    every K block verbatim. A `possible` row is fixed the way it proposes, with a spec asserting the fixed behaviour
@@ -179,7 +180,8 @@ waves. Do not ask.
 6. **After the fix**: scoped re-review, `sin-flow:shipper` `gate` (when the fix touched code), `sin-flow:shipper` `local` (`commit` once a PR exists) — a NEW
    commit, never an amend. **Review until clean** when the profile folder has `review-team.md`: steps 3–5 again on
    the fix commits only (`build-package.sh exec <SHA= of the previous round's manifest.env> …-<round> --depth quick`)
-   — every line the fix wrote gets the lenses; code an earlier round passed is not reviewed again. Stop when verify keeps no row step 5 does not
+   — every line the fix wrote gets the lenses; code an earlier round passed is not reviewed again. These rounds
+   run without Codex: no `codex.sh` call, no Codex turns. Stop when verify keeps no row step 5 does not
    settle; at most 3 rounds; rows still open → ledger `final-review open: K<n> — <claim>`. No team file → one scoped
    re-review after the fix, no second round.
 
@@ -340,6 +342,8 @@ Shape — ≤ 15 non-blank lines from the signature to the closing line. Write i
 - **NOT AS IN THE TICKET** — only when something works differently from what the ticket or the plan asked: a
   `Ruling:` that changed behaviour, a unit that did not ship, a user's order that reversed the plan, an item left «not checked».
   One plain line each — asked → now → why.
+- The ledger has `CODEX · skipped · <reason>` → one closing line: Codex did not review this PR, and the reason in
+  plain words. It is the one review fact the message carries.
 - Solo repo only, closing lines: each screenshot (up to 3; more → the folder) as its own absolute file path on its own
   line with what it shows in a few words; then how to try the change after the merge (the page or the command), when
   HOW IT WORKS NOW does not say it; then «say "merge"».

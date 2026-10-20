@@ -1,0 +1,21 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["replies"],
+  "properties": {
+    "replies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["row", "stance", "argument", "evidence"],
+        "properties": {
+          "row": { "type": "string" },
+          "stance": { "type": "string", "enum": ["accept", "contest"] },
+          "argument": { "type": "string" },
+          "evidence": { "type": "string" }
+        }
+      }
+    }
+  }
+}

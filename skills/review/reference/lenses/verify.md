@@ -58,7 +58,8 @@ the reverse case: its shape is a premise (Reality) until TREE holds a received o
 
 1. **Load** `manifest.env`, `context.md` (`## Entry points`, `## External input`), `rules.md`,
    `files.txt`, `diff.patch` hunk headers and every `findings/*.md` (F rows and DECLINED lines).
-   Expected: quick = `all`; thorough = `code`, `fit`. Every F claim opens with its `[checklist]`;
+   Expected: quick = `all`; thorough = `code`, `fit`; in exec mode also `codex` when `findings/codex.md` exists.
+   Codex is another model, run as one more finder; its rows get the same rules as every other row. Every F claim opens with its `[checklist]`;
    the per-lens rules below apply to the rows of that checklist. A missing or unparsable file → `incomplete: <lens>` in the BLOCKING reason.
    Ignore every severity word a finder wrote. Code only under TREE — in pr mode never the checkout.
 2. **Audit DECLINED.** A finder declines for two reasons only, each line tagged: `pre-existing`

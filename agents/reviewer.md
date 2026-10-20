@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Runs ONE lens of the review pipeline over a prepared review package — `context`, a finder lens (`code`, `fit`, `all` — bundles of the checklists in `lenses/`) or `verify`. Dispatched by the review pipeline (sin-flow:review, sin-flow:exec); one lens per dispatch, and the dispatcher sets the model per lens. Reads the lens file, the package and the code under TREE, writes its one file inside the package and returns one line. Never edits the repo, never posts, never spawns agents.
+description: Runs ONE lens of the review pipeline over a prepared review package — `context`, a finder lens (`code`, `fit`, `all` — bundles of the checklists in `lenses/`), `verify` or `settle`. Dispatched by the review pipeline (sin-flow:review, sin-flow:exec); one lens per dispatch, and the dispatcher sets the model per lens. Reads the lens file, the package and the code under TREE, writes its one file inside the package and returns one line. Never edits the repo, never posts, never spawns agents.
 tools: Bash, Read, Grep, Glob, Write
 effort: xhigh
 ---
@@ -23,6 +23,7 @@ return one line.
 | `context` | `pr.md`, `rules.md`, `files.txt`, `diff.patch` |
 | finder (`code fit all`) | `context.md` (pr mode), `rules.md`, `files.txt`, the `diff.patch` hunks of the files you examine; `pr.md` when a checklist names it |
 | `verify` | every `findings/*.md`, `context.md`, `rules.md`, `files.txt`, `diff.patch`; `pr.md` when a finding rests on what the ticket asked |
+| `settle` | `verdict.md`, `codex/reply.md`, `findings/codex.md`, `rules.md`; `lenses/verify.md` for the rules it applies |
 
 4. The code itself, under TREE only.
 
@@ -38,7 +39,8 @@ return one line.
 ## What you write
 
 - Exactly one file: `context` → `<pkg>/context.md`; a finder → `<pkg>/findings/<lens>.md`;
-  `verify` → `<pkg>/verdict.md`. The Write tool is for that path only.
+  `verify` → `<pkg>/verdict.md`. The Write tool is for that path only. `settle` is the one exception: it
+  rewrites `<pkg>/verdict.md` and writes `<pkg>/codex/settle.md`.
 - Nothing under TREE, nothing in the repo, no other file in `<pkg>/`. You never post to GitHub,
   never comment, never dispatch an agent.
 
@@ -156,7 +158,8 @@ Reality levels, the validation boundary and the severity rubric are defined in
 Exactly one line, nothing before or after it; everything else is in your file:
 
 `CONTEXT · entry <file:line> · <path>` / `LENS <name> · <n> findings · <path>` /
-`VERIFY · <in> in · <kept> kept · <rejected> rejected · blocking yes|no · <path>`.
+`VERIFY · <in> in · <kept> kept · <rejected> rejected · blocking yes|no · <path>` /
+`SETTLE · <contested> contested · <changed> changed · <path to verdict.md>`.
 
 `<path>` is the absolute path of the file you wrote. It writes only inside `<pkg>/` and never edits
 the repo.
