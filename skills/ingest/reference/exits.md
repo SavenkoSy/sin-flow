@@ -7,10 +7,10 @@ Read only the section for the chosen exit. Paths: `<work>` = `~/.claude/sin-flow
 
 ## Ticket map (plan, hotfix, epic)
 
-One unit by default — fewer, bigger. Split only when the
+One unit by default — fewer, bigger. Several sources are not several units. They become one unit, unless the split rule below applies. Split only when the
 parts live in different repos, or one part must merge before another can start. Show the map — per
 unit: title, repo, type, `after: <id>` for the second case — and lock it with one question; the
-answer goes into `## Decisions`. Then run everything below once per unit, in map order. A unit in
+answer goes into `## Decisions`. Same repo: the unit starts at once on the branch of `<id>`. Different repo: the unit waits for the PR of `<id>` in its own plan tab (`sin-flow:plan` Step 1). Then run everything below once per unit, in map order. A unit in
 another repo takes everything from that repo's profile.
 
 ## Tracker unit
@@ -49,7 +49,7 @@ origin <base>`, `git rev-list --count origin/<base>..HEAD` is 0 — otherwise as
 second one. Then in the cwd: `git merge --ff-only origin/<base>`, `git branch -m <branch>`. Only the first
 unit takes it; every other unit gets a new one as below.
 
-**From the primary checkout, and for every further unit, a new worktree.** In Orca it is a new Orca workspace, so its tab is visible:
+**From the primary checkout, and for every further unit, a new worktree.** A unit with `after:` in the same repo follows the paragraph below the Outside Orca block. In Orca it is a new Orca workspace, so its tab is visible:
 
 ```
 git -C <repo> fetch -q origin <base>
@@ -69,6 +69,8 @@ git -C <repo> fetch -q origin <base>
 git -C <repo> worktree add .claude/worktrees/<id>-<slug> -b <branch> origin/<base>
 ```
 
+For a unit with `after: <id>` in the same repo, cut the worktree from the local branch of `<id>`. Outside Orca: `git -C <repo> worktree add .claude/worktrees/<id>-<slug> -b <branch> <branch of the first unit>`. In Orca: `--base-branch <branch of the first unit>`. Do not fetch. That branch has no copy on `origin` yet. The seed `base:` names that branch.
+
 Opening a tab in that worktree is the hand-off's job (`sin-flow-handoff --cwd <wt>`), never this step's.
 
 ## Seed (plan, epic)
@@ -79,11 +81,11 @@ the header lines the next stage reads verbatim:
 ```
 profile: <key>
 repo: <slug>
-base: <base>
+base: <base, or the local branch of the first unit for a same-repo after: unit>
 exit: plan | hotfix | epic
 status: ready-for-dev
 branch: <the branch the worktree was made on>
-source: <issue URL | permalink | Rollbar item | "words" | screenshot path>
+source: <issue URL | permalink | Rollbar item | "words" | screenshot path>   (one line for each source, in read order)
 ticket: <id>
 worktree: <absolute worktree path>
 spec: <absolute spec path>      (only when the map has more than one unit)
@@ -113,7 +115,7 @@ Sections, in this order; one with nothing to say carries one line saying so:
 
 **More than one unit → one spec**, `~/.claude/sin-flow/work/<key>/<first id>/spec.md`: a `## Map` table with
 exactly the columns `| id | repo | title | worktree | plan | after |`, one row per unit, then the decisions every
-unit shares. The `after` cell holds one bare id (`gh-12`) or `—`; `sin-flow:exec` matches that cell. No parent
+unit shares. The `after` cell holds one bare id (`gh-12`) or `—`; `sin-flow:plan` and `sin-flow:exec` match that cell. No parent
 issue on GitHub.
 
 ## Mirror to the issue
@@ -138,8 +140,8 @@ code cited as a permalink at the base SHA, a local source or evidence file summa
 sin-flow-handoff --cwd <wt> --name <stage>-<id> <sin-flow:plan | sin-flow:exec> <work>/plan.md
 ```
 
-`plan` and `epic` → `sin-flow:plan`; `hotfix` → `sin-flow:exec`. One tab per unit without `after:`, all in
-this turn; a unit with `after: <id>` is launched by that unit's `sin-flow:exec` once its PR is open.
+`plan` and `epic` → `sin-flow:plan`; `hotfix` → `sin-flow:exec`. Open one tab for each unit, all in
+this turn, with or without `after:`. A unit with `after:` waits by the rules of `sin-flow:plan` Step 1. No stage launches another unit later.
 
 **Read the output and the exit code.** `0` — handed off: `opened: …` (a new tab, from an adapter or
 the user's own script), `paste into a new terminal tab …` or `continue in this session: …` (the user

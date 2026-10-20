@@ -1,9 +1,9 @@
 ---
 name: ingest
-description: 'Stage 0 of the flow (sin-flow:ingest → sin-flow:plan → sin-flow:exec) for one request in any repo with a flow profile. Takes one source — an issue URL, `GH-N`, a Slack permalink (read only), a Rollbar item, the request in plain words, a screenshot, a log excerpt, a draft path, or `epic N` / a list of `N-M` story ids — reads it in full, verifies the claim in code, measures it read-only through the profile''s measurement route and sources, explains the mechanism in fixed headings WHAT HAPPENED · EVIDENCE · WHAT WE DO, locks decisions one question per turn, and ends in exactly one exit the repo''s channels enable: plan (seed → sin-flow:plan tab), hotfix (one-block plan → sin-flow:exec tab, PR without asking), data-fix (a support recipe a human runs), answer (a reply draft) or investigation (a written finding). Notes live in ~/.claude/sin-flow/work/<key>/<id>/, never in the repo. The one stage where the user is in the loop. Use when invoked as `/sin-flow:ingest [key] <source>` or when the user says "there''s a bug", "look into this ticket", "what is this ticket", "support writes", "look at the thread", "Rollbar is spamming", "ours or theirs?", "look at why", "make a fix", "take epic N into work".'
+description: 'Stage 0 of the flow (sin-flow:ingest → sin-flow:plan → sin-flow:exec) for one request or a few related ones in any repo with a flow profile. Takes one or more sources — an issue URL, `GH-N`, a Slack permalink (read only), a Rollbar item, the request in plain words, a screenshot, a log excerpt, a draft path, or `epic N` / a list of `N-M` story ids — reads it in full, verifies the claim in code, measures it read-only through the profile''s measurement route and sources, explains the mechanism in fixed headings WHAT HAPPENED · EVIDENCE · WHAT WE DO, locks decisions one question per turn, and ends in exactly one exit the repo''s channels enable: plan (seed → sin-flow:plan tab), hotfix (one-block plan → sin-flow:exec tab, PR without asking), data-fix (a support recipe a human runs), answer (a reply draft) or investigation (a written finding). Notes live in ~/.claude/sin-flow/work/<key>/<id>/, never in the repo. The one stage where the user is in the loop. Use when invoked as `/sin-flow:ingest [key] <source>` or when the user says "there''s a bug", "look into this ticket", "what is this ticket", "support writes", "look at the thread", "Rollbar is spamming", "ours or theirs?", "look at why", "make a fix", "take epic N into work".'
 ---
 
-# sin-flow:ingest — the front for one request
+# sin-flow:ingest — the front for one request or a few related ones
 
 Read, verify, measure, explain, lock — and only then pick the exit. Every downstream stage runs
 unattended, so a product question not closed here becomes a `Ruling:` an agent takes on the user's
@@ -58,6 +58,8 @@ Chat with the user in `chat_language` from `~/.claude/sin-flow/user.md`, or in t
 /sin-flow:ingest [key] <issue-url | GH-N | slack-permalink | rollbar-url | "words" | screenshot | log | draft | epic N | N-M | <repo-url> "<words>" …>
 ```
 
+Repeat form: `/sin-flow:ingest [key] <source> [<source> …]`. Sources can be in different repos.
+
 **Start check, silent.** Run `sin-flow-profile validate` (≈ 1 s): profile found, required keys,
 `gh auth status`, `work/` present. All green prints nothing and you go on. Otherwise:
 
@@ -71,7 +73,7 @@ Chat with the user in `chat_language` from `~/.claude/sin-flow/user.md`, or in t
 `key` is optional: without it the profile is resolved from `git remote get-url origin` of the main
 checkout (the parent of `git rev-parse --path-format=absolute --git-common-dir`), so any worktree
 maps to its repo. A GitHub issue or repo URL (or `owner/repo`) in the source decides the key — the profile whose `repo.slug` is that slug (`grep -lE "^repo\.slug:[[:space:]]*\"?<slug>\"?([[:space:]]|$)" ~/.claude/sin-flow/profiles/*/profile.md`, the match of `agents/shipper.md:30`); none → setup's onboard with that URL (§ Onboard step 0) — only when the cwd's
-repo has no profile, or the slug is neither its `repo.slug` nor in that profile's `consumers`; a consumer slug keeps the cwd's key. When the cwd is in no repo with a profile and no key or URL was given, ask in one line —
+repo has no profile, or the slug is neither its `repo.slug` nor in that profile's `consumers`; a consumer slug keeps the cwd's key. With several sources, the first source decides the key. A source in another repo with a profile becomes a unit of that repo (`exits.md` § Ticket map). When the cwd is in no repo with a profile and no key or URL was given, ask in one line —
 never guess. A problem in a tool with no URL and no matching cwd: ask in one line which repo; never guess. Read `profile.md` once (`sin-flow-profile <key> dir`); hand an agent only the section it needs.
 Resolve `<mid>` and `<strong>` once for the resolved key's checkout (`sin-flow-profile <key> get repo.path`, `~` expanded; none → the cwd): `sin-flow-profile model mid <checkout>`, `sin-flow-profile model strong <checkout>`.
 
@@ -96,7 +98,7 @@ enable it; then the nearest enabled one is used. How each source is read: `refer
 
 Every run owns `~/.claude/sin-flow/work/<key>/<id>/` (`mkdir -p`). `<id>` is `gh-<N>` when issues are
 the tracker, `<N-M>` or `epic-<N>` when `tracker.id: N-M`, `<slug>` when `tracker.kind: local` and
-no id applies. Before the issue exists, `ingest-<slug>` stands in and is renamed once it does. The
+no id applies. With several units, the first unit's id names the run folder and the spec. Before the issue exists, `ingest-<slug>` stands in and is renamed once it does. The
 folder holds `plan.md`, `evidence/`, `reply.md`, `investigation.md` — nothing of it is ever
 `git add`ed. Status of a unit without a remote tracker lives in `status:` at the head of its
 `plan.md`, nowhere else.
@@ -275,13 +277,13 @@ Close every run with this block, whatever the exit. A run that cannot fill `verd
 `hand-off` is not finished.
 
 ```
-source:    <issue URL | GH-N | permalink | Rollbar item | "words" | screenshot | epic N | N-M …>
+source:    <issue URL | GH-N | permalink | Rollbar item | "words" | screenshot | epic N | N-M …>   (one value for each source)
 profile:   <key>   repo: <slug>   base: <branch> @ <sha>
 verdict:   plan | hotfix | data-fix | answer | investigation     (<one-line reason>, <date>)
 evidence:  <path>  |  not measured — <reason>  |  skipped — <reason>
 notes:     ~/.claude/sin-flow/work/<key>/<id>/ (<files written>)
 ticket:    <id> (created | reused | local) [, <id> after <id> …]  |  none
 worktree:  <path> (made | user's row reused)  |  n/a
-hand-off:  <stage> tab opened: <name> (board: In progress | not moved) | command given | waits for <id> | failed: exit <code>, command given, inbox #<n>  |  human: <who>  |  user posts  |  none
+hand-off:  <stage> tab opened: <name> (board: In progress | not moved) | command given | on <id>'s branch (same repo) | waits for the PR of <id> (other repo) | failed: exit <code>, command given, inbox #<n>  |  human: <who>  |  user posts  |  none
 open:      <count> open decisions  |  RULING_NEEDED: measure before exec  |  release gap: <named>  |  nothing
 ```
