@@ -44,4 +44,22 @@ expect_eq "case 5 stdout" "ok" "$out"
 expect_eq "case 5 exit" "0" "$status"
 [ ! -e "$HOME/.claude/state/sessions" ] || [ -z "$(ls "$HOME/.claude/state/sessions")" ] || fail "case 5: state file written"
 
-echo "ok: 5 cases"
+fresh_home
+out=$(printf '%s' 'not json' | sh "$wrapper")
+expect_eq "case 6" "Claude" "$out"
+
+fresh_home
+stdin=$(jq -cn --arg tp "$HOME/projects/cfg/projects/p/s7.jsonl" '{session_id:"s7",transcript_path:$tp}')
+printf '%s' "$stdin" | sh "$wrapper" true
+expect_eq "case 7" "$HOME/projects/cfg" "$(jq -r '.config_home' "$HOME/.claude/state/sessions/s7.json")"
+
+fresh_home
+out=$(printf '%s' '{"session_id":"s8"}' | sh "$wrapper" 'cat <(echo y)')
+expect_eq "case 8" "y" "$out"
+
+fresh_home
+out=$(printf '%s' '{"session_id":"s9","context_window":"x"}' | sh "$wrapper" 'echo ran')
+expect_eq "case 9 stdout" "ran" "$out"
+expect_eq "case 9 leftovers" "" "$(find "$HOME/.claude/state/sessions" -name '*.json*')"
+
+echo "ok: 9 cases"

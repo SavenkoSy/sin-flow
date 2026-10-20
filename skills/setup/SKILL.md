@@ -50,7 +50,7 @@ Chat with the user in `chat_language` from `~/.claude/sin-flow/user.md`, or in t
    - Built-in → `limit_guard: off`. No settings change.
    - sin-flow guard → `limit_guard: on`, then the wrapper install:
      1. `S=${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json`, `cur=$(jq -r '.statusLine.command // ""' "$S")`.
-     2. When `cur` contains `sin-flow-statusline`, copy the wrapper again (item 5) and stop.
+     2. When `cur` contains `sin-flow-statusline`, run `mkdir -p ~/.claude/sin-flow/bin`, copy `${CLAUDE_PLUGIN_ROOT}/bin/sin-flow-statusline` there and `chmod +x`. Do not change `S`. Stop.
      3. Check each word of `cur` that names a file after `~` expansion. When that file contains both `state/sessions`
         and `limit_5h`, the user's own status line writes the state file. Then leave `S` alone and say so in one line.
      4. Else show the new command and ask "yes?". When `cur` is empty, the new command is
@@ -58,8 +58,9 @@ Chat with the user in `chat_language` from `~/.claude/sin-flow/user.md`, or in t
         `sh ~/.claude/sin-flow/bin/sin-flow-statusline '<cur, each ' as '\''>'`.
      5. On a yes: `mkdir -p ~/.claude/sin-flow/bin`, copy `${CLAUDE_PLUGIN_ROOT}/bin/sin-flow-statusline` there,
         `chmod +x`. `mkdir -p ~/.claude/sin-flow/backups/<YYYY-MM-DD>`, then copy `S` to
-        `~/.claude/sin-flow/backups/<YYYY-MM-DD>/settings.json`. Write
-        `jq --arg c "<new>" '.statusLine = ((.statusLine // {}) + {type: "command", command: $c})' "$S"` to `S.tmp`,
+        `~/.claude/sin-flow/backups/<YYYY-MM-DD>/settings.json`. Set
+        `new` as a shell variable in the same Bash call, then write
+        `jq --arg c "$new" '.statusLine = ((.statusLine // {}) + {type: "command", command: $c})' "$S"` to `S.tmp`,
         check it with `jq empty`, then `mv` it over `S`.
      6. On a no: `limit_guard: off`, and one line that the guard needs the wrapper.
 
@@ -94,7 +95,7 @@ an absent one keeps its default:
 | `after_review` | `new-commit` | how review fixes land on an open PR: a new commit on top |
 | `branch_prefix` | `""` | first segment of the convention branch `<prefix>/<type>/<id>/<slug>`; empty → no segment |
 | `context_guard` | `40` | percent of the 1M-token context window at which plan, exec, ingest, sync, review and learning hand off or stop; `CTX_GUARD_THRESHOLD` overrides it for one session |
-| `limit_guard` | `off` | `on`: the LIMIT GUARD warns a session at 90 % of the 5-hour or 98 % of the 7-day limit, from the state file that the status line wrapper writes. `off`: only the Claude Code auto-continue. Absent: the guard reads the state file when a status line writes it |
+| `limit_guard` | the guard reads the state file when a status line writes it | `on`: the LIMIT GUARD warns a session at 90 % of the 5-hour or 98 % of the 7-day limit, from the state file that the status line wrapper writes. `off`: only the Claude Code auto-continue. Setup writes `off` when the user keeps the built-in |
 | `models.strong` | `opus` | plan, exec and learning sessions, every hand-off, the review lenses on the strong tier, exec's fix round 3. One of `opus`, `sonnet`, `haiku`, `fable` |
 | `models.mid` | `sonnet` | read-only analysts, implementers, shipper, review-poster, the review lenses on the mid tier |
 | `models.cheap` | `haiku` | the board agent |
