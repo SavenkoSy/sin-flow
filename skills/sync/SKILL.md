@@ -87,7 +87,7 @@ say so and fix the dispatch, don't do the agent's work in here.
 
 ## Hard boundaries — yours
 
-- **Never run git.** The seed plan lives in `~/.claude/sin-flow/work/<key>/<id>/plan.md`, outside every
+- **Never run git** except the worktree step of §6. The seed plan lives in `~/.claude/sin-flow/work/<key>/<id>/plan.md`, outside every
   repo, and is never committed: it is an agent note (see also the user's own rules, if any).
 - **Never open, retitle or comment on an issue.** A block reason or a disposition is the human's.
 - **Never move a ticket to any status except phase 2's `In progress`, and only when `tracker.write.status` is on.**
@@ -323,14 +323,20 @@ the launch is not.
 
 **The next stage never inherits this session's model.** `sin-flow:plan` runs on `<strong>`: `sin-flow-handoff` resolves it from `--cwd`; with `--cwd` omitted, add `--model <strong>` from `sin-flow-profile model strong`.
 
+**Worktree first.** A taken batch is an ingest from the board, so it gets its worktree the same way:
+the "From the primary checkout" block of `${CLAUDE_PLUGIN_ROOT}/skills/ingest/reference/exits.md`, with
+`<repo>` the checkout below, `<id>` the seed's folder name and `<slug>` kebab-case from the batch name. In Orca
+that is an Orca workspace, so the plan and exec tabs show in its own row. Write `worktree: <path>` into the
+seed header; `sin-flow:plan` keeps that checkout. No checkout below → skip this step; plan creates the worktree.
+
 ```
-sin-flow-handoff [--cwd <checkout>] --name plan-<id> sin-flow:plan <absolute seed path>
+sin-flow-handoff [--cwd <worktree>] --name plan-<id> sin-flow:plan <absolute seed path>
 ```
 
-`<id>` is the seed's folder name (`batch-<N>` or `gh-<N>`). `--cwd` is `sin-flow-profile <key> get repo.path`
+`<id>` is the seed's folder name (`batch-<N>` or `gh-<N>`). The checkout is `sin-flow-profile <key> get repo.path`
 with `~` expanded; missing → the main checkout of this session's cwd when the `resolve` line says `cwd profile: <key>`
-(its `repo.slug` matches): `dirname "$(git rev-parse --path-format=absolute --git-common-dir)"`; neither → omit it —
-`sin-flow:plan` resolves the profile from the seed's `profile:` line.
+(its `repo.slug` matches): `dirname "$(git rev-parse --path-format=absolute --git-common-dir)"`; neither → omit
+`--cwd` — `sin-flow:plan` resolves the profile from the seed's `profile:` line.
 
 **Read the output and the exit code.** `opened: …` — planning runs in a new tab; never start a second one.
 `paste into a new terminal tab …` — no tab: relay the printed command in one line.
