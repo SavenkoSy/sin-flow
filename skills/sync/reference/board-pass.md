@@ -383,8 +383,8 @@ ticket: <prefix><n>[, <prefix><n> …]
 taken: <YYYY-MM-DD> by <owner> · base <sha>
 ```
 
-`<board URL>` is `https://github.com/orgs/<org>/projects/<number>`. No `worktree:` line —
-`sin-flow:plan` creates the worktree.
+`<board URL>` is `https://github.com/orgs/<org>/projects/<number>`. No `worktree:` line here —
+`sin-flow:sync` §6 adds it after the take.
 
 **Three sections, in this order, and no others** — never an optional heading. The optional sections
 (`## Problem`, `## Root cause (measured)`, `## Evidence`, `## Decisions`, `## Open decisions`,
