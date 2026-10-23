@@ -107,7 +107,8 @@ undigested exec runs in the log, a SessionEnd hook opens `/sin-flow:learning all
 
 Your preferences are the plugin options. Set them in `/plugin configure`, in `/config`, or with
 `claude plugin configure <id> --values-stdin`. `sin-flow-profile user <key>` prints the value the flow uses. An older
-`~/.claude/sin-flow/user.md` with frontmatter keys moves there with `sin-flow-profile migrate-user`.
+`~/.claude/sin-flow/user.md` with frontmatter keys moves there at the next session start. The free notes stay in
+`user.md`, and a backup goes to `~/.claude/sin-flow/backups/<date>/`. `sin-flow-profile migrate-user` does the same by hand.
 
 Everything else of yours lives in `~/.claude/sin-flow/`:
 
