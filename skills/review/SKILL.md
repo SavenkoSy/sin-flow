@@ -12,7 +12,7 @@ argument-hint: "<PR number|url> [quick|thorough] [--at <sha>] [--base <sha>] | p
 /sin-flow:review recheck <PR number|url>
 ```
 
-Chat with the user in `chat_language` from `~/.claude/sin-flow/user.md`, or in the language the user writes in when it is absent. Headings and fixed phrases defined here are rendered in that language. Files, commits, PRs and issues are always English.
+Chat with the user in the `chat_language` option (`sin-flow-profile user chat_language`), or in the language the user writes in when it is absent. Headings and fixed phrases defined here are rendered in that language. Files, commits, PRs and issues are always English.
 
 `REF=${CLAUDE_PLUGIN_ROOT}/skills/review/reference` — the package script, the pipeline, the lenses.
 
@@ -34,7 +34,7 @@ Inside the product repo that owns the PR. `git rev-parse --show-toplevel` must s
 not, say in one line which repo the review needs and stop. `KEY=$(sin-flow-profile key)`; no profile →
 one line "no profile for this repo — running setup", run `sin-flow:setup`'s onboard in this session, then continue. Resolve `<strong>` and `<mid>` once: `sin-flow-profile model strong`, `sin-flow-profile model mid`.
 
-User preferences: `~/.claude/sin-flow/user.md`. `REVIEWS` = its `reviews_dir` (default
+User preferences are the plugin options, read with `sin-flow-profile user <key>`. `REVIEWS` = the `reviews_dir` option (default
 `~/.claude/sin-flow/reviews`). The verdict tokens `reproduces` / `possible` / `invented` and the
 review file headings are format: they stay English, in chat too.
 

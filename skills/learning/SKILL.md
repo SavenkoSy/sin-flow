@@ -1,11 +1,11 @@
 ---
 name: learning
-description: 'Self-review stage of the flow (sin-flow:setup, sin-flow:sync, sin-flow:ingest, sin-flow:plan, sin-flow:exec, sin-flow:review) for every repo with a flow profile at once. One procedure over one run log, run outside any product repo. `self` reviews sin-flow:learning itself. Reads ~/.claude/sin-flow/runs.tsv filtered by repo key and stage, finds each transcript by session id under every ~/.claude/projects/*/ folder, dumps it with the scripts beside this file, and fans the reading out to read-only subagents (one per transcript). Consolidates one digest per stage: timeline, hand-off events, ranked failure modes tagged measured/read/inferred and split by repo, verbatim user quotes. Ends in diff proposals the user approves before anything is edited (with a backup). In author mode (the plugin loaded from the user''s own git checkout) proposals may change the plugin itself, and the applied changes ship as one PR. In user mode they change only user.md and the repo profiles, and flow-layer ideas are written down for the plugin author. `--dry-run` lists the selected runs and stops. Use when invoked as `/sin-flow:learning [--dry-run] [repo-key|all|self] [stage] [n] [question]`, when the launch hook opens it because undigested exec runs have piled up, or when the user asks why a flow session behaved as it did: "why did exec-N not hand off", "what went wrong in plan-N", "review the flow runs".'
+description: 'Self-review stage of the flow (sin-flow:setup, sin-flow:sync, sin-flow:ingest, sin-flow:plan, sin-flow:exec, sin-flow:review) for every repo with a flow profile at once. One procedure over one run log, run outside any product repo. `self` reviews sin-flow:learning itself. Reads ~/.claude/sin-flow/runs.tsv filtered by repo key and stage, finds each transcript by session id under every ~/.claude/projects/*/ folder, dumps it with the scripts beside this file, and fans the reading out to read-only subagents (one per transcript). Consolidates one digest per stage: timeline, hand-off events, ranked failure modes tagged measured/read/inferred and split by repo, verbatim user quotes. Ends in diff proposals the user approves before anything is edited (with a backup). In author mode (the plugin loaded from the user''s own git checkout) proposals may change the plugin itself, and the applied changes ship as one PR. In user mode they change only the plugin options and the repo profiles, and flow-layer ideas are written down for the plugin author. `--dry-run` lists the selected runs and stops. Use when invoked as `/sin-flow:learning [--dry-run] [repo-key|all|self] [stage] [n] [question]`, when the launch hook opens it because undigested exec runs have piled up, or when the user asks why a flow session behaved as it did: "why did exec-N not hand off", "what went wrong in plan-N", "review the flow runs".'
 ---
 
 # sin-flow:learning
 
-Chat with the user in `chat_language` from `~/.claude/sin-flow/user.md`. When it is absent, use the language the user
+Chat with the user in the `chat_language` option (`sin-flow-profile user chat_language`). When it is absent, use the language the user
 writes in. Headings and fixed phrases are rendered in that language. Files are English.
 
 ## The golden rule
@@ -21,7 +21,7 @@ nothing. This stage measures the flow on two numbers:
   did not reproduce counts in neither number, and no lens is tuned to raise it. A skill line that a session broke at
   no cost to either number is not a finding. It is at most a Deletions candidate.
 
-Every finding names its **layer** first, by the rules in `${CLAUDE_PLUGIN_ROOT}/ARCHITECTURE.md`. The user's files (`user.md`, their copies of `examples/`, `profiles/<key>/`)
+Every finding names its **layer** first, by the rules in `${CLAUDE_PLUGIN_ROOT}/ARCHITECTURE.md`. The user's settings (the sin-flow plugin options, their copies of `examples/`, `profiles/<key>/`)
 hold how the flow works for this user. The plugin holds the mechanism and the defaults that every user starts from. A
 habit of one user never becomes a plugin rule. Only in author mode does a finding also ask whether the mechanism
 itself failed. Then it goes to the plugin, in its own apply script. The repo is a column, not a separate flow. A
@@ -45,8 +45,8 @@ problem.
 
 ## Inputs
 
-`S=${CLAUDE_PLUGIN_ROOT}/skills/learning/scripts`. `LD` is the folder that `$S/learning-dir.sh` prints (`learning_dir`
-from `user.md`, default `~/.claude/sin-flow/learning`). Every file of this stage lives there, never in the plugin.
+`S=${CLAUDE_PLUGIN_ROOT}/skills/learning/scripts`. `LD` is the folder that `$S/learning-dir.sh` prints (the `learning_dir`
+option, default `~/.claude/sin-flow/learning`). Every file of this stage lives there, never in the plugin.
 
 | what | where |
 |---|---|
@@ -56,8 +56,8 @@ from `user.md`, default `~/.claude/sin-flow/learning`). Every file of this stage
 | status-line state | `~/.claude/state/sessions/<session_id>.json`: `used_pct`, `limit_5h`, `config_home`, when a status line writes it (the sin-flow wrapper with `limit_guard: on`, or the user's own) |
 | repo profiles | `~/.claude/sin-flow/profiles/<key>/profile.md` |
 | stages under review | `${CLAUDE_PLUGIN_ROOT}/skills/<stage>/SKILL.md`. A stage with no sin-flow:* skill yet is read against the skill in its `skill` column, and its proposals target the sin-flow:* skill that replaces it |
-| agents and hooks | `${CLAUDE_PLUGIN_ROOT}/agents/{shipper,implementer,reviewer,read-only-analyst}.md`, `${CLAUDE_PLUGIN_ROOT}/hooks/scripts/{stage,work-commit,ctx-guard,exec-guard}.sh`, the run-log hook (`grep -l 'runs.tsv' ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/*.sh`), `sin-flow-handoff` and the launcher that `handoff:` in `user.md` names |
-| review pipeline | `${CLAUDE_PLUGIN_ROOT}/skills/review/reference/{pipeline.md,lenses/,sources.lock.tsv}`, `~/.claude/sin-flow/profiles/<key>/review-team.md`, review files in `reviews_dir` from `user.md` (default `~/.claude/sin-flow/reviews/`) |
+| agents and hooks | `${CLAUDE_PLUGIN_ROOT}/agents/{shipper,implementer,reviewer,read-only-analyst}.md`, `${CLAUDE_PLUGIN_ROOT}/hooks/scripts/{stage,work-commit,ctx-guard,exec-guard}.sh`, the run-log hook (`grep -l 'runs.tsv' ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/*.sh`), `sin-flow-handoff` and the launcher that the `handoff` option names |
+| review pipeline | `${CLAUDE_PLUGIN_ROOT}/skills/review/reference/{pipeline.md,lenses/,sources.lock.tsv}`, `~/.claude/sin-flow/profiles/<key>/review-team.md`, review files in the `reviews_dir` option (default `~/.claude/sin-flow/reviews/`) |
 | ideas from outside the runs | `LD/inbox.md`. Sessions outside learning never edit a skill. They append a row here |
 
 ## Setup: pick the rows
@@ -151,9 +151,9 @@ Body:
 - **author**: `$S/mode.sh` prints the mode once per run. Author means the plugin is loaded in place from a git
   checkout the user can commit to. `${CLAUDE_PLUGIN_ROOT}` is not under a `plugins/cache/` folder and is inside a git
   work tree with a writable git dir. Proposals may target `skills/`, `agents/`, `hooks/` and `bin/` of that checkout,
-  as well as `user.md` and `profiles/<key>/`.
+  as well as the plugin options and `profiles/<key>/`.
 - **user**: the plugin runs from the plugin cache, which an update overwrites. Proposals are applied only to
-  `~/.claude/sin-flow/user.md` and `~/.claude/sin-flow/profiles/<key>/`. A proposal with a target in the flow layer is
+  the plugin options (`claude plugin configure <id> --values-stdin`) and `~/.claude/sin-flow/profiles/<key>/`. A proposal with a target in the flow layer is
   never applied. It goes to `LD/proposals-for-author.md` as one block that the author can act on without the digest:
   `## <YYYY-MM-DD> <target below the plugin root>`, the version (`basename ${CLAUDE_PLUGIN_ROOT}`), the problem in the
   two numbers, counts with their filter set and repos, **now**, **proposed**, **effect**. They need no approval.
@@ -175,14 +175,14 @@ that stage was carried within those 3 digests. It is the whole skill from scratc
 it as a whole.
 
 One proposal per numbered entry, each with:
-- **layer**: `user` (`user.md`, the user's copy of an `examples/` script), `profile` (`profiles/<key>/`) or `plugin`
+- **layer**: `user` (a plugin option, the user's copy of an `examples/` script), `profile` (`profiles/<key>/`) or `plugin`
   (the mechanism, for every user). One user's habit or preference is `user` or `profile` in every mode. A `plugin` proposal holds no word
   that only one repo uses. Read it against each repo key in its evidence and one key that is not there. A `plugin`
-  proposal for one tool or one practice also names the `user.md` or profile key that turns it on, and says what a
+  proposal for one tool or one practice also names the plugin option or profile key that turns it on, and says what a
   user with no such key gets.
 - **target**: a `file:line` in `${CLAUDE_PLUGIN_ROOT}/skills/<stage>/SKILL.md`,
   `${CLAUDE_PLUGIN_ROOT}/agents/<name>.md` or `${CLAUDE_PLUGIN_ROOT}/skills/review/reference/lenses/<lens>.md`, a hook
-  path, `${CLAUDE_PLUGIN_ROOT}/bin/…`, `~/.claude/sin-flow/profiles/<key>/profile.md`, `~/.claude/sin-flow/user.md`,
+  path, `${CLAUDE_PLUGIN_ROOT}/bin/…`, `~/.claude/sin-flow/profiles/<key>/profile.md`, a plugin option by its key,
   or the user's copy of an `examples/` script under `~/.claude/sin-flow/`. Never another file.
 - **writers**: every place that writes or repeats the thing the proposal fixes, found by grep, listed. A proposal that
   changes fewer than all of them says which it leaves and why.
@@ -283,7 +283,7 @@ only the conclusion and the path.
   checked" and names the path to check.
 - Never writes to auto-memory, Slack, a ticket or a product repo. The one GitHub write is the author-mode plugin PR,
   and it never merges that PR.
-- Never edits a skill, agent, hook, profile, `user.md` or launcher without the user's approval and a backup made
+- Never edits a skill, agent, hook, profile, plugin option or launcher without the user's approval and a backup made
   first. In user mode never edits the flow layer.
 - Never turns on a hook that can deny or stop a session before the live probe named in the proposal has run.
 

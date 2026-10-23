@@ -3,7 +3,7 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export PATH="$root/bin:$PATH"
-unset FLOW_CONFIG_DIR CLAUDE_CODE_ENTRYPOINT
+unset FLOW_CONFIG_DIR CLAUDE_CODE_ENTRYPOINT $(compgen -e | grep '^CLAUDE_PLUGIN_OPTION_' || true)
 scratch=$(mktemp -d)
 trap 'rm -rf "$scratch"' EXIT
 
@@ -11,8 +11,9 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 
 fresh_home() {
   FLOW_HOME=$(mktemp -d "$scratch/home.XXXXXX")
-  export FLOW_HOME
-  printf 'handoff: %s\n' "$1" > "$FLOW_HOME/user.md"
+  CLAUDE_CONFIG_DIR=$FLOW_HOME
+  export FLOW_HOME CLAUDE_CONFIG_DIR
+  jq -n --arg h "$1" '{pluginConfigs: {"sin-flow@test": {options: {handoff: $h}}}}' > "$CLAUDE_CONFIG_DIR/settings.json"
 }
 
 expect_eq() {

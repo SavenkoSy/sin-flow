@@ -53,7 +53,7 @@ and opens the PR without asking. You come back to a PR and a final message.
 | `/sin-flow:review` | reviews any PR (quick or thorough), sorts findings into reproduces / possible / invented, posts the high and medium reproducing ones as one review |
 | `/sin-flow:learning` | reads the logged runs of every stage and proposes changes to the flow |
 
-On a solo repo, exec waits for your "merge" and merges (squash by default, or your `merge` preference in `user.md`). It takes a draft PR out of draft before the merge. On a team repo, it follows the PR through review.
+On a solo repo, exec waits for your "merge" and merges (squash by default, or your `merge` option). It takes a draft PR out of draft before the merge. On a team repo, it follows the PR through review.
 
 ## Five exits
 
@@ -96,18 +96,22 @@ Every finished session is a row in a run log. `/sin-flow:learning` reads those r
 ranks what went wrong per stage, and proposes diffs. You say yes or no; a yes is applied with a backup.
 
 You start it yourself, or the plugin does: when an exec session ends with `learning_runs` (default 10)
-undigested exec runs in the log, a SessionEnd hook opens `/sin-flow:learning all` in a new tab in `learning_cwd` (default `learning_dir`), once per digest. Run it outside your product repos. Both settings live in `user.md`.
+undigested exec runs in the log, a SessionEnd hook opens `/sin-flow:learning all` in a new tab in `learning_cwd` (default `learning_dir`), once per digest. Run it outside your product repos. Both are plugin options.
 
-- **User mode** (marketplace install): proposals change only your `user.md` and repo profiles. Ideas for the
+- **User mode** (marketplace install): proposals change only your plugin options and repo profiles. Ideas for the
   plugin itself are written to `proposals-for-author.md` in your learning folder.
 - **Author mode** (the plugin loaded from a git checkout you can commit to, linked with
   `ln -s <checkout> ~/.claude/skills/sin-flow`): proposals may change the plugin. Apply, then `/reload-plugins`.
 
 ## Your data
 
-Everything of yours lives in `~/.claude/sin-flow/`:
+Your preferences are the plugin options. Set them in `/plugin configure`, in `/config`, or with
+`claude plugin configure <id> --values-stdin`. `sin-flow-profile user <key>` prints the value the flow uses. An older
+`~/.claude/sin-flow/user.md` with frontmatter keys moves there at the next session start. The free notes stay in
+`user.md`, and a backup goes to `~/.claude/sin-flow/backups/<date>/`. `sin-flow-profile migrate-user` does the same by hand.
 
-- `user.md`: preferences
+Everything else of yours lives in `~/.claude/sin-flow/`:
+
 - `profiles/<key>/`: one per repo (base branch, CI gates, merge methods, tracker)
   - `tracker.adapter`: a local adapter for a tracker other than GitHub Projects. The contract is in `skills/sync/reference/adapter-contract.md`.
   - `tracker.write.light`, `tracker.write.assign`, `tracker.write.status`: switches for board writes. Each is `off` when absent.
@@ -138,7 +142,7 @@ Each push to `main` is a new version (the commit SHA).
 
 ### Hand-off
 
-Ingest, sync, plan and exec start the next stage in a new terminal tab. `handoff:` in `user.md` decides how:
+Ingest, sync, plan and exec start the next stage in a new terminal tab. The `handoff` option decides how:
 
 - `auto` (default): a tab through the adapter for the terminal you run in, or `print` when there is no adapter.
 - `same-session`: continue in the current session.
@@ -160,29 +164,29 @@ Shipped adapters, in `bin/handoff/`: `tmux`, `cmux`, `iterm`, `ghostty`, `warp`,
 one script there, its name in `terminals`, one line in `detect()` and one in `--check` in `bin/sin-flow-handoff`. `sin-flow-handoff --detect` names the
 adapter it would use.
 
-`context_guard` (default 40) in `user.md` is the percent of the 1M-token context window at which a stage hands off to a fresh session; setup never stops on it.
+The `context_guard` option (default 40) is the percent of the 1M-token context window at which a stage hands off to a fresh session; setup never stops on it.
 
-`limit_guard` in `user.md` picks what a session does near a usage limit. `off` (the setup default) leaves it to Claude Code, which waits and continues after the reset. `on` adds the sin-flow LIMIT GUARD. Setup asks before it puts a small status line wrapper in your settings, and your own status line keeps working.
+The `limit_guard` option picks what a session does near a usage limit. `off` (the setup choice when you keep the built-in) leaves it to Claude Code, which waits and continues after the reset. `on` (the plugin default) adds the sin-flow LIMIT GUARD. Setup asks before it puts a small status line wrapper in your settings, and your own status line keeps working.
 
 #### Models
 
-The flow uses three tiers. The plugin ships the defaults; set any of them in `~/.claude/sin-flow/user.md`:
+The flow uses three tiers. The plugin ships the defaults; set any of them as a plugin option:
 
 | key | default | used by |
 |---|---|---|
-| `models.strong` | `opus` | plan, exec and learning sessions, hand-offs, the review verify pass |
-| `models.mid` | `sonnet` | analysts, implementers, shipper, review-poster |
-| `models.cheap` | `haiku` | the board agent |
-| `models.<stage>` | `models.strong` | the session a hand-off opens for that stage (`plan`, `exec`, `ingest`, …) |
+| `models_strong` | `opus` | plan, exec and learning sessions, hand-offs, the review verify pass |
+| `models_mid` | `sonnet` | analysts, implementers, shipper, review-poster |
+| `models_cheap` | `haiku` | the board agent |
 
-Values: `opus`, `sonnet`, `haiku`, `fable`. No Opus on your account: `models.strong: sonnet`.
-Fable by default: `models.strong: fable`. A repo profile may set the same keys for that repo, which helps when it
-runs under another Claude account. Plan on Fable, exec on Opus: `models.strong: opus` and `models.plan: fable`.
+Values: `opus`, `sonnet`, `haiku`, `fable`. No Opus on your account: `models_strong: sonnet`.
+Fable by default: `models_strong: fable`. A repo profile may set `models.strong`, `models.mid`, `models.cheap` for that
+repo, which helps when it runs under another Claude account. The profile also sets `models.<stage>`, the session a
+hand-off opens for that stage. Plan on Fable, exec on Opus: `models.plan: fable` in the profile.
 `sin-flow-profile model strong` (or `model plan`) prints what the flow will use here.
 
 #### Codex as a second reviewer
 
-With `codex_review: on` in `user.md`, the exec review also runs [Codex CLI](https://github.com/openai/codex) as one
+With the `codex_review` option `on`, the exec review also runs [Codex CLI](https://github.com/openai/codex) as one
 more finder, read-only and without `AGENTS.md`. The verify pass judges its findings like every other finding. Then
 Codex gets one turn to contest the verdict with quoted code, and a `settle` pass gives the final status. Each run
 appends a row to `~/.claude/sin-flow/codex-trial.tsv`: Codex findings kept, and how many only Codex found. Without

@@ -9,7 +9,7 @@ One command, four modes, each idempotent: a second run asks nothing and changes 
 Modelled on Rails `bin/setup` (safe to run any time), `brew doctor` (one success line), `flutter doctor` (`[✓] [!] [✗]`
 per group), `gh auth status` (check + ready fix in one line), Claude Code `/doctor` (report first, fix after a yes).
 
-Chat with the user in `chat_language` from `~/.claude/sin-flow/user.md`, or in the language the user writes in when it is absent. Fixed phrases defined here (`all good`, the questions, the fixes) are rendered in that language. Every file you write is English.
+Chat with the user in the `chat_language` option (`sin-flow-profile user chat_language`), or in the language the user writes in when it is absent. Fixed phrases defined here (`all good`, the questions, the fixes) are rendered in that language. Every file you write is English.
 
 ## Hard rules
 
@@ -39,11 +39,11 @@ Chat with the user in `chat_language` from `~/.claude/sin-flow/user.md`, or in t
 3. Show the preferences with defaults — `chat_language`, `merge: squash`, `after_review: new-commit`,
    `branch_prefix: ""`, `handoff: auto`, `context_guard: 40`, `limit_guard: off`, `learning_dir: ~/.claude/sin-flow/learning`, `learning_runs: 10`,
    `learning_cwd:` (empty → `learning_dir`), `work_remote: ""`,
-   `models.strong: opus`, `models.mid: sonnet`, `models.cheap: haiku`,
+   `models_strong: opus`, `models_mid: sonnet`, `models_cheap: haiku`,
    `reviews_dir: ~/.claude/sin-flow/reviews` — ask once "keep the defaults?" — a user whose account has no Opus sets
-   `models.strong: sonnet`. Then ask `context_guard` once, as its own question: "a plan, exec, ingest, sync, review or
+   `models_strong: sonnet`. Then ask `context_guard` once, as its own question: "a plan, exec, ingest, sync, review or
    learning session hands its work to a fresh session when its context reaches N % of the 1M window — keep 40?" →
-   write `context_guard: <N>`. Then ask `limit_guard` once, as its own question: "When a usage limit stops a session,
+   set `context_guard: <N>`. Then ask `limit_guard` once, as its own question: "When a usage limit stops a session,
    Claude Code waits and continues the task after the reset. sin-flow can also warn a flow session before the stop, so it
    writes its ledger first. That needs a small status line wrapper in your settings. Keep the built-in only (default), or
    add the sin-flow guard?"
@@ -64,14 +64,16 @@ Chat with the user in `chat_language` from `~/.claude/sin-flow/user.md`, or in t
         check it with `jq empty`, then `mv` it over `S`.
      6. On a no: `limit_guard: off`, and one line that the guard needs the wrapper.
 
-   Write `~/.claude/sin-flow/user.md`.
-4. Hand-off, decided once; when `user.md` already has a named terminal in `handoff:`, keep it and skip this step.
+   Save the answers as plugin options: `ID` = the first enabled id that starts with `sin-flow@` in
+   `claude plugin list --json`. Pipe one JSON object of string values to `claude plugin configure "$ID" --values-stdin`.
+   Options left out keep their values. The user may also set them in `/plugin configure` or `/config`.
+4. Hand-off, decided once; when `sin-flow-profile user handoff` already prints a named terminal, keep it and skip this step.
    `sin-flow-handoff --detect` prints a terminal name or `none — checked: …`.
    A name → ask "should the flow open new <terminal> tabs for the next stage itself?" — yes → `handoff: auto`,
    no → `handoff: print`.
    `none` → quote the printed line as is (never add a reason of your own) and ask "which terminal do you run Claude Code
    in: tmux, cmux, iTerm, Ghostty, Warp, Orca, or other?". A named one → `sin-flow-handoff --check <name>`: `ok` →
-   `handoff: <name>`; anything else → tell the user the printed reason in one line and write `handoff: print`.
+   `handoff: <name>`; anything else → tell the user the printed reason in one line and set `handoff: print`.
    `other` → offer to copy `${CLAUDE_PLUGIN_ROOT}/examples/handoff.sh.example` to `~/.claude/sin-flow/handoff.sh`
    (`chmod +x`; it opens a new macOS Terminal window, the user may adapt it) — yes →
    `handoff: ~/.claude/sin-flow/handoff.sh`, no → `handoff: print`.
@@ -80,11 +82,12 @@ Chat with the user in `chat_language` from `~/.claude/sin-flow/user.md`, or in t
 5. Offer `Read(~/.claude/sin-flow/**)`, `Bash(sin-flow-profile *)`, `Bash(sin-flow-infer *)`, `Bash(sin-flow-handoff *)` in
    user settings — add only on a yes.
 
-`user.md` is a `---` frontmatter block of `key: value` lines, one per field; free notes may follow the closing `---`.
-Every reader takes the first line that starts with `<key>:`, so plain lines without the block read the same. Fields;
-an absent one keeps its default:
+The preferences are the `userConfig` options of the plugin (`${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json`).
+Claude Code keeps the values in `pluginConfigs["<id>"].options` of the user's `settings.json`. Every reader uses
+`sin-flow-profile user <key>`: the hook env `CLAUDE_PLUGIN_OPTION_<KEY>` first, then `settings.json`, then the
+`default` in `plugin.json`. An unset option keeps its default:
 
-| field | default | meaning |
+| option | default | meaning |
 |---|---|---|
 | `chat_language` | absent → the language the user writes in | language of the chat; files, commits, PRs and issues stay English |
 | `handoff` | `auto` | how a stage starts the next one: `auto` — a new tab in the detected terminal, else print · `same-session` · `print` — print the ready command and copy it to the clipboard · `tmux`, `cmux`, `iterm`, `ghostty`, `warp`, `orca` — that terminal's adapter, when detection cannot tell · a path to the user's own script |
@@ -95,11 +98,10 @@ an absent one keeps its default:
 | `after_review` | `new-commit` | how review fixes land on an open PR: a new commit on top |
 | `branch_prefix` | `""` | first segment of the convention branch `<prefix>/<type>/<id>/<slug>`; empty → no segment |
 | `context_guard` | `40` | percent of the 1M-token context window at which plan, exec, ingest, sync, review and learning hand off or stop; `CTX_GUARD_THRESHOLD` overrides it for one session |
-| `limit_guard` | the guard reads the state file when a status line writes it | `on`: the LIMIT GUARD warns a session at 90 % of the 5-hour or 98 % of the 7-day limit, from the state file that the status line wrapper writes. `off`: only the Claude Code auto-continue. Setup writes `off` when the user keeps the built-in |
-| `models.strong` | `opus` | plan, exec and learning sessions, every hand-off, the review lenses on the strong tier, exec's fix round 3. One of `opus`, `sonnet`, `haiku`, `fable` |
-| `models.mid` | `sonnet` | read-only analysts, implementers, shipper, review-poster, the review lenses on the mid tier |
-| `models.cheap` | `haiku` | the board agent |
-| `models.<stage>` | `models.strong` | the session a hand-off opens for that stage (`setup`, `sync`, `ingest`, `plan`, `exec`, `review`, `learning`); its subagents keep the tiers |
+| `limit_guard` | `on` | `on`: the LIMIT GUARD warns a session at 90 % of the 5-hour or 98 % of the 7-day limit, from the state file that the status line wrapper writes. `off`: only the Claude Code auto-continue. Setup sets `off` when the user keeps the built-in |
+| `models_strong` | `opus` | plan, exec and learning sessions, every hand-off, the review lenses on the strong tier, exec's fix round 3. One of `opus`, `sonnet`, `haiku`, `fable` |
+| `models_mid` | `sonnet` | read-only analysts, implementers, shipper, review-poster, the review lenses on the mid tier |
+| `models_cheap` | `haiku` | the board agent |
 | `reviews_dir` | `~/.claude/sin-flow/reviews` | where `/sin-flow:review` writes review files |
 | `codex_review` | `off` | `on` → the exec review at the end of a unit also runs OpenAI Codex CLI as one more finder, then gives Codex one reply turn on the verdict (`skills/review/reference/pipeline.md` § 3). Needs `codex` installed and `codex login`; without them the review goes on and the last message says so |
 | `codex_model_pr` | `""` | a Codex model family `<family>` (the newest listed `gpt-<version>-<family>` in `~/.codex/models_cache.json`), or a full model name → `/sin-flow:review` of a teammate's PR also runs Codex as a finder on that model; empty → pr mode runs no Codex |
@@ -107,7 +109,8 @@ an absent one keeps its default:
 | `workspace` | `""` | `orca` or `git`: where `sin-flow-worktree` makes every stage's worktree; empty → `git`. `orca` also turns on the Stop hook `orca-quiet.sh`: it marks the Orca worktree read while background tasks run |
 | `work_remote` | `""` | a git remote for `~/.claude/sin-flow` (work notes and profiles); empty → local only |
 
-A repo profile may set the same `models.*` keys; it wins over `user.md` for that repo. `sin-flow-profile model <tier|stage>`
+A repo profile may set `models.strong`, `models.mid`, `models.cheap` and `models.<stage>` (`setup`, `sync`, `ingest`,
+`plan`, `exec`, `review`, `learning`: the session a hand-off opens for that stage); it wins over the options for that repo. `sin-flow-profile model <tier|stage>`
 prints what a stage will use.
 
 The user's own hand-off script gets `FLOW_CWD`, `FLOW_NAME`, `FLOW_MODEL` and `FLOW_PROMPT` (the full shell line to run)
@@ -179,7 +182,7 @@ one fix. `✗` = a stage cannot work; `!` = it can, marked "not measured".
 | layer | checks | fix offered |
 |---|---|---|
 | flow | `claude plugin list` shows `sin-flow` enabled; `sin-flow-profile`, `sin-flow-infer`, `sin-flow-handoff` on PATH; the Stop hook `work-commit.sh` in the plugin's `hooks/hooks.json`; `gh auth status`; `git`, `jq`, `bash` | `claude plugin install sin-flow@sin-flow`; `gh auth login`; `brew install …` |
-| user | `~/.claude/sin-flow/{profiles,work,reviews}` exist; `git -C ~/.claude/sin-flow status --porcelain` empty or committable; `work_remote` set → `git ls-remote` reachable, unset → `!` "notes are local only"; `user.md` read; `handoff:` is `auto`, `same-session`, `print`, `tmux`, `cmux`, `iterm`, `ghostty`, `warp`, `orca` or an executable path; `user.md` without `context_guard` → `!` "the context guard uses the default 40", fix: Install step 3's `context_guard` question, then write `context_guard: <N>`; `user.md` without `limit_guard` → `!` "the limit guard reads any status line that writes the state file", fix: Install step 3's `limit_guard` question; `limit_guard: on` and `statusLine.command` of `S` contains `sin-flow-statusline` → `cmp` the copy in `~/.claude/sin-flow/bin/` with `${CLAUDE_PLUGIN_ROOT}/bin/sin-flow-statusline`, a difference → `!` "the status line wrapper is out of date", fix: copy it again; same case and the wrapped command names a file that does not exist → `!` "the wrapped status line file does not exist: <path>", fix: restore `statusLine` from the newest `~/.claude/sin-flow/backups/*/settings.json`, or Install step 3's wrapper install again; `limit_guard: on`, no wrapper and no own writer (Install step 3 item 3) → `!` "the limit guard has no writer", fix: Install step 3's wrapper install; under a terminal name `sin-flow-handoff --check <name>` prints `ok` (else `!` with the printed reason, fix: install it or `handoff: print`); under `auto` `sin-flow-handoff --detect` names a terminal (`none` → `!` quoting the `--detect` line, "the hand-off prints the command", fix: Install step 4's terminal question and `--check`); `sin-flow-profile model strong`, `… mid`, `… cheap` each print an alias (exit 2 → `✗`, fix: the value it names); `tail -3 ~/.claude/sin-flow/stop-commit.log` has no `failed`; `tmutil destinationinfo` → warning only | `git init`; `chmod +x <handoff path>`; "set up Time Machine" |
+| user | `~/.claude/sin-flow/{profiles,work,reviews}` exist; `git -C ~/.claude/sin-flow status --porcelain` empty or committable; `~/.claude/sin-flow/user.md` has frontmatter keys → `!` "the preferences are not migrated to the plugin options", fix: `sin-flow-profile migrate-user`; `work_remote` set → `git ls-remote` reachable, unset → `!` "notes are local only"; every value is read with `sin-flow-profile user <key>`; `handoff` is `auto`, `same-session`, `print`, `tmux`, `cmux`, `iterm`, `ghostty`, `warp`, `orca` or an executable path; `claude plugin configure <id> --json` lists `context_guard` as unconfigured → `!` "the context guard uses the default 40", fix: Install step 3's `context_guard` question, then set `context_guard: <N>`; the same list holds `limit_guard` → `!` "the limit guard reads any status line that writes the state file", fix: Install step 3's `limit_guard` question; `limit_guard: on` and `statusLine.command` of `S` contains `sin-flow-statusline` → `cmp` the copy in `~/.claude/sin-flow/bin/` with `${CLAUDE_PLUGIN_ROOT}/bin/sin-flow-statusline`, a difference → `!` "the status line wrapper is out of date", fix: copy it again; same case and the wrapped command names a file that does not exist → `!` "the wrapped status line file does not exist: <path>", fix: restore `statusLine` from the newest `~/.claude/sin-flow/backups/*/settings.json`, or Install step 3's wrapper install again; `limit_guard: on`, no wrapper and no own writer (Install step 3 item 3) → `!` "the limit guard has no writer", fix: Install step 3's wrapper install; under a terminal name `sin-flow-handoff --check <name>` prints `ok` (else `!` with the printed reason, fix: install it or `handoff: print`); under `auto` `sin-flow-handoff --detect` names a terminal (`none` → `!` quoting the `--detect` line, "the hand-off prints the command", fix: Install step 4's terminal question and `--check`); `sin-flow-profile model strong`, `… mid`, `… cheap` each print an alias (exit 2 → `✗`, fix: the value it names); `tail -3 ~/.claude/sin-flow/stop-commit.log` has no `failed`; `tmutil destinationinfo` → warning only | `git init`; `chmod +x <handoff path>`; "set up Time Machine" |
 | project | `sin-flow-profile validate` (required keys, paths, `sources.*` env files: present, `600`, git-ignored, variable present); `gh repo view <slug>`; `git ls-remote --heads origin <base>`; every gate command's binary on PATH; `sin-flow-infer` vs `## Inferred` — base or `gate files:` changed?; the gates named again from those files vs the stored `gates` lines — changed?; each source's preflight/verify | `sin-flow-infer --write <key>`, then name the gates; `chmod 600 <file>`; "add to .gitignore"; "open the tunnel: <tunnel>" |
 
 A source that is unreachable now (tunnel closed, VPN off, SSO expired) is a `!` row with its human step, never a failure.

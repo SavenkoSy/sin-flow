@@ -5,7 +5,8 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 script="$root/skills/review/reference/codex.sh"
 scratch=$(mktemp -d)
 trap 'rm -rf "$scratch"' EXIT
-export FLOW_HOME="$scratch/home"
+export FLOW_HOME="$scratch/home" CLAUDE_CONFIG_DIR="$scratch/home"
+unset $(compgen -e | grep '^CLAUDE_PLUGIN_OPTION_' || true)
 mkdir -p "$FLOW_HOME" "$scratch/bin" "$scratch/tree"
 git -C "$scratch/tree" init -q -b trial
 cases=0
@@ -68,15 +69,15 @@ pkg() {
   echo "$dir"
 }
 
-user() { printf -- '---\n%s\n---\n' "$@" > "$FLOW_HOME/user.md"; }
+user() { jq -n --arg k "$1" --arg v "$2" '{pluginConfigs: {"sin-flow@test": {options: {($k): $v}}}}' > "$CLAUDE_CONFIG_DIR/settings.json"; }
 
-user "reviews_dir: x"
+user reviews_dir x
 p=$(pkg off)
 expect_eq "off by default" "CODEX · off" "$(bash "$script" find "$p")"
 
-user "codex_review: on"
+user codex_review on
 p=$(pkg pr pr)
-expect_eq "never in pr mode" "CODEX · off · pr mode" "$(bash "$script" find "$p")"
+expect_eq "pr mode without a model" "CODEX · off · pr mode, no model for codex_model_pr" "$(bash "$script" find "$p")"
 
 p=$(pkg nologin)
 expect_eq "no login" "CODEX · skipped · not logged in" "$(FAKE=nologin bash "$script" find "$p")"

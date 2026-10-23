@@ -17,7 +17,7 @@ one batch in a single move.
 Phase 2 runs **only** when the user says the word. Never take a batch on your own initiative, and
 read **Discussing a batch is not taking it** below before you believe you have been told to.
 
-Chat with the user in `chat_language` from `~/.claude/sin-flow/user.md`, or in the language the user writes in when it is absent. Headings and fixed phrases defined here are rendered in that language. Files, commits, PRs and issues are always English.
+Chat with the user in the `chat_language` option (`sin-flow-profile user chat_language`), or in the language the user writes in when it is absent. Headings and fixed phrases defined here are rendered in that language. Files, commits, PRs and issues are always English.
 
 ## Tracker and switches
 
@@ -97,7 +97,7 @@ say so and fix the dispatch, don't do the agent's work in here.
   out loud and let the human decide.
 - **A failure that needs a workaround goes to the inbox, not to memory.** When a tool, script, hook,
   agent or hand-off fails and you work around it, add one `open` row to `inbox.md` in the same turn.
-  The file is in `learning_dir` of `~/.claude/sin-flow/user.md`. The row gives the date, `sync`, the
+  The file is in the `learning_dir` option (`sin-flow-profile user learning_dir`). The row gives the date, `sync`, the
   exact error text, the file:line when known and the workaround. Never write a flow defect to memory.
 
 ## Arguments

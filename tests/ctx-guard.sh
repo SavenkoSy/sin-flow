@@ -3,7 +3,7 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export CLAUDE_PLUGIN_ROOT="$root"
-unset CTX_GUARD_THRESHOLD LIMIT_GUARD_THRESHOLD LIMIT_GUARD_7D_THRESHOLD
+unset CTX_GUARD_THRESHOLD LIMIT_GUARD_THRESHOLD LIMIT_GUARD_7D_THRESHOLD CLAUDE_CONFIG_DIR $(compgen -e | grep '^CLAUDE_PLUGIN_OPTION_' || true)
 scratch=$(mktemp -d)
 trap 'rm -rf "$scratch"' EXIT
 
@@ -14,12 +14,12 @@ expect_eq() {
 }
 
 run_guard() {
-  local stage=$1 tokens=$2 user_md=$3 sid transcript
+  local stage=$1 tokens=$2 options=$3 sid transcript
   sid="case-$RANDOM-$RANDOM"
   HOME=$(mktemp -d "$scratch/home.XXXXXX")
   export HOME
   mkdir -p "$HOME/.claude/sin-flow"
-  [ -z "$user_md" ] || printf '%s\n' "$user_md" > "$HOME/.claude/sin-flow/user.md"
+  [ -z "$options" ] || jq -n --argjson o "$options" '{pluginConfigs: {"sin-flow@test": {options: $o}}}' > "$HOME/.claude/settings.json"
   transcript="$HOME/transcript.jsonl"
   jq -cn --arg c "<command-name>/sin-flow:$stage</command-name><command-args>GH-1</command-args>" '{type:"user",message:{content:$c}}' > "$transcript"
   jq -cn --argjson t "$tokens" '{type:"assistant",message:{usage:{input_tokens:$t}}}' >> "$transcript"
@@ -40,25 +40,25 @@ expect_eq "case 1" "" "$out"
 out=$(run_guard plan 450000 "" | message)
 expect_eq "case 2" "CTX GUARD: context at 45 % (threshold 40 %)" "$out"
 
-out=$(run_guard plan 450000 "context_guard: 50")
+out=$(run_guard plan 450000 '{"context_guard": 50}')
 expect_eq "case 3" "" "$out"
 
-out=$(CTX_GUARD_THRESHOLD=30 run_guard plan 450000 "context_guard: 50" | message)
+out=$(CTX_GUARD_THRESHOLD=30 run_guard plan 450000 '{"context_guard": 50}' | message)
 expect_eq "case 4" "CTX GUARD: context at 45 % (threshold 30 %)" "$out"
 
-out=$(run_guard plan 450000 "context_window: 200000" | message)
+out=$(run_guard plan 450000 '{"context_window": 200000}' | message)
 expect_eq "case 5" "CTX GUARD: context at 45 % (threshold 40 %)" "$out"
 
 out=$(used_pct=55 run_guard plan 10000 "" | message)
 expect_eq "case 6" "CTX GUARD: context at 55 % (threshold 40 %)" "$out"
 
-out=$(run_guard plan 450000 "context_guard: abc" | message)
+out=$(run_guard plan 450000 '{"context_guard": "abc"}' | message)
 expect_eq "case 7" "CTX GUARD: context at 45 % (threshold 40 %)" "$out"
 
-out=$(run_guard plan 450000 'context_guard: "50"  # note')
+out=$(run_guard plan 450000 '{"context_guard": "50"}')
 expect_eq "case 8" "" "$out"
 
-out=$(run_guard plan 450000 'context_guard: 50   ')
+out=$(CLAUDE_PLUGIN_OPTION_CONTEXT_GUARD=50 run_guard plan 450000 "")
 expect_eq "case 9" "" "$out"
 
 limit_head="LIMIT GUARD: account home is at 95 % of the 5-hour limit and 10 % of the 7-day limit (thresholds 90 % 5-hour, 98 % 7-day, read from the status line)"
@@ -66,13 +66,13 @@ limit_head="LIMIT GUARD: account home is at 95 % of the 5-hour limit and 10 % of
 out=$(limit_5h=95 run_guard plan 10000 "" | message)
 expect_eq "case 10" "$limit_head" "$out"
 
-out=$(limit_5h=95 run_guard plan 10000 "limit_guard: off")
+out=$(limit_5h=95 run_guard plan 10000 '{"limit_guard": "off"}')
 expect_eq "case 11" "" "$out"
 
-out=$(limit_5h=95 run_guard plan 10000 "limit_guard: on" | message)
+out=$(limit_5h=95 run_guard plan 10000 '{"limit_guard": "on"}' | message)
 expect_eq "case 12" "$limit_head" "$out"
 
-out=$(limit_5h=95 run_guard plan 10000 'limit_guard: "off"  # note')
+out=$(CLAUDE_PLUGIN_OPTION_LIMIT_GUARD=off limit_5h=95 run_guard plan 10000 "")
 expect_eq "case 13" "" "$out"
 
 echo "ok: 13 cases"

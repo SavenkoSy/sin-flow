@@ -3,6 +3,8 @@ set -euo pipefail
 
 FLOW_HOME="${FLOW_HOME:-$HOME/.claude/sin-flow}"
 PROFILES="$FLOW_HOME/profiles"
+PLUGIN_JSON="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/.claude-plugin/plugin.json"
+SETTINGS="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json"
 
 usage() {
   cat >&2 <<'EOF'
@@ -12,6 +14,8 @@ usage: sin-flow-profile key [DIR]
        sin-flow-profile list
        sin-flow-profile <key> dir|file|get FIELD|section HEADING
        sin-flow-profile validate [--all | KEY...]
+       sin-flow-profile user KEY
+       sin-flow-profile migrate-user
 EOF
   exit 2
 }
@@ -87,17 +91,47 @@ get_field() {
   printf '%s\n' "$v"
 }
 
-model_default() { case "$1" in strong) echo opus ;; mid) echo sonnet ;; cheap) echo haiku ;; *) return 1 ;; esac; }
-
 user_field() {
-  [ -f "$FLOW_HOME/user.md" ] || return 0
-  sed -n "s/^$1:[[:space:]]*//p" "$FLOW_HOME/user.md" | sed 's/[[:space:]]#.*//; s/[[:space:]]*$//; s/^"//; s/"$//' | head -1
+  local env="CLAUDE_PLUGIN_OPTION_$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')" v
+  v="${!env:-}"
+  [ -n "$v" ] || [ ! -f "$SETTINGS" ] || v=$(jq -r --arg k "$1" '
+    [(.pluginConfigs // {}) | to_entries[] | select(.key | startswith("sin-flow@"))][0].value.options[$k] // empty
+    | tostring' "$SETTINGS" 2>/dev/null) || v=""
+  [ -n "$v" ] || v=$(jq -r --arg k "$1" '.userConfig[$k].default // empty | tostring' "$PLUGIN_JSON")
+  [ -z "$v" ] || printf '%s\n' "$v"
+}
+
+user_keys() { jq -r '.userConfig | keys[]' "$PLUGIN_JSON"; }
+
+migrate_user() {
+  local f="$FLOW_HOME/user.md" id json skipped backup
+  [ -f "$f" ] || { echo "no $f" >&2; return 1; }
+  json=$(frontmatter "$f" | awk -F': *' 'NF > 1 && $1 ~ /^[A-Za-z0-9_.]+$/ {
+      k = $1; v = substr($0, index($0, ":") + 1)
+      sub(/^[ \t]+/, "", v); sub(/[ \t]+#.*$/, "", v); sub(/[ \t]+$/, "", v)
+      if (v ~ /^".*"$/) v = substr(v, 2, length(v) - 2)
+      gsub(/\./, "_", k); print k "\t" v }' \
+    | jq -Rn --argjson keys "$(user_keys | jq -R . | jq -s .)" '
+      [inputs | split("\t") | {key: .[0], value: .[1]}]
+      | {set: (map(select(.key as $k | $keys | index($k))) | from_entries),
+         skipped: (map(select(.key as $k | $keys | index($k) | not)) | map(.key))}')
+  skipped=$(jq -r '.skipped | join(" ")' <<<"$json")
+  id=$(claude plugin list --json | jq -r '[.[] | select((.id | startswith("sin-flow@")) and .enabled)][0].id // empty')
+  [ -n "$id" ] || { echo "no enabled sin-flow plugin in claude plugin list" >&2; return 1; }
+  jq -c '.set' <<<"$json" | claude plugin configure "$id" --values-stdin >/dev/null
+  backup="$FLOW_HOME/backups/$(date +%F)"
+  mkdir -p "$backup"
+  cp "$f" "$backup/user.md"
+  awk 'NR==1 && $0=="---" {inside=1; next} inside && $0=="---" {inside=0; next} !inside {print}' "$backup/user.md" > "$f"
+  printf 'migrated to %s: %s\n' "$id" "$(jq -r '.set | keys | join(" ")' <<<"$json")"
+  [ -z "$skipped" ] || printf 'not migrated (not a user key): %s\n' "$skipped"
+  printf 'backup: %s/user.md\n' "$backup"
 }
 
 model_field() {
   local name="$1" dir="$2" key v=""
   if key=$(key_for_dir "$dir" 2>/dev/null); then v=$(cd "$dir" && get_field "$key" "models.$name" || true); fi
-  [ -n "$v" ] || v=$(user_field "models\.$name")
+  case "$name" in strong|mid|cheap) [ -n "$v" ] || v=$(user_field "models_$name") ;; esac
   printf '%s' "$v"
 }
 
@@ -109,7 +143,6 @@ resolve_model() {
     *) echo "model must be a tier (strong, mid, cheap) or a stage (setup, sync, ingest, plan, exec, review, learning): $name" >&2; exit 2 ;;
   esac
   [ -n "$v" ] || v=$(model_field "$tier" "$dir")
-  [ -n "$v" ] || v=$(model_default "$tier")
   case "$v" in
     opus|sonnet|haiku|fable) printf '%s\n' "$v" ;;
     *) echo "models.$name: '$v' is not one of opus, sonnet, haiku, fable" >&2; exit 2 ;;
@@ -254,6 +287,11 @@ case "$1" in
       exit $rc
     fi ;;
   model) [ $# -ge 2 ] || usage; resolve_model "$2" "${3:-$PWD}" ;;
+  user)
+    [ $# -eq 2 ] || usage
+    jq -e --arg k "$2" '.userConfig | has($k)' "$PLUGIN_JSON" >/dev/null || { echo "not a user key: $2 (keys: $(user_keys | tr '\n' ' '))" >&2; exit 2; }
+    user_field "$2" ;;
+  migrate-user) migrate_user ;;
   -h|--help) usage ;;
   *)
     key="$1"
