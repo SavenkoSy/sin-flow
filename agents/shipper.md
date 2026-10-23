@@ -15,7 +15,8 @@ Always: `mode: gate | local | commit | ship`. Optional everywhere: `profile: <ke
 unit — issue number, prefixed ticket, or the profile's local id such as `N-M`), `work_dir` (default
 `~/.claude/sin-flow/work/<key>/<id>/`).
 
-- `gate`: optional `commands` (overrides everything below), optional `label` for the log name.
+- `gate`: optional `commands` (overrides everything below; split it on `;` and newlines, and run each part as its
+  own command), optional `label` for the log name.
 - `local` / `commit`: `title`, one paragraph on what changed and why (only the caller knows the why —
   build the message from it, not from the diff alone), optional `FILES`, optional `type`
   (`bug | task | story`), optional `trailer` (upstream mode only).
@@ -122,7 +123,9 @@ rm -f /tmp/flow-l1-$$.hashes
    fallback — `Gemfile` → `bundle exec rspec` plus `rubocop` / `brakeman` when the Gemfile has them,
    `package.json` → its `lint`, `test`, `build` scripts. Nothing found → `STATUS: blocked`.
 3. Write the resolved list as the log's first lines, run `gates.prepare` if set, then each command in
-   order, each appending under a `=== <command> ===` header.
+   order, each appending under a `=== <command> ===` header. Never `git checkout` or `git switch` in this mode.
+   Before the first command and after the last, `git branch --show-current` must print the branch you started
+   on. Empty or different → `STATUS: blocked`, `NOTE: HEAD moved to <ref>`.
 4. Stop at the first red: its last 40 lines go to `<log>.tail`, return `STATUS: red`. Never paste
    output into the return.
 
@@ -182,6 +185,9 @@ a new commit on top — this is the review-fix path.
    `--reviewer '<review.request>'` when the profile sets `review.request`;
    title = the convention subject. `--assignee` fails → `gh pr edit <url> --add-assignee @me`; `--reviewer` fails →
    `gh pr edit <url> --add-reviewer '<review.request>'`, and a failure there is a `NOTE`, never a block.
+6. Link check, when the profile sets `pr.relink_after_bot: on` and the body has `Ref #<N>`: after 60 s, `gh pr view <url> --json body,closingIssuesReferences`.
+   The body now has a `Closes #<N>` line that a bot added and the list is empty → save the same body once more
+   with `gh pr edit <url> --body-file <that body>`, then read the list again. Still empty → a `NOTE`, never a block.
 
 ## Return block — your last message, nothing else
 

@@ -1,0 +1,611 @@
+<title>Board Triage</title>
+<style>
+  :root {
+    --bg: #F3F5F7;
+    --surface: #FFFFFF;
+    --surface-2: #EAEDF1;
+    --border: #DBE0E6;
+    --ink: #171B21;
+    --ink-dim: #5B6472;
+    --ink-faint: #8791A0;
+    --accent: #0D7D86;
+    --accent-ink: #FFFFFF;
+    --accent-soft: #E1F1F1;
+    --high: #C4432F;
+    --high-soft: #FBE7E3;
+    --medium: #A8710F;
+    --medium-soft: #F7ECD8;
+    --low: #5B6472;
+    --low-soft: #E9EBEE;
+    --rag-green: #1E8E5A;
+    --rag-green-soft: #E1F3EA;
+    --rag-yellow: #A8710F;
+    --rag-yellow-soft: #F7ECD8;
+    --rag-red: #C4432F;
+    --rag-red-soft: #FBE7E3;
+    --b-upstream: #7C5CBF;
+    --b-upstream-soft: #EEE9F8;
+    --b-verify: #9C4FA0;
+    --b-verify-soft: #F6E8F5;
+    --b-backend: #0D7D86;
+    --b-backend-soft: #E1F1F1;
+    --b-race: #B0631B;
+    --b-race-soft: #F5E7D6;
+    --b-ui: #3567AD;
+    --b-ui-soft: #E4ECF7;
+    --b-fe: #55606E;
+    --b-fe-soft: #E9EBEE;
+    --shadow: 0 1px 2px rgba(23,27,33,0.04), 0 8px 24px rgba(23,27,33,0.06);
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #12141A;
+    --surface: #191D25;
+    --surface-2: #20252F;
+    --border: #2A3038;
+    --ink: #E7EAEF;
+    --ink-dim: #9AA1AC;
+    --ink-faint: #6B7280;
+    --accent: #2EB8C0;
+    --accent-ink: #08191A;
+    --accent-soft: #163235;
+    --high: #E2604A;
+    --high-soft: #3A211D;
+    --medium: #E0A545;
+    --medium-soft: #3A2E17;
+    --low: #9AA1AC;
+    --low-soft: #262B33;
+    --rag-green: #3DD68C;
+    --rag-green-soft: #123326;
+    --rag-yellow: #E0A545;
+    --rag-yellow-soft: #3A2E17;
+    --rag-red: #E2604A;
+    --rag-red-soft: #3A211D;
+    --b-upstream: #A98CE8;
+    --b-upstream-soft: #2A2540;
+    --b-verify: #D486D8;
+    --b-verify-soft: #33223A;
+    --b-backend: #2EB8C0;
+    --b-backend-soft: #163235;
+    --b-race: #E0923F;
+    --b-race-soft: #382713;
+    --b-ui: #6F9FE0;
+    --b-ui-soft: #1C2740;
+    --b-fe: #9AA3B0;
+    --b-fe-soft: #232830;
+    --shadow: 0 1px 2px rgba(0,0,0,0.2), 0 8px 24px rgba(0,0,0,0.35);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12141A;
+      --surface: #191D25;
+      --surface-2: #20252F;
+      --border: #2A3038;
+      --ink: #E7EAEF;
+      --ink-dim: #9AA1AC;
+      --ink-faint: #6B7280;
+      --accent: #2EB8C0;
+      --accent-ink: #08191A;
+      --accent-soft: #163235;
+      --high: #E2604A;
+      --high-soft: #3A211D;
+      --medium: #E0A545;
+      --medium-soft: #3A2E17;
+      --low: #9AA1AC;
+      --low-soft: #262B33;
+      --rag-green: #3DD68C;
+      --rag-green-soft: #123326;
+      --rag-yellow: #E0A545;
+      --rag-yellow-soft: #3A2E17;
+      --rag-red: #E2604A;
+      --rag-red-soft: #3A211D;
+      --b-upstream: #A98CE8;
+      --b-upstream-soft: #2A2540;
+      --b-verify: #D486D8;
+      --b-verify-soft: #33223A;
+      --b-backend: #2EB8C0;
+      --b-backend-soft: #163235;
+      --b-race: #E0923F;
+      --b-race-soft: #382713;
+      --b-ui: #6F9FE0;
+      --b-ui-soft: #1C2740;
+      --b-fe: #9AA3B0;
+      --b-fe-soft: #232830;
+      --shadow: 0 1px 2px rgba(0,0,0,0.2), 0 8px 24px rgba(0,0,0,0.35);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, "Segoe UI", ui-sans-serif, Roboto, Helvetica, Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .mono { font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 40px 24px 96px; }
+
+  .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.11em;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  h1 {
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -0.015em;
+    margin: 6px 0 28px;
+    text-wrap: balance;
+  }
+  /* stat strip */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 36px;
+  }
+  .stat {
+    background: var(--surface);
+    padding: 16px 18px;
+  }
+  .stat .num { font-size: 24px; font-weight: 800; letter-spacing: -0.01em; }
+  .stat .num.hi { color: var(--high); }
+  .stat .label { font-size: 12px; color: var(--ink-dim); margin-top: 2px; }
+
+  section { margin-bottom: 40px; }
+  h2 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 750;
+    color: var(--ink-dim);
+    margin: 0 0 14px;
+  }
+
+
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .dot { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+  .pill.high { background: var(--high-soft); color: var(--high); }
+  .pill.medium { background: var(--medium-soft); color: var(--medium); }
+  .pill.low { background: var(--low-soft); color: var(--low); }
+
+  .light {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .light .bulb { width: 9px; height: 9px; border-radius: 50%; flex: none; box-shadow: 0 0 0 3px var(--bulb-soft, transparent); }
+  .light.green .bulb { background: var(--rag-green); --bulb-soft: var(--rag-green-soft); }
+  .light.yellow .bulb { background: var(--rag-yellow); --bulb-soft: var(--rag-yellow-soft); }
+  .light.red .bulb { background: var(--rag-red); --bulb-soft: var(--rag-red-soft); }
+  .light.green { color: var(--rag-green); }
+  .light.yellow { color: var(--rag-yellow); }
+  .light.red { color: var(--rag-red); }
+
+  .light-legend {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin: 14px 0 0;
+  }
+  .light-legend .item { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-dim); }
+  .light-legend .bulb { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .light-legend .bulb.green { background: var(--rag-green); }
+  .light-legend .bulb.yellow { background: var(--rag-yellow); }
+  .light-legend .bulb.red { background: var(--rag-red); }
+  .light-legend strong { color: var(--ink); font-weight: 650; }
+
+  .chip.rag-chip.green.on { background: var(--rag-green); border-color: var(--rag-green); color: #08191A; }
+  .chip.rag-chip.yellow.on { background: var(--rag-yellow); border-color: var(--rag-yellow); color: #08191A; }
+  .chip.rag-chip.red.on { background: var(--rag-red); border-color: var(--rag-red); color: #08191A; }
+
+  .batch-tag { padding: 3px 9px; border-radius: 6px; font-size: 11px; font-weight: 650; white-space: nowrap; }
+  .batch-tag.upstream-confirmed { background: var(--b-upstream-soft); color: var(--b-upstream); }
+  .batch-tag.upstream-verify { background: var(--b-verify-soft); color: var(--b-verify); }
+  .batch-tag.backend-self { background: var(--b-backend-soft); color: var(--b-backend); }
+  .batch-tag.race-idempotency { background: var(--b-race-soft); color: var(--b-race); }
+  .batch-tag.ui-a11y { background: var(--b-ui-soft); color: var(--b-ui); }
+  .batch-tag.fe-logic { background: var(--b-fe-soft); color: var(--b-fe); }
+
+  .ms-tag {
+    padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;
+    white-space: nowrap; background: var(--surface-2); color: var(--ink-dim);
+    border: 1px solid var(--border);
+  }
+
+  /* batch cards */
+  .batch-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .batch-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 18px 16px;
+    box-shadow: var(--shadow);
+    border-left: 3px solid var(--card-accent, var(--accent));
+    cursor: pointer;
+    transition: transform .12s ease;
+  }
+  .batch-card:hover { transform: translateY(-1px); }
+  .batch-card.active { outline: 2px solid var(--card-accent, var(--accent)); outline-offset: -1px; }
+  .batch-card .top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+  .batch-card .name { font-size: 14.5px; font-weight: 750; letter-spacing: -0.005em; }
+  .batch-card .count { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .batch-card .action {
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--card-accent, var(--accent));
+  }
+
+  /* filter bar */
+  .filter-bar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--bg);
+    padding: 14px 0 12px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0;
+  }
+  .chip {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--ink-dim);
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 100px;
+    cursor: pointer;
+  }
+  .chip.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  :root[data-theme="dark"] .chip.on, @media (prefers-color-scheme: dark) { }
+  .searchbox {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 6px 10px;
+    min-width: 220px;
+  }
+  .searchbox input {
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--ink);
+    font-size: 13px;
+    width: 100%;
+    font-family: inherit;
+  }
+  .searchbox svg { flex: none; opacity: .5; }
+  select.assignee-select {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--ink-dim);
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 100px;
+    font-family: inherit;
+  }
+
+  /* table */
+  table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+  thead th {
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-faint);
+    font-weight: 700;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  thead th:hover { color: var(--ink-dim); }
+  thead th.sorted { color: var(--accent); }
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+  }
+  tbody tr:hover { background: var(--surface); }
+  tbody td { padding: 9px 10px; font-size: 13px; vertical-align: middle; }
+  td.num a { color: var(--ink-faint); text-decoration: none; }
+  td.num a:hover { color: var(--accent); }
+  td.title a { color: var(--ink); text-decoration: none; font-weight: 500; }
+  td.title a:hover { color: var(--accent); }
+  td.who { color: var(--ink-dim); font-size: 12.5px; white-space: nowrap; }
+  td.who.empty { color: var(--ink-faint); font-style: italic; }
+
+  .table-wrap { overflow-x: auto; }
+  .count-note { font-size: 12px; color: var(--ink-faint); margin: 10px 0 0; }
+
+  footer {
+    margin-top: 48px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--ink-faint);
+  }
+
+  @media (max-width: 860px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .batch-grid { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="wrap">
+
+  <div class="eyebrow">Board · unstarted work only</div>
+  <h1>Board triage</h1>
+  <div class="stats">
+    <div class="stat"><div class="num mono" id="statOpen">–</div><div class="label">Unstarted tickets</div></div>
+    <div class="stat"><div class="num mono hi" id="statHigh">–</div><div class="label">High priority</div></div>
+    <div class="stat"><div class="num mono" style="color:var(--rag-green)" id="statGreen">–</div><div class="label">🟢 Ready now</div></div>
+    <div class="stat"><div class="num mono" style="color:var(--rag-yellow)" id="statYellow">–</div><div class="label">🟡 Check/decide first</div></div>
+    <div class="stat"><div class="num mono" style="color:var(--rag-red)" id="statRed">–</div><div class="label">🔴 Blocked upstream</div></div>
+  </div>
+
+  <section>
+    <h2>The light — what it means</h2>
+    <div class="light-legend">
+      <span class="item"><span class="bulb green"></span><strong>Green</strong> — self-contained, root cause known, no dependency. Start now.</span>
+      <span class="item"><span class="bulb yellow"></span><strong>Yellow</strong> — needs a quick check or a product/copy decision before coding.</span>
+      <span class="item"><span class="bulb red"></span><strong>Red</strong> — root cause sits upstream. Route it, do not fix it here.</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>Batches</h2>
+    <div class="batch-grid" id="batchGrid"></div>
+  </section>
+
+  <section>
+    <h2>All tickets</h2>
+    <div class="filter-bar">
+      <span class="chip on" data-filter-batch="ALL">All batches</span>
+      <span class="chip rag-chip green" data-filter-rag="green">🟢 Green</span>
+      <span class="chip rag-chip yellow" data-filter-rag="yellow">🟡 Yellow</span>
+      <span class="chip rag-chip red" data-filter-rag="red">🔴 Red</span>
+      <select class="assignee-select" id="milestoneSelect">
+        <option value="ALL">All milestones</option>
+      </select>
+      <select class="assignee-select" id="statusSelect">
+        <option value="ALL">Any status</option>
+        <option value="To Do">To Do</option>
+        <option value="Reopened">Reopened</option>
+      </select>
+      <select class="assignee-select" id="assigneeSelect">
+        <option value="ALL">All assignees</option>
+      </select>
+      <div class="searchbox">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" id="searchInput" placeholder="Filter by title or #…">
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th data-sort="rag">Light</th>
+            <th data-sort="n" class="mono">#</th>
+            <th data-sort="t">Title</th>
+            <th data-sort="b">Batch</th>
+            <th data-sort="m">Milestone</th>
+            <th data-sort="p">Priority</th>
+            <th data-sort="s">Status</th>
+            <th data-sort="a">Assignee</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    <p class="count-note" id="countNote"></p>
+  </section>
+
+  <footer id="footer">
+    Snapshot not generated yet.
+  </footer>
+
+</div>
+
+<script>
+  const DATA = [
+  ];
+
+  const BATCH_META = {
+  };
+
+  const BATCH_ORDER = [];
+
+  function batchClass(b) { return BATCH_META[b].key; }
+  function prioClass(p) { return p.startsWith("High") ? "high" : p === "Low" ? "low" : "medium"; }
+  function prioLabel(p) { return p.replace(" (inferred)", ""); }
+  const RAG_LABEL = { green: "Green", yellow: "Yellow", red: "Red" };
+  const RAG_RANK = { green: 0, yellow: 1, red: 2 };
+  function ragChip(rag) {
+    return `<span class="light ${rag ?? ""}"><span class="bulb"></span>${RAG_LABEL[rag] ?? "Undecided"}</span>`;
+  }
+  function escapeHtml(s) {
+    return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  // ---- Batch cards ----
+  const batchGrid = document.getElementById("batchGrid");
+  function renderBatchGrid(rows) {
+    const counts = {};
+    rows.forEach(d => counts[d.b] = (counts[d.b] || 0) + 1);
+    batchGrid.innerHTML = BATCH_ORDER.map(b => {
+      const m = BATCH_META[b];
+      const n = counts[b] || 0;
+      return `
+        <div class="batch-card${state.batch === b ? ' active' : ''}" data-batch="${b}" style="--card-accent:${m.accent}${n === 0 ? ';opacity:.55' : ''}">
+          <div class="top">
+            <span class="name">${m.name}</span>
+            <span class="count mono">${n}</span>
+          </div>
+          <div class="action">${m.action} →</div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  // ---- Filter state ----
+  let state = { batch: "ALL", milestone: "ALL", assignee: "ALL", status: "ALL", rag: "ALL", q: "", sortKey: "n", sortDir: 1 };
+
+  const milestoneSelect = document.getElementById("milestoneSelect");
+  milestoneSelect.innerHTML += Array.from(new Set(DATA.map(d => d.m))).sort()
+    .map(m => `<option value="${m}">${m}</option>`).join("");
+  milestoneSelect.addEventListener("change", (e) => {
+    state.milestone = e.target.value;
+    applyFilters();
+  });
+
+  document.getElementById("statusSelect").addEventListener("change", (e) => {
+    state.status = e.target.value;
+    applyFilters();
+  });
+
+  const assigneeSelect = document.getElementById("assigneeSelect");
+  const assignees = Array.from(new Set(DATA.flatMap(d => d.a))).sort();
+  assigneeSelect.innerHTML += assignees.map(a => `<option value="${a}">${a}</option>`).join("")
+    + `<option value="__none__">Unassigned</option>`;
+
+  function scopedRows(includeBatch) {
+    let rows = DATA.slice();
+    if (state.milestone !== "ALL") rows = rows.filter(d => d.m === state.milestone);
+    if (state.status !== "ALL") rows = rows.filter(d => d.s === state.status);
+    if (includeBatch && state.batch !== "ALL") rows = rows.filter(d => d.b === state.batch);
+    if (state.rag !== "ALL") rows = rows.filter(d => d.rag === state.rag);
+    if (state.assignee === "__none__") rows = rows.filter(d => d.a.length === 0);
+    else if (state.assignee !== "ALL") rows = rows.filter(d => d.a.includes(state.assignee));
+    if (state.q) {
+      const q = state.q.toLowerCase();
+      rows = rows.filter(d => d.t.toLowerCase().includes(q) || String(d.n).includes(q));
+    }
+    return rows;
+  }
+
+  function applyFilters() {
+    renderBatchGrid(scopedRows(false));
+    let rows = scopedRows(true);
+    rows.sort((a, b) => {
+      let av = a[state.sortKey], bv = b[state.sortKey];
+      if (state.sortKey === "a") { av = a.a[0] || "zzz"; bv = b.a[0] || "zzz"; }
+      if (state.sortKey === "rag") { av = RAG_RANK[a.rag]; bv = RAG_RANK[b.rag]; }
+      if (typeof av === "string") { av = av.toLowerCase(); bv = bv.toLowerCase(); }
+      if (av < bv) return -1 * state.sortDir;
+      if (av > bv) return 1 * state.sortDir;
+      return 0;
+    });
+    renderTable(rows);
+  }
+
+  function renderTable(rows) {
+    const tbody = document.getElementById("tableBody");
+    tbody.innerHTML = rows.map(d => `
+      <tr>
+        <td>${ragChip(d.rag)}</td>
+        <td class="num mono"><a href="${d.u}" target="_blank" rel="noopener">#${d.n}</a></td>
+        <td class="title"><a href="${d.u}" target="_blank" rel="noopener">${escapeHtml(d.t)}</a></td>
+        <td><span class="batch-tag ${batchClass(d.b)}">${BATCH_META[d.b].name}</span></td>
+        <td><span class="ms-tag">${escapeHtml(d.m)}</span></td>
+        <td><span class="pill ${prioClass(d.p)}"><span class="dot" style="background:currentColor"></span>${prioLabel(d.p)}</span></td>
+        <td class="who">${escapeHtml(d.s)}</td>
+        <td class="who ${d.a.length ? '' : 'empty'}">${d.a.length ? d.a.join(", ") : "unassigned"}</td>
+      </tr>
+    `).join("");
+    document.getElementById("countNote").textContent = `Showing ${rows.length} of ${DATA.length}`;
+  }
+
+  // batch card clicks
+  batchGrid.addEventListener("click", (e) => {
+    const card = e.target.closest(".batch-card");
+    if (!card) return;
+    const b = card.dataset.batch;
+    state.batch = state.batch === b ? "ALL" : b;
+    document.querySelectorAll("[data-filter-batch]").forEach(c => c.classList.toggle("on", state.batch === "ALL"));
+    applyFilters();
+  });
+
+  document.querySelector('[data-filter-batch="ALL"]').addEventListener("click", () => {
+    state.batch = "ALL";
+    document.querySelectorAll("[data-filter-batch]").forEach(c => c.classList.add("on"));
+    applyFilters();
+  });
+
+  document.querySelectorAll(".rag-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const rag = chip.dataset.filterRag;
+      state.rag = state.rag === rag ? "ALL" : rag;
+      document.querySelectorAll(".rag-chip").forEach(c => c.classList.toggle("on", c.dataset.filterRag === state.rag));
+      applyFilters();
+    });
+  });
+
+  assigneeSelect.addEventListener("change", (e) => {
+    state.assignee = e.target.value;
+    applyFilters();
+  });
+
+  document.getElementById("searchInput").addEventListener("input", (e) => {
+    state.q = e.target.value;
+    applyFilters();
+  });
+
+  document.querySelectorAll("thead th[data-sort]").forEach(th => {
+    th.addEventListener("click", () => {
+      const key = th.dataset.sort;
+      if (state.sortKey === key) state.sortDir *= -1;
+      else { state.sortKey = key; state.sortDir = 1; }
+      document.querySelectorAll("thead th").forEach(t => t.classList.remove("sorted"));
+      th.classList.add("sorted");
+      applyFilters();
+    });
+  });
+
+  const num = (id, v) => document.getElementById(id).textContent = v;
+  num("statOpen", DATA.length);
+  num("statHigh", DATA.filter(d => /high/i.test(d.p)).length);
+  num("statGreen", DATA.filter(d => d.rag === "green").length);
+  num("statYellow", DATA.filter(d => d.rag === "yellow").length);
+  num("statRed", DATA.filter(d => d.rag === "red").length);
+
+  applyFilters();
+</script>

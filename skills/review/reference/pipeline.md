@@ -42,9 +42,10 @@ added to the prompt biases the lens and is paid for twice.
 
 1. `context` — pr mode only, alone; the finders wait for its return. Exec mode skips it: finders and
    `verify` find the entry points themselves.
-2. The finders for the depth — **one message, all in parallel**, one `sin-flow:reviewer` each. Exec mode
-   only, unless the caller's skill says this round runs without Codex: the same message also runs `bash $LENSES/../codex.sh find "$PKG"` as a background Bash call. The
-   script reads `codex_review` in `user.md` and prints `CODEX · off` when Codex is not on; pr mode never runs it.
+2. The finders for the depth — **one message, all in parallel**, one `sin-flow:reviewer` each. Unless
+   the caller's skill says this round runs without Codex, the same message also runs `bash $LENSES/../codex.sh find "$PKG"` as a background Bash call. The
+   script reads `codex_review` in `user.md` and prints `CODEX · off` when Codex is not on. In pr mode it runs only when
+   `codex_model_pr` names a model family or a model, and runs on the newest model of that family.
 3. `verify` — alone, after every finder and the Codex run are back or recorded as failed. It is a fresh agent
    and sees only the package, never your summary.
 4. **Codex turns** — exec mode, only when `findings/codex.md` exists. Run each step once, in this order:
@@ -96,6 +97,7 @@ DIR=$(sed -n 's/^reviews_dir: *//p' "${FLOW_HOME:-$HOME/.claude/sin-flow}/user.m
 DIR=${DIR:-~/.claude/sin-flow/reviews}
 case "$DIR" in "~"/*) DIR=$HOME/${DIR#\~/} ;; esac
 OUT=$DIR/$NAME.md
+[ "$MODE" != pr ] && [ -e "$OUT" ] && ! grep -q "$SHA" "$OUT" && OUT=$DIR/$NAME-$(printf %.8s "$SHA").md
 V=$PKG/verdict.md
 mkdir -p "$(dirname "$OUT")"
 {

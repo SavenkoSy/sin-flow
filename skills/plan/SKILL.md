@@ -31,8 +31,6 @@ Chat with the user in `chat_language` from `~/.claude/sin-flow/user.md`, or in t
 | `/sin-flow:plan <path>` | that file |
 
 Nothing found → one line naming the newest seed under that key, so one word or a path settles it.
-A seed older than 2026-10-13 that still sits inside the repo is moved into `work/<key>/<id>/` before
-Step 1 and never committed.
 
 ## Step 0 — Profile, silently
 
@@ -112,9 +110,10 @@ background Bash wakes the session. Then continue with Step 2.
 **Own checkout.** A seed whose `worktree:` line names a checkout keeps it, on its branch. Otherwise
 remove this repo's `.claude/worktrees/*` whose PR is merged or closed and whose tree is clean
 (`git worktree remove`, never `--force`), then
-`git worktree add .claude/worktrees/<id>-<slug> -b <branch> origin/<base>` with the branch from the
-profile's convention (`git.branch`, else `<prefix>/<type>/<id>/<slug>`) and write the path into the
-plan's `worktree:` line. When the branch already exists, note `resume` and do not recreate it. When it must
+`sin-flow-worktree --repo <repo> --name <id>-<slug> --branch <branch> --base origin/<base>` with the branch from the
+profile's convention (`git.branch`, else `<prefix>/<type>/<id>/<slug>`) and write its `path:` into the
+plan's `worktree:` line. It makes an Orca workspace or a git worktree as `user.md` says; `state: resume` → note
+`resume`. When it prints `mode: orca`, keep its `shell:` and close it as `skills/ingest/reference/exits.md` says once the hand-off prints `opened:`. When it must
 sit on an unmerged branch or PR, `git merge --no-edit <that head>` in the worktree moves it there (`origin/<that head>` only when the branch is on `origin`); never
 `git reset --hard`. Every
 analyst and the auditor read code in that worktree, never in the shared checkout.
@@ -191,13 +190,15 @@ connection string or an env file, and never a value the doc marks private. Read
 `reference/probe-traps.md` before writing any probe.
 
 **Preflight: check, never ask.** Run `measure.preflight` (or each source's `preflight`) before
-Step 3. Down → one status line `<source> down — measuring when it is up`, start
-`until <preflight> >/dev/null 2>&1; do sleep 15; done` with `run_in_background`, and keep going with
-Steps 2–3 and the draft. If it fires before Step 6, measure. If not, every claim that needed it is
+Step 3. Down and the source has `tunnel` → run the `tunnel` string verbatim as its own Bash call,
+nothing chained to it, then the preflight again. Still down → one status line `<source> down —
+measuring when it is up`, start `until <preflight> >/dev/null 2>&1; do sleep 15; done` with
+`run_in_background`, and keep going with Steps 2–3 and the draft. If it fires before Step 6, measure. If not, every claim that needed it is
 `not measured — <source> unavailable (<reason>)`, stays `inferred`, gets its bounded query written
 as that unit's first exec step, and the header carries `RULING_NEEDED: measure before exec`.
 A probe the auto-mode classifier denies is the same path, with the reason `classifier denied`: do not
-retry it and do not ask; write its inbox row (Step 10) and go on with code reads and `work/` notes.
+retry it, do not ask, and never hand the user a `!` command; write its inbox row (Step 10) and go on
+with code reads and `work/` notes.
 
 **`measure.doc: none`** → every number is `not measured — no route`; claims stay `inferred`; numbers
 are never invented and never taken from a local or dev database as a volume claim.
@@ -289,7 +290,7 @@ that resets, drops or seeds a dev database. Upstream mode: the commands
 read names, else plain `<title>`. The PR title lists every id that
 **ships code**, ascending — a no-code ticket never enters it. Migrations commit last.
 
-**Rulings** — every point you decided: `Ruling: <what> — <why> — <cost if wrong>`. An open decision
+**Rulings** — every point you decided, one list item each in the template's shape. An open decision
 the seed left: `ingest-miss: <quoted line> → <the call> (rejected: <alternative>)`, reversible option
 taken. Exec never halts on either.
 

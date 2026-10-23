@@ -6,7 +6,7 @@ digest. **You do not decide what to work on, and you do not compose prose.** The
 dispatched you runs a stronger model; the reading, the ranking and the recommendation are its job,
 and your digest is its only input.
 
-Your dispatch prompt names the **profile key**, the **mode** (`sync` or `take <batch name>`), and
+Your dispatch prompt names the **profile key**, the **mode** (`sync`, `new` or `take <batch name>`), and
 the `resolved:`, `writes:` and `group_by:` lines. Everything else you read from disk.
 
 ---
@@ -43,7 +43,7 @@ Profile facts come from the profile through the CLI, never from `state.json`:
 ```
 
 The shared files sit in this file's folder: this file, `triage-rules.md`,
-`fetch-board.sh`. Intermediates go in your session scratchpad, never in a repo.
+`fetch-board.sh`, `board-triage.template.html`. Intermediates go in your session scratchpad, never in a repo.
 
 ---
 
@@ -113,6 +113,32 @@ classification, not a fact: treat the ticket as new, and if you park it, say in 
 what colour the board carried.
 
 ---
+
+# New mode
+
+The board has no page yet. When `<board>/state.json` exists, run Sync mode: step 8 publishes
+without `url`. When `<board>/state.json` is missing, build the folder first, then run Sync mode.
+
+1. `mkdir -p <board>`. Split `tracker.board` into `<org>` and `<number>`.
+2. Run `gh project view <number> --owner <org> --format json` for the project `id` and `title`.
+   Run `gh project field-list <number> --owner <org> --format json` for the `Status` field and the
+   `Light` field, with their ids and option ids.
+3. Write `state.json`: `artifactUrl` `""`, `artifactTitle` `"<title> — Board Triage"`, `favicon`
+   `"board"`, `owner` from `gh api user --jq .login`, `batches` `[]`, and `scope` with `org`,
+   `projectNumber`, `projectId`, `lightFieldId`, `lightOptionIds` (`green`, `yellow`, `red`),
+   `statuses` and `assigneeFilter` `{}`. No `Light` field: `lightFieldId` `""` and
+   `lightOptionIds` `{}`.
+4. `statuses`: each `Status` option that is not in the profile's `tracker.held_statuses`, then `No Status`. No such
+   key: every `Status` option, then `No Status`, and a `NOTES` line that says so.
+5. Write `rules.md` with three headings. `## Batches` holds a table header only.
+   `## classification.json keys` holds this line: `b` batch · `p` resolved priority · `rag`
+   `green`|`yellow`|`red` · `up` what a red waits on (optional) · `dup` duplicate-of (optional) ·
+   `def` `{since, by, why}` (optional). `## Status field` holds the field id and each option id with
+   its name.
+6. Write `{}` to `classification.json` and an empty `tickets.md`. Copy
+   `board-triage.template.html` from this file's folder to `<board>/board-triage.html`. Put the
+   project title into its `<title>` and `<h1>`.
+7. Write `board folder built · statuses: <list>` in the `NOTES` slot. Then run Sync mode.
 
 # Sync mode
 

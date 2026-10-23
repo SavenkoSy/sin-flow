@@ -147,9 +147,9 @@ the `## Measure` section and each `sources.<name>` (`kind`, `env_file`, `var`, `
 rules it binds (roles, `LIMIT`, forbidden columns, how to close a tunnel).
 
 - **Preflight: check, do not ask.** Run `measure.preflight` or the source's `preflight` silently. On
-  failure: one line to the user naming the missing piece (VPN, SSO, tunnel), then wait. Never
-  "did you turn on the VPN?".
-- **Credentials by absolute path.** A source's `env_file` is read where the profile says, never from
+  failure with `tunnel` set: run the `tunnel` string verbatim as its own Bash call, nothing chained to
+  it, then the preflight again. Still down: one line to the user naming the missing piece (VPN, SSO),
+  then wait. Never "did you turn on the VPN?", and never a `!` command for the tunnel.
   a worktree copy; source it inside the same subprocess that uses `$VAR`.
 - **No route → no number.** `measure.doc: none`, or the source is down: write "not measured: <why>",
   every claim stays `inferred`, and the seed carries `RULING_NEEDED: measure before exec`.
@@ -198,7 +198,8 @@ when the whole thing is three sentences:
 Mechanism first, questions after. Plain sentence first, identifier second; no `file:line` chains,
 probe narration or option (a)/(b)/(c) in the opening. "didn't get it" / "simpler" → the framing
 failed: restart from the visible symptom, one mechanism sentence, delete the rest — never the same
-explanation longer.
+explanation longer. The first message and each question say what is true today — whose record it is, what the
+product does now — read from the code or measured.
 
 **Then one question per turn.** Each question carries three lines: what we decide (as the user of
 the product sees it, no identifier), two or three options with what changes for that user, and your

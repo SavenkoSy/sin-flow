@@ -16,8 +16,8 @@ you out of judgment, and the two output templates. `reference/triage-rules.md` b
 profile's `board/rules.md` are the batch and light vocabulary it sends you to. Nothing in this file
 overrides any of them.
 
-Your dispatch prompt gives you the **profile key** and the **mode** (`sync`, or `take <batch
-name>`, optionally with the ticket numbers). It also carries the `resolved:`, `writes:` and
+Your dispatch prompt gives you the **profile key** and the **mode** (`sync`, `new`, or `take
+<batch name>`, optionally with the ticket numbers). It also carries the `resolved:`, `writes:` and
 `group_by:` lines; copy each into the digest the way `board-pass.md` says. Profile facts come from `sin-flow-profile <key> get <field>`;
 board state from `$(sin-flow-profile <key> dir)/board/`. The prompt may also carry
 **decisions** from the caller — a batch and light for a ticket you parked last pass, or an

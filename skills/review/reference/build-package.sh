@@ -209,7 +209,11 @@ exec_mode() {
   [ -n "$REPO" ] || REPO=local/$(basename "$TREE")
   local mb fork_ref=$BASE
   git rev-parse --verify --quiet "origin/$BASE^{commit}" >/dev/null && fork_ref=origin/$BASE
-  mb=$(git merge-base "$fork_ref" HEAD) || die "no merge base between $fork_ref and HEAD"
+  if [[ $fork_ref =~ ^[0-9a-f]{7,40}$ ]]; then
+    mb=$(git rev-parse --verify "$fork_ref^{commit}") || die "base commit not found: $fork_ref"
+  else
+    mb=$(git merge-base "$fork_ref" HEAD) || die "no merge base between $fork_ref and HEAD"
+  fi
   write_local_diff "$mb" HEAD
   {
     printf '# Intent: %s\n\n' "$INTENT"

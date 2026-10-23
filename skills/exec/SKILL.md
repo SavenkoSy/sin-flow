@@ -85,7 +85,7 @@ The dispatching thread is the most expensive place in the chain when it fills wi
    branch, otherwise from a freshly fetched `origin/<base>`. That branch stays the header `base:`, and the PR is a
    draft against it. After the first unit merges, the target is the profile base (`repo.base` or `## Inferred`). The header's `worktree:` exists → work there
    (`EnterWorktree`). Otherwise, when this checkout is busy — a dirty tree, another branch, another session in it →
-   `git worktree add .claude/worktrees/<id> -b <header's branch:> <base>`, `EnterWorktree`, everything there. No
+   `sin-flow-worktree --repo <this checkout> --name <id> --branch <header's branch:> --base <base>`, `EnterWorktree` on its `path:`, everything there. No
    `branch:` line → `sin-flow:shipper` names it by convention on its first `local` / `commit`. Never work on the base branch.
    Then each name in the profile's `repo.local_files` that this checkout lacks and `repo.path` has → `ln -s
    <repo.path>/<name> <name>`; never a copy, never print one. Ledger `Base: <ref> (<why>)` and `Linked: <names>`.
@@ -113,6 +113,8 @@ no such block is a plan defect, ledger it), the interfaces earlier units froze, 
 rulings that override plan text, the spec files it runs, its definition of done, and the sibling note — other
 implementers may be editing other files in this checkout right now; never run a whole-project test or lint, only
 the specs and files the brief names. Exact values live only in the brief; a subagent never reads the whole plan.
+Write every brief in its own message, before the dispatch message: a Write can be denied, and an implementer
+dispatched beside a denied Write starts with no brief.
 
 **Dispatch the wave's implementers in ONE message** (parallel when files are disjoint), each with
 one line on where the unit fits, the brief path, the report path `briefs/unit-<u>-report.md`, the branch, its model
@@ -169,16 +171,18 @@ waves. Do not ask.
 4. **Run** `${CLAUDE_PLUGIN_ROOT}/skills/review/reference/pipeline.md` as written, every lens as `subagent_type: sin-flow:reviewer` with the lens table's
    model. Each reviewer returns one line — ledger it, and each `codex.sh` line too: the `CODEX · found …` stats line
    is the per-PR record of the Codex trial. Read `<pkg>/verdict.md` only; never open `findings/`. Render
-   the review file into the reviews folder (user preference) as `<key>-<branch>.md`.
+   the review file into the reviews folder (user preference) as `<key>-<branch>.md` (`-<sha8>` added when that
+   file already holds the review of another commit).
 5. **Rows → one fix dispatch.** `reproduces` rows and `possible` rows of every severity go into ONE fix dispatch,
-   every K block verbatim. A `possible` row is fixed the way it proposes, with a spec asserting the fixed behaviour
+   every K block verbatim, plus the ledger's `Ruling:` lines. A fix that reverses a ruling is a regression the
+   scoped re-review reports. A `possible` row is fixed the way it proposes, with a spec asserting the fixed behaviour
    («measure the settle → fix what reproduces»). Two exceptions, only these: the plan's text already accepts this
    exact risk, or the measurement the row's `settle` names was run and refutes it — ledger `final-review settled:
    K<n> — plan:<line> «<quote>»` or `— measured: <number, filter>`. «Reopens a plan decision» without a quoted line,
    «a new mechanism», «outside this ticket», «a separate PR» are not exceptions. Rejected rows → one ledger line `final-review
    rejected: <n> (<reason> <count>, …)`.
-6. **After the fix**: scoped re-review, `sin-flow:shipper` `gate` (when the fix touched code), `sin-flow:shipper` `local` (`commit` once a PR exists) — a NEW
-   commit, never an amend. **Review until clean** when the profile folder has `review-team.md`: steps 3–5 again on
+6. **After the fix**: scoped re-review, `sin-flow:shipper` `gate` (when the fix touched code), `sin-flow:shipper` `local` (`commit` once a PR exists) — a new
+   commit. **Review until clean** when the profile folder has `review-team.md`: steps 3–5 again on
    the fix commits only (`build-package.sh exec <SHA= of the previous round's manifest.env> …-<round> --depth quick`)
    — every line the fix wrote gets the lenses; code an earlier round passed is not reviewed again. These rounds
    run without Codex: no `codex.sh` call, no Codex turns. Stop when verify keeps no row step 5 does not
@@ -247,7 +251,7 @@ merged PRs means team. **Team → the post-PR loop. Solo → the user's review.*
    judging is the user's. Do not declare the work done, do not start the next plan. The user's findings come back
    **collected, not one at a time**: one implementer on the touched unit's `builder:` (mid when they span units,
    strong only when the forcing list is hit), the visual check again when a rendered surface changed, then one
-   `sin-flow:shipper` gate + `commit` for the batch (a new commit, never an amend); ledger `Round <k>: complete (<sha>)`.
+   `sin-flow:shipper` gate + `commit` for the batch (a new commit); ledger `Round <k>: complete (<sha>)`.
 4. **Merge on the user's word.** "merge", or an approval that says so → `ExitWorktree` with `action: keep` if you are in
    one, then run `gh pr view <PR> --json isDraft,baseRefName`. For a plan with `after:`, also run
    `gh pr list -R <first repo> --head <first branch> --state merged --json url -q '.[0].url'`. Find the first repo
@@ -281,7 +285,7 @@ The PR is ready until a point reproduces. The user does not merge here; the team
 3. **The user's review** → one fix round. The user's questions about code → a `sin-flow:read-only-analyst`. A
    question that reopens a product decision is not a task here: answer from the plan's `ingest-miss:` line and the rejected alternative
    beside it; reversing it is the user's call.
-4. **A teammate's review.** Re-run step 1 first. Per point, by its severity label (none → by what it claims):
+4. **A teammate's review.** Re-run step 1 first. Per point, by its severity label (none → low, unless it names a wrong result that a user or a caller sees):
    - **low** → a reply, never a fix.
    - **medium** → reproduce it: a failing spec, a measured row, a read-only query by the profile's `## Measure`.
      Not reproduced → a reply, no fix.
@@ -301,7 +305,7 @@ The PR is ready until a point reproduces. The user does not merge here; the team
    `repo` cell of the `after:` row in the spec. Add to each check
    `gh pr list -R <first repo> --head <first branch> --state merged --json url -q '.[0].url'`. It exits when
    `baseRefName` changed, the state is `BEHIND` / `DIRTY`, a review or comment by anyone but the PR author and a
-   deploy bot is new since the last check, or — only when the base is another feature branch — the base has commits
+   deploy bot is new since the last check (a check whose `gh` call failed or printed an empty state is skipped, never a wake), or — only when the base is another feature branch — the base has commits
    the branch lacks. If the plan header has `after:`, it also exits when the PR of the first unit has state
    `MERGED`. Find that PR as in `sin-flow:plan` Step 1. On wake → a new review or comment: step 4, then start the
    watcher again. For a draft PR whose first PR merged, in the same repo: if `baseRefName` is still the first
@@ -312,10 +316,10 @@ The PR is ready until a point reproduces. The user does not merge here; the team
    stays a draft for a person.
 6. **No fix is pushed unreviewed.** One batched round for every reproduced point and the user's: fix each point
    where it was flagged and in every sibling of the same pattern on the branch (the flagged query → every sibling
-   query; the flagged error list → every rescue of that client) — points fixed in one place only came back three
-   times. Then Final review step 6 on the fix commits, then `sin-flow:shipper` `commit` — commit and push (a NEW commit, never an amend — a separate commit shows the reviewer only the change), then a reply in each thread with
-   the fix SHA. `tracker.board` set and every point of a reviewer's review fixed or answered → re-request them:
-   `gh api -X POST repos/<repo>/pulls/<n>/requested_reviewers -f 'reviewers[]=<login>'`.
+   query; the flagged error list → every rescue of that client; a flagged test fixture (a recorded response, a factory, a snapshot) → every
+   fixture on the branch against its spec's inputs) — points fixed in one place only came back three times. Then Final review step 6 on the fix commits, then `sin-flow:shipper` `commit` — commit and push (a new commit shows the reviewer only the change), then a reply in each thread with
+   the fix SHA. When the profile sets `review.request`, run `sin-flow-rerequest <PR url>` after every reply batch, with a push or without one: it re-requests
+   the profile's `review.request` and everyone who reviewed the PR.
 
 ## Final message — the one definition
 

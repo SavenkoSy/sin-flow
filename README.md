@@ -191,8 +191,8 @@ appends a row to `~/.claude/sin-flow/codex-trial.tsv`: Codex findings kept, and 
 ### What's inside
 
 Seven skills, six agents (`board`, `implementer`, `read-only-analyst`, `reviewer`, `review-poster`,
-`shipper`), hooks, and three CLIs on your PATH while the plugin is enabled: `sin-flow-profile`,
-`sin-flow-infer`, `sin-flow-handoff`.
+`shipper`), hooks, and five CLIs on your PATH while the plugin is enabled: `sin-flow-profile`,
+`sin-flow-infer`, `sin-flow-handoff`, `sin-flow-worktree`, `sin-flow-rerequest`.
 
 ### Requirements
 
