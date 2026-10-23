@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+[ $# -eq 1 ] || { echo "usage: sin-flow-rerequest <PR url>" >&2; exit 2; }
+url=$1
+[[ $url =~ ^https://github\.com/([^/]+/[^/]+)/pull/([0-9]+) ]] || { echo "not a PR url: $url" >&2; exit 2; }
+repo=${BASH_REMATCH[1]}
+n=${BASH_REMATCH[2]}
+
+pr=$(gh pr view "$url" --json author,state,latestReviews)
+[ "$(jq -r .state <<<"$pr")" = OPEN ] || { echo "rerequest: none · PR not open"; exit 0; }
+author=$(jq -r .author.login <<<"$pr")
+
+configured=""
+if key=$(sin-flow-profile key 2>/dev/null); then
+  configured=$(sin-flow-profile "$key" get review.request 2>/dev/null | tr ', ' '\n\n' || true)
+fi
+
+logins=$( { printf '%s\n' "$configured"; jq -r '.latestReviews[].author.login' <<<"$pr"; } \
+  | grep -v -e '^$' -e '\[bot\]$' -e '^null$' | grep -vxF "$author" | sort -u || true)
+[ -n "$logins" ] || { echo "rerequest: none · no reviewer"; exit 0; }
+
+args=()
+while IFS= read -r login; do args+=(-f "reviewers[]=$login"); done <<<"$logins"
+gh api -X POST "repos/$repo/pulls/$n/requested_reviewers" "${args[@]}" >/dev/null
+echo "rerequest: $(paste -sd, - <<<"$logins")"

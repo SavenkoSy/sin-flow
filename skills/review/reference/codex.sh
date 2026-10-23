@@ -66,7 +66,7 @@ run_codex() {
       --output-schema "$schema" -o "$out" "$resume" "$prompt" < /dev/null > /dev/null 2>> "$LOG") 2> /dev/null
   else
     (cd "$TREE" && perl -e 'alarm shift; exec @ARGV' "$CODEX_TIMEOUT_SECONDS" \
-      codex exec -s read-only -c project_doc_max_bytes=0 -C "$TREE" \
+      codex exec -s read-only -c project_doc_max_bytes=0 ${MODEL:+-m "$MODEL"} -C "$TREE" \
       --output-schema "$schema" -o "$out" "$prompt" < /dev/null > /dev/null 2>> "$LOG") 2> /dev/null
   fi
   rc=$?
@@ -85,9 +85,21 @@ fill() {
   sed -e "s|{PKG}|$PKG|g" -e "s|{LENSES}|$LENSES|g" -e "s|{STACK}|${STACK:-}|g" -e "s|{TEAM}|${TEAM:-}|g" "$1"
 }
 
+newest_model() {
+  case "$1" in
+    "") return 0 ;;
+    *-*) echo "$1" ;;
+    *) jq -r --arg f "$1" '.models[] | select(.visibility == "list") | .slug | select(test("^gpt-[0-9.]+-" + $f + "$"))' \
+         "${CODEX_HOME:-$HOME/.codex}/models_cache.json" 2>/dev/null | sort -V | tail -1 ;;
+  esac
+}
+
 cmd_find() {
-  if [ "$MODE" != exec ]; then echo "CODEX · off · pr mode"; exit 0; fi
   if [ "$(pref codex_review)" != on ]; then echo "CODEX · off"; exit 0; fi
+  if [ "$MODE" != exec ]; then
+    MODEL=$(newest_model "$(pref codex_model_pr)")
+    [ -n "$MODEL" ] || { echo "CODEX · off · pr mode, no model for codex_model_pr"; exit 0; }
+  fi
   : > "$LOG"
   rm -f "$D/session" "$D/find.json" "$PKG/findings/codex.md"
   command -v codex >/dev/null 2>&1 || skip "not installed" CODEX

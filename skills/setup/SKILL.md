@@ -102,7 +102,9 @@ an absent one keeps its default:
 | `models.<stage>` | `models.strong` | the session a hand-off opens for that stage (`setup`, `sync`, `ingest`, `plan`, `exec`, `review`, `learning`); its subagents keep the tiers |
 | `reviews_dir` | `~/.claude/sin-flow/reviews` | where `/sin-flow:review` writes review files |
 | `codex_review` | `off` | `on` → the exec review at the end of a unit also runs OpenAI Codex CLI as one more finder, then gives Codex one reply turn on the verdict (`skills/review/reference/pipeline.md` § 3). Needs `codex` installed and `codex login`; without them the review goes on and the last message says so |
+| `codex_model_pr` | `""` | a Codex model family `<family>` (the newest listed `gpt-<version>-<family>` in `~/.codex/models_cache.json`), or a full model name → `/sin-flow:review` of a teammate's PR also runs Codex as a finder on that model; empty → pr mode runs no Codex |
 | `codex_watch` | `""` | `orca` → the Orca workspace card shows each step of that Codex run |
+| `workspace` | `""` | `orca` or `git`: where `sin-flow-worktree` makes every stage's worktree; empty → `git`. `orca` also turns on the Stop hook `orca-quiet.sh`: it marks the Orca worktree read while background tasks run |
 | `work_remote` | `""` | a git remote for `~/.claude/sin-flow` (work notes and profiles); empty → local only |
 
 A repo profile may set the same `models.*` keys; it wins over `user.md` for that repo. `sin-flow-profile model <tier|stage>`
@@ -167,7 +169,7 @@ always without options or paths, once per entry.
   in `test_cmd`, `lint_cmd`, `security_cmd` or `branch_format` (`delivery.mission_branch_format` counts).
 
 Profile format: flat `group.key: value` lines (lists as `["a","b"]`), prose sections `## Inferred`, `## Measure`, `## Run`,
-`## Ship`, `## Tracker`, `## Never`. Keys that setup may write: `tracker.adapter`, `tracker.write.light`, `tracker.write.assign`, `tracker.write.status`, `group_by`. Required: `key`, `repo.slug`, `measure.doc`. Never a secret — pointers only.
+`## Ship`, `## Tracker`, `## Never`. Optional keys the stages read when set: `review.request` (logins exec asks for review and asks again after each reply batch), `pr.relink_after_bot: on` (shipper saves the PR body once more when a bot added a `Closes` line that GitHub did not link), `tracker.held_statuses` (Status options that a new board leaves out of scope). Keys that setup may write: `tracker.adapter`, `tracker.write.light`, `tracker.write.assign`, `tracker.write.status`, `group_by`. Required: `key`, `repo.slug`, `measure.doc`. Never a secret — pointers only.
 
 ## Check (every later run)
 
@@ -212,8 +214,9 @@ For a source without a `.env.<source>_readonly` file the user already keeps, or 
 4. Write to the profile:
    `sources.<name>.{kind, env_file, var, base_url, tunnel, preflight, verify, readonly|status, purpose}` — `env_file` is
    the file name relative to the main checkout, never a value. Add one `## Measure` line naming when to use the source.
-5. Offer an allow-rule in the repo's `.claude/settings.local.json` (`Bash(psql *)`, `Bash(curl -s -H * <base_url>/*)`) —
-   only after a yes.
+5. Offer an allow-rule in the repo's `.claude/settings.local.json` (`Bash(psql *)`, `Bash(curl -s -H * <base_url>/*)`,
+   and `Bash(<tunnel>)` with the exact `tunnel` string when it is set, so auto mode does not send it to the
+   classifier) — only after a yes.
 6. Before the final message, grep everything written this run for the credential's first characters, without printing
    them: `( set -a; . <file>; set +a; grep -rlF -- "${VAR:0:24}" ~/.claude/sin-flow | wc -l )` must be `0`.
 

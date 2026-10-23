@@ -1,6 +1,6 @@
 ---
 name: sync
-description: 'Board stage of the flow (sin-flow:sync → sin-flow:plan → sin-flow:exec) for any repo whose flow profile names a GitHub Projects board in `tracker.board` or a local tracker adapter in `tracker.adapter`; the first argument is the profile key (default: the key of the cwd). Every milestone on the board is in scope. The mechanical half runs in the `sin-flow:board` subagent on the cheap tier: it fetches the board, diffs it, refreshes the per-ticket briefs, classifies what the rules decide outright, republishes the triage page and hands back a fixed-shape digest. This session never fetches a board. Phase 1 reports that digest, closes the tickets the agent parked, and proposes which batch to take. Phase 2 takes a named batch — the agent records the claim, then assigns it and moves it to In progress if the profile's write switches permit, and writes the seed plan in ~/.claude/sin-flow/work/<key>/ — then hands off to sin-flow:plan. Use when invoked as `/sin-flow:sync [key] [take <batch>|new]`, when asked to sync/refresh the board triage, to see what is open or blocked, or to take/assign a batch.'
+description: 'Board stage of the flow (sin-flow:sync → sin-flow:plan → sin-flow:exec) for any repo whose flow profile names a GitHub Projects board in `tracker.board` or a local tracker adapter in `tracker.adapter`; the first argument is the profile key (default: the key of the cwd). Every milestone on the board is in scope. The mechanical half runs in the `sin-flow:board` subagent on the cheap tier: it fetches the board, diffs it, refreshes the per-ticket briefs, classifies what the rules decide outright, republishes the triage page and hands back a fixed-shape digest. This session never fetches a board. Phase 1 reports that digest, closes the tickets the agent parked, and proposes which batch to take. Phase 2 takes a named batch — the agent records the claim, then assigns it and moves it to In progress if the profile''s write switches permit, and writes the seed plan in ~/.claude/sin-flow/work/<key>/ — then hands off to sin-flow:plan. Use when invoked as `/sin-flow:sync [key] [take <batch>|new]`, when asked to sync/refresh the board triage, to see what is open or blocked, or to take/assign a batch.'
 ---
 
 # sin-flow:sync — one board per profile
@@ -53,8 +53,8 @@ verbatim.** Print it before the checks below, so a stop also shows the key. Give
 dispatch prompt as `resolved: <line>`.
 
 `tracker: none` → one line, `no board in this profile`, and stop. No
-`$(sin-flow-profile <key> dir)/board/state.json` → one line naming that path and
-`/sin-flow:sync <key> new`, and stop.
+`$(sin-flow-profile <key> dir)/board/state.json` → run phase 1 with `mode: new`. The agent builds
+the board folder first.
 
 Read the switches with `sin-flow-profile <key> get <field> || true`: `tracker.write.light`,
 `tracker.write.assign`, `tracker.write.status` and `group_by`. The CLI reads these four and
@@ -106,7 +106,7 @@ say so and fix the dispatch, don't do the agent's work in here.
 |---|---|
 | `/sin-flow:sync [key]` | phase 1 |
 | `/sin-flow:sync [key] take <batch>` | phase 2 for that batch |
-| `/sin-flow:sync [key] new` | `artifactUrl` in `board/state.json` is empty — the agent publishes a fresh page and records the URL |
+| `/sin-flow:sync [key] new` | phase 1 with `mode: new`: `board/state.json` is missing or its `artifactUrl` is empty. The agent builds a missing board folder, publishes a fresh page and records the URL |
 
 Plain language does the same: "sync <key>" → phase 1; "take batch <name>" → phase 2 on the key
 that `resolve` prints. When the key is genuinely ambiguous, ask in one line — never guess between
@@ -127,6 +127,8 @@ Agent(subagent_type: "sin-flow:board", model: "<cheap>", description: "Sync <key
                ${CLAUDE_PLUGIN_ROOT}/skills/sync/reference/board-pass.md and return the SYNC DIGEST
                template, nothing else.")
 ```
+
+Write `mode: new` in place of `mode: sync` for the `new` invocation or a missing `board/state.json`.
 
 Keep the agent's id. You will send decisions back to it.
 
@@ -324,9 +326,9 @@ the launch is not.
 **The next stage never inherits this session's model.** `sin-flow:plan` runs on `<strong>`: `sin-flow-handoff` resolves it from `--cwd`; with `--cwd` omitted, add `--model <strong>` from `sin-flow-profile model strong`.
 
 **Worktree first.** A taken batch is an ingest from the board, so it gets its worktree the same way:
-the "From the primary checkout" block of `${CLAUDE_PLUGIN_ROOT}/skills/ingest/reference/exits.md`, with
-`<repo>` the checkout below, `<id>` the seed's folder name and `<slug>` kebab-case from the batch name. In Orca
-that is an Orca workspace, so the plan and exec tabs show in its own row. Write `worktree: <path>` into the
+`sin-flow-worktree --repo <the checkout below> --name <id>-<slug> --branch <branch> --base origin/<base>`, with
+`<id>` the seed's folder name and `<slug>` kebab-case from the batch name. In Orca it makes an Orca workspace, so
+the plan and exec tabs show in its own row; when it prints `mode: orca`, close its `shell:` as `skills/ingest/reference/exits.md` says. Write `worktree: <path>` into the
 seed header; `sin-flow:plan` keeps that checkout. No checkout below → skip this step; plan creates the worktree.
 
 ```
@@ -384,8 +386,5 @@ filtered to the user (`scope.assigneeFilter`): someone else's regression is not 
 re-fix. If `tracker.write.status` is off, a claimed ticket stays in scope and shows in the
 `Claimed` group. A claimed ticket that leaves scope and comes back, for example as a reopen after
 QA, loses its claim and goes back to its own group.
-Movement belongs in the chat report, never on the page.
-
-**An excluded status is never spoken about either** (*"no status — don't even talk about it or
-mention it"*). It appears nowhere: not in the digest, not in the table, not in `Movement`,
-not in `Decisions needed`, not in an answer to a follow-up. Do not name the status at all.
+Movement belongs in the chat report, never on the page. A status outside `scope.statuses` appears
+nowhere: not in the digest, the table, `Movement`, `Decisions needed` or a follow-up answer.

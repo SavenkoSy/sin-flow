@@ -11,7 +11,9 @@ One unit by default — fewer, bigger. Several sources are not several units. Th
 parts live in different repos, or one part must merge before another can start. Show the map — per
 unit: title, repo, type, `after: <id>` for the second case — and lock it with one question; the
 answer goes into `## Decisions`. Same repo: the unit starts at once on the branch of `<id>`. Different repo: the unit waits for the PR of `<id>` in its own plan tab (`sin-flow:plan` Step 1). Then run everything below once per unit, in map order. A unit in
-another repo takes everything from that repo's profile.
+another repo takes everything from that repo's profile. A unit in a repo with no profile runs `sin-flow:setup`'s
+onboard for that repo in this session first, then goes on like every other unit: its own seed, `after: <id>` when
+it waits, and its tab in the same turn as the others. Never leave a unit of the map for later.
 
 ## Tracker unit
 
@@ -42,36 +44,27 @@ story. `<slug>` kebab-case from the intent.
 Where the session started decides, in every repo (inbox #36, #38, #43, #44). Primary checkout: `git
 rev-parse --git-dir` equals `git rev-parse --git-common-dir`; otherwise the cwd is a linked worktree.
 
-**A linked worktree is reused** only when the cwd's main checkout is `<repo>`. In Orca (`sin-flow-handoff --detect` prints `orca`) any linked worktree is the workspace the
+**A linked worktree is reused** only when the cwd's main checkout is `<repo>`. With `workspace: orca` in `user.md` any linked worktree is the workspace the
 user made for this work, whatever its name; elsewhere only one whose basename is the unit's id (`gh-<N>`,
 `<N-M>`, `epic-<N>`). It must be clean (`git status --porcelain` prints nothing) and, after `git fetch
 origin <base>`, `git rev-list --count origin/<base>..HEAD` is 0 — otherwise ask the user, never create a
 second one. Then in the cwd: `git merge --ff-only origin/<base>`, `git branch -m <branch>`. Only the first
 unit takes it; every other unit gets a new one as below.
 
-**From the primary checkout, and for every further unit, a new worktree.** A unit with `after:` in the same repo follows the paragraph below the Outside Orca block. In Orca it is a new Orca workspace, so its tab is visible:
+**From the primary checkout, and for every further unit, a new worktree.** One call makes it, in Orca or in git
+as `workspace:` in `~/.claude/sin-flow/user.md` says (empty → git):
 
 ```
-git -C <repo> fetch -q origin <base>
-orca worktree create --repo path:<repo> --name <id>-<slug> --base-branch origin/<base> --setup skip --no-parent --json
-git -C <.result.worktree.path> branch -m <branch>
-orca terminal list --worktree path:<.result.worktree.path> --json | jq -r '.. | objects | select(has("handle") and (has("agentIdentity") | not)) | .handle'
+sin-flow-worktree --repo <repo> --name <id>-<slug> --branch <branch> --base origin/<base>
 ```
 
-When `orca worktree create` returns `repo_not_found`, run `orca repo add --path <repo> --json` once and run the create again. When it fails again, use the Outside Orca block and append the inbox row SKILL.md § Hard boundaries names.
+It prints `mode:`, `path:`, `state:` (`new` or `resume`). When `mode: orca`, it also prints `shell:`, the handle of the
+plain shell Orca opens as the first terminal. Then, once the hand-off prints `opened:` for that path, run `orca terminal
+close --terminal <shell> --tab`, so the stage tab is the only one. A non-zero exit → report `hand-off: failed` with its stderr and
+append the inbox row SKILL.md § Hard boundaries names.
 
-Orca opens a plain shell as the new workspace's first terminal; the last line prints its handle. Keep it:
-once the hand-off prints `opened:` for this worktree, `orca terminal close --terminal <handle> --tab`, so the
-stage tab is the only one. Only that handle, only in a worktree this step created.
-
-Outside Orca:
-
-```
-git -C <repo> fetch -q origin <base>
-git -C <repo> worktree add .claude/worktrees/<id>-<slug> -b <branch> origin/<base>
-```
-
-For a unit with `after: <id>` in the same repo, cut the worktree from the local branch of `<id>`. Outside Orca: `git -C <repo> worktree add .claude/worktrees/<id>-<slug> -b <branch> <branch of the first unit>`. In Orca: `--base-branch <branch of the first unit>`. Do not fetch. That branch has no copy on `origin` yet. The seed `base:` names that branch.
+For a unit with `after: <id>` in the same repo, pass `--base <branch of the first unit>`: the script does not fetch a
+local base. The seed `base:` names that branch.
 
 Opening a tab in that worktree is the hand-off's job (`sin-flow-handoff --cwd <wt>`), never this step's.
 
@@ -107,7 +100,7 @@ Sections, in this order; one with nothing to say carries one line saying so:
 6. `## Open decisions` — who decides, what it blocks; `sin-flow:plan` settles each as a `Ruling:` with the
    rejected alternative beside it.
 7. `## Not in scope` — what the user said to leave, in their words; a defect seen on the way goes into
-   the fix, not here.
+   the fix, not here; a unit of the map is never here.
 8. `## File clusters` — the files the fix touches, each verified at the base commit, `NOT FOUND`
    otherwise; plus every doc section the fix makes false (heading and line range).
 9. `## Branch and PR skeleton` — the branch, and the PR title by convention (`[<ID>] <title>` when the

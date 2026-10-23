@@ -114,6 +114,6 @@ commit them.
 <only a fix in another team's repo, as prose with its owner; everything else is a unit above>
 
 ## Rulings
-Ruling: <what> — <why> — <cost if wrong>
+- Ruling: <what>. Why: <why>. Cost if wrong: <cost>.
 ingest-miss: <quoted seed line that leaves it open> → <the call> (rejected: <alternative>)
 ```

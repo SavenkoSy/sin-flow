@@ -8,9 +8,11 @@ A Claude Code plugin: the ticket-to-PR flow as skills, agents, hooks and CLIs.
 - `skills/<stage>/`: one skill per stage (setup, sync, ingest, plan, exec, review, learning), invoked as `/sin-flow:<stage>`.
 - `agents/`: subagents, dispatched as `sin-flow:<agent>`.
 - `hooks/hooks.json` + `hooks/scripts/`: hooks, referenced through `${CLAUDE_PLUGIN_ROOT}`.
-- `bin/`: CLIs on the Bash PATH while the plugin is enabled (`sin-flow-profile`, `sin-flow-infer`, `sin-flow-handoff`); `bin/handoff/`: terminal adapters.
+- `bin/`: CLIs on the Bash PATH while the plugin is enabled (`sin-flow-profile`, `sin-flow-infer`, `sin-flow-handoff`, `sin-flow-worktree`, `sin-flow-rerequest`); `bin/handoff/`: terminal adapters.
 
 ## Rules
+
+- Every change belongs to one layer: plugin, user or profile. Read `ARCHITECTURE.md` before a change to `skills/`, `agents/`, `hooks/` or `bin/`; `scripts/check-layers.sh` must pass.
 
 - Work through pull requests to `main`; never push to `main` directly.
 - No AI attribution: no `Co-Authored-By`, no "Generated with" line, in commits or PR bodies.
