@@ -5,7 +5,8 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export PATH="$root/bin:$PATH"
 scratch=$(mktemp -d)
 trap 'rm -rf "$scratch"' EXIT
-export FLOW_HOME="$scratch/home"
+export FLOW_HOME="$scratch/home" CLAUDE_CONFIG_DIR="$scratch/home"
+unset $(compgen -e | grep '^CLAUDE_PLUGIN_OPTION_' || true)
 mkdir -p "$FLOW_HOME/profiles"
 cases=0
 
@@ -159,5 +160,45 @@ run sin-flow-profile widgets get tracker.board
 expect_eq "board from team file" "acme#2" "$out"
 run sin-flow-profile resolve widgets
 expect_eq "resolve ignores team adapter" "key: widgets · tracker: acme#2 · from: argument · cwd profile: widgets" "$out"
+
+options() { jq -n --argjson o "$1" '{pluginConfigs: {"other@x": {options: {handoff: "wrong"}}, "sin-flow@test": {options: $o}}}' > "$CLAUDE_CONFIG_DIR/settings.json"; }
+
+rm -f "$CLAUDE_CONFIG_DIR/settings.json"
+run sin-flow-profile user context_guard
+expect_eq "user default number" 40 "$out"
+run sin-flow-profile user branch_prefix
+expect_eq "user no default" "" "$out"
+run sin-flow-profile user nope
+expect_eq "user unknown rc" 2 "$rc"
+run sin-flow-profile model strong "$nongit"
+expect_eq "model tier default" opus "$out"
+
+options '{"handoff": "tmux", "context_guard": 30, "models_strong": "fable"}'
+run sin-flow-profile user handoff
+expect_eq "user from settings" tmux "$out"
+run sin-flow-profile user context_guard
+expect_eq "user number from settings" 30 "$out"
+run sin-flow-profile model plan "$nongit"
+expect_eq "stage model falls to tier" fable "$out"
+out=$(CLAUDE_PLUGIN_OPTION_HANDOFF=iterm sin-flow-profile user handoff)
+expect_eq "user env wins" iterm "$out"
+
+mkdir -p "$scratch/bin"
+cat > "$scratch/bin/claude" <<'FAKE'
+#!/usr/bin/env bash
+case "$*" in
+  "plugin list --json") echo '[{"id":"sin-flow@test","enabled":true}]' ;;
+  "plugin configure sin-flow@test --values-stdin") cat > "$CLAUDE_CONFIG_DIR/configured.json" ;;
+  *) exit 9 ;;
+esac
+FAKE
+chmod +x "$scratch/bin/claude"
+printf -- '---\nchat_language: uk\nmodels.strong: fable\nmodels.plan: opus\nwork_remote: "git@example.com:a/b.git"  # note\n---\nFree notes.\n' > "$FLOW_HOME/user.md"
+run env PATH="$scratch/bin:$PATH" sin-flow-profile migrate-user
+expect_eq "migrate rc" 0 "$rc"
+expect_has "migrate skips stage model" "not migrated (not a user key): models_plan" "$out"
+expect_eq "migrate payload" '{"chat_language":"uk","models_strong":"fable","work_remote":"git@example.com:a/b.git"}' "$(jq -cS . "$CLAUDE_CONFIG_DIR/configured.json")"
+expect_eq "migrate keeps notes" "Free notes." "$(cat "$FLOW_HOME/user.md")"
+expect_has "migrate backup" "models.plan: opus" "$(cat "$FLOW_HOME"/backups/*/user.md)"
 
 echo "ok: $cases cases"

@@ -30,14 +30,14 @@ TOP=$(git rev-parse --show-toplevel)
 SLUG=$(git remote get-url origin | sed -E 's#^(git@[^:]+:|ssh://[^/]+/|https?://[^/]+/)##; s#\.git$##')
 grep -lE "^repo\.slug:[[:space:]]*\"?$SLUG\"?([[:space:]]|$)" "$FLOW"/profiles/*/profile.md 2>/dev/null
 for f in "$TOP/.claude/flow.md" "$FLOW/profiles/<key>/profile.md"; do [ -f "$f" ] && awk '/^---[[:space:]]*$/{n++; next} n==1' "$f"; done | sed -E 's/[[:space:]]+#.*$//'
-grep -E '^(merge|after_review|branch_prefix):' "$FLOW/user.md" 2>/dev/null | sed -E 's/[[:space:]]+#.*$//; s/"//g'
+for k in merge after_review branch_prefix; do printf '%s: %s\n' "$k" "$(sin-flow-profile user "$k")"; done
 ```
 
 - Key: the prompt's `profile`, else the directory of the profile whose `repo.slug` matches `origin`.
   No profile → `STATUS: blocked`, `NOTE: no flow profile for <slug> — run /sin-flow:setup`.
 - Keys are flat `group.key: value`. The team file `<repo>/.claude/flow.md` is read first, the private
   profile second; a later line wins. A key that is absent means the convention below applies.
-- User layer from `~/.claude/sin-flow/user.md`, with defaults when the file or key is absent:
+- User layer from `sin-flow-profile user <key>`, which prints the plugin default when the user set no value:
   `merge: squash`, `after_review: new-commit`, `branch_prefix:` (empty → no prefix segment).
 - Keep the resolved values in your own context and paste them as literals into later commands; shell
   state does not survive between Bash calls.

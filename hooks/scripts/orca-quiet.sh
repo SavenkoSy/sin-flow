@@ -2,7 +2,7 @@
 set -u
 
 FLOW_HOME="${FLOW_HOME:-$HOME/.claude/sin-flow}"
-grep -qE '^workspace:[[:space:]]*orca[[:space:]]*$' "$FLOW_HOME/user.md" 2>/dev/null || exit 0
+[ "$("${CLAUDE_PLUGIN_ROOT}/bin/sin-flow-profile" user workspace)" = orca ] || exit 0
 command -v orca >/dev/null 2>&1 || exit 0
 payload=$(cat)
 [ "$(jq -r '.background_tasks // [] | length' <<<"$payload" 2>/dev/null)" -gt 0 ] 2>/dev/null || exit 0

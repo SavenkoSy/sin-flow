@@ -19,8 +19,8 @@ list is also its digest form: the items are the timeline columns and the stage-s
    (shipped / blocked / handoff written — which one), the hand-to-user step when the profile asks for a
    visual check or a solo merge, and whether the user answered in this session; last line (time; `/exit`,
    hand-off, or silence).
-2. Hand-off events — every TOOL line that launches a hand-off (`sin-flow-handoff`, or the launcher `handoff:`
-   in `user.md` names): HH:MM, ctx at that minute, full command, the
+2. Hand-off events — every TOOL line that launches a hand-off (`sin-flow-handoff`, or the launcher that the `handoff`
+   option names): HH:MM, ctx at that minute, full command, the
    nearest preceding CTX GUARD / LIMIT GUARD / USER line verbatim, the `RESULT:` line that came back (`opened:`,
    `paste into …`, `continue in this session:`, `exited <n>: no tab opened`; older runs print `session:`),
    whether the goal text was carried verbatim, and whether the assistant stopped or kept working

@@ -3,5 +3,125 @@
   "description": "Ticket-to-PR flow for a live codebase: setup, sync, ingest, plan, exec, review and learning stages with their agents, hooks and CLIs.",
   "author": {
     "name": "SavenkoSy"
+  },
+  "userConfig": {
+    "chat_language": {
+      "type": "string",
+      "title": "Chat language",
+      "description": "Language of the chat, for example en or uk. Empty: the language you write in. Files, commits, PRs and issues stay English."
+    },
+    "handoff": {
+      "type": "string",
+      "title": "Hand-off",
+      "description": "How a stage starts the next one: auto, same-session, print, tmux, cmux, iterm, ghostty, warp, orca, or a path to your own script.",
+      "default": "auto"
+    },
+    "learning_dir": {
+      "type": "string",
+      "title": "Learning folder",
+      "description": "Where /sin-flow:learning keeps digests, inbox and ledger.",
+      "default": "~/.claude/sin-flow/learning"
+    },
+    "learning_runs": {
+      "type": "number",
+      "title": "Learning runs",
+      "description": "How many undigested exec runs start a learning session when an exec session ends.",
+      "default": 10,
+      "min": 1
+    },
+    "learning_cwd": {
+      "type": "string",
+      "title": "Learning start folder",
+      "description": "Where that learning session starts. Empty: the learning folder."
+    },
+    "merge": {
+      "type": "string",
+      "title": "Merge method",
+      "description": "Merge method for your own PRs.",
+      "options": ["squash", "merge", "rebase"],
+      "default": "squash"
+    },
+    "after_review": {
+      "type": "string",
+      "title": "Review fixes",
+      "description": "How review fixes land on an open PR. new-commit: a new commit on top.",
+      "default": "new-commit"
+    },
+    "branch_prefix": {
+      "type": "string",
+      "title": "Branch prefix",
+      "description": "First segment of the branch <prefix>/<type>/<id>/<slug>. Empty: no segment."
+    },
+    "context_guard": {
+      "type": "number",
+      "title": "Context guard",
+      "description": "Percent of the 1M-token context window at which a flow stage hands off or stops. CTX_GUARD_THRESHOLD overrides it for one session.",
+      "default": 40,
+      "min": 1,
+      "max": 100
+    },
+    "limit_guard": {
+      "type": "string",
+      "title": "Limit guard",
+      "description": "on: warn a flow session near the 5-hour or 7-day limit, from the state file of the status line wrapper. off: only the Claude Code auto-continue.",
+      "options": ["on", "off"],
+      "default": "on"
+    },
+    "models_strong": {
+      "type": "string",
+      "title": "Strong model",
+      "description": "Plan, exec and learning sessions, every hand-off, the review lenses on the strong tier.",
+      "options": ["opus", "sonnet", "haiku", "fable"],
+      "default": "opus"
+    },
+    "models_mid": {
+      "type": "string",
+      "title": "Mid model",
+      "description": "Read-only analysts, implementers, shipper, review-poster, the review lenses on the mid tier.",
+      "options": ["opus", "sonnet", "haiku", "fable"],
+      "default": "sonnet"
+    },
+    "models_cheap": {
+      "type": "string",
+      "title": "Cheap model",
+      "description": "The board agent.",
+      "options": ["opus", "sonnet", "haiku", "fable"],
+      "default": "haiku"
+    },
+    "reviews_dir": {
+      "type": "string",
+      "title": "Reviews folder",
+      "description": "Where /sin-flow:review writes review files.",
+      "default": "~/.claude/sin-flow/reviews"
+    },
+    "codex_review": {
+      "type": "string",
+      "title": "Codex review",
+      "description": "on: the exec review also runs OpenAI Codex CLI as one more finder. Needs codex installed and codex login.",
+      "options": ["on", "off"],
+      "default": "off"
+    },
+    "codex_model_pr": {
+      "type": "string",
+      "title": "Codex model for PR review",
+      "description": "A Codex model family or a full model name. /sin-flow:review of a teammate's PR then also runs Codex on it. Empty: no Codex in pr mode."
+    },
+    "codex_watch": {
+      "type": "string",
+      "title": "Codex watch",
+      "description": "orca: the Orca workspace card shows each step of a Codex run. Empty: off."
+    },
+    "workspace": {
+      "type": "string",
+      "title": "Workspace",
+      "description": "Where sin-flow-worktree makes the worktree of each stage. orca also turns on the Stop hook that marks the Orca worktree read.",
+      "options": ["git", "orca"],
+      "default": "git"
+    },
+    "work_remote": {
+      "type": "string",
+      "title": "Work notes remote",
+      "description": "A git remote for ~/.claude/sin-flow (work notes and profiles). Empty: local only."
+    }
   }
 }

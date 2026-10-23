@@ -44,7 +44,7 @@ added to the prompt biases the lens and is paid for twice.
    `verify` find the entry points themselves.
 2. The finders for the depth — **one message, all in parallel**, one `sin-flow:reviewer` each. Unless
    the caller's skill says this round runs without Codex, the same message also runs `bash $LENSES/../codex.sh find "$PKG"` as a background Bash call. The
-   script reads `codex_review` in `user.md` and prints `CODEX · off` when Codex is not on. In pr mode it runs only when
+   script reads the `codex_review` option and prints `CODEX · off` when Codex is not on. In pr mode it runs only when
    `codex_model_pr` names a model family or a model, and runs on the newest model of that family.
 3. `verify` — alone, after every finder and the Codex run are back or recorded as failed. It is a fresh agent
    and sees only the package, never your summary.
@@ -93,8 +93,7 @@ Run as is, with `PKG` set. It prints the review file path.
 ```bash
 . "$PKG/manifest.env"
 if [ "$MODE" = pr ]; then NAME=$KEY-$PR-$(printf %.8s "$SHA"); else NAME=$KEY-$(git -C "$TREE" branch --show-current | tr / -); fi
-DIR=$(sed -n 's/^reviews_dir: *//p' "${FLOW_HOME:-$HOME/.claude/sin-flow}/user.md" | head -1)
-DIR=${DIR:-~/.claude/sin-flow/reviews}
+DIR=$(sin-flow-profile user reviews_dir)
 case "$DIR" in "~"/*) DIR=$HOME/${DIR#\~/} ;; esac
 OUT=$DIR/$NAME.md
 [ "$MODE" != pr ] && [ -e "$OUT" ] && ! grep -q "$SHA" "$OUT" && OUT=$DIR/$NAME-$(printf %.8s "$SHA").md

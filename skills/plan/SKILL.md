@@ -20,7 +20,7 @@ ${CLAUDE_PLUGIN_ROOT}/skills/plan/
 Everything repo-specific — base branch, gates, tracker, measurement route, sources, UI check,
 branch and commit conventions — comes from the profile, never from this file.
 
-Chat with the user in `chat_language` from `~/.claude/sin-flow/user.md`, or in the language the user writes in when it is absent. Headings and fixed phrases defined here are rendered in that language. Files, commits, PRs and issues are always English.
+Chat with the user in the `chat_language` option (`sin-flow-profile user chat_language`), or in the language the user writes in when it is absent. Headings and fixed phrases defined here are rendered in that language. Files, commits, PRs and issues are always English.
 
 ## Arguments
 
@@ -112,7 +112,7 @@ remove this repo's `.claude/worktrees/*` whose PR is merged or closed and whose 
 (`git worktree remove`, never `--force`), then
 `sin-flow-worktree --repo <repo> --name <id>-<slug> --branch <branch> --base origin/<base>` with the branch from the
 profile's convention (`git.branch`, else `<prefix>/<type>/<id>/<slug>`) and write its `path:` into the
-plan's `worktree:` line. It makes an Orca workspace or a git worktree as `user.md` says; `state: resume` → note
+plan's `worktree:` line. It makes an Orca workspace or a git worktree as the `workspace` option says; `state: resume` → note
 `resume`. When it prints `mode: orca`, keep its `shell:` and close it as `skills/ingest/reference/exits.md` says once the hand-off prints `opened:`. When it must
 sit on an unmerged branch or PR, `git merge --no-edit <that head>` in the worktree moves it there (`origin/<that head>` only when the branch is on `origin`); never
 `git reset --hard`. Every

@@ -38,13 +38,13 @@ Every writing exit gets its own worktree before anything else (inbox #36: a bran
 checkout moved with another session's checkout and took the uncommitted diff along).
 
 Branch: the profile's `git.branch` deviation, else `<prefix>/<type>/<id>/<slug>` — `prefix` is the
-user preference `branch_prefix` (`~/.claude/sin-flow/user.md`; empty → no segment), `type` bug | task |
+user option `branch_prefix` (`sin-flow-profile user branch_prefix`; empty → no segment), `type` bug | task |
 story. `<slug>` kebab-case from the intent.
 
 Where the session started decides, in every repo (inbox #36, #38, #43, #44). Primary checkout: `git
 rev-parse --git-dir` equals `git rev-parse --git-common-dir`; otherwise the cwd is a linked worktree.
 
-**A linked worktree is reused** only when the cwd's main checkout is `<repo>`. With `workspace: orca` in `user.md` any linked worktree is the workspace the
+**A linked worktree is reused** only when the cwd's main checkout is `<repo>`. With the `workspace` option `orca` any linked worktree is the workspace the
 user made for this work, whatever its name; elsewhere only one whose basename is the unit's id (`gh-<N>`,
 `<N-M>`, `epic-<N>`). It must be clean (`git status --porcelain` prints nothing) and, after `git fetch
 origin <base>`, `git rev-list --count origin/<base>..HEAD` is 0 — otherwise ask the user, never create a
@@ -52,7 +52,7 @@ second one. Then in the cwd: `git merge --ff-only origin/<base>`, `git branch -m
 unit takes it; every other unit gets a new one as below.
 
 **From the primary checkout, and for every further unit, a new worktree.** One call makes it, in Orca or in git
-as `workspace:` in `~/.claude/sin-flow/user.md` says (empty → git):
+as the `workspace` option says (default git):
 
 ```
 sin-flow-worktree --repo <repo> --name <id>-<slug> --branch <branch> --base origin/<base>

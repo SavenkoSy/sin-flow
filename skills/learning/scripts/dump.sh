@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-launcher=$(sed -n 's/^handoff:[[:space:]]*//p' "${FLOW_HOME:-$HOME/.claude/sin-flow}/user.md" 2>/dev/null | sed 's/[[:space:]]#.*//; s/^"//; s/"$//' | head -1)
+launcher=$("$(dirname "$0")/../../../bin/sin-flow-profile" user handoff 2>/dev/null)
 keep='sin-flow-handoff|progress\.md'
 [[ $launcher == */* ]] && keep="$keep|${launcher##*/}"
 jq -r --arg hand "$keep" '

@@ -18,7 +18,7 @@ D=$PKG/codex
 LOG=$D/live.log
 mkdir -p "$D" "$PKG/findings"
 
-pref() { sed -n "s/^$1: *//p" "$FLOW_HOME/user.md" 2>/dev/null | head -1 | tr -d '"'; }
+pref() { "$HERE/../../../bin/sin-flow-profile" user "$1" 2>/dev/null; }
 
 log() { printf '%s\n' "$@" >> "$LOG"; }
 

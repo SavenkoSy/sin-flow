@@ -18,7 +18,7 @@ sin-flow:ingest → a human / the user                (data-fix, answer, investi
 Repo facts never live in this file. Everything specific — base, tracker, gates, measurement route,
 sources, integrations, consumers, sensitive paths, deviations — comes from the profile.
 
-Chat with the user in `chat_language` from `~/.claude/sin-flow/user.md`, or in the language the user writes in when it is absent, whatever language the source is in. Headings and fixed phrases defined here are rendered in that language. Files, commits, PRs and issues are always English.
+Chat with the user in the `chat_language` option (`sin-flow-profile user chat_language`), or in the language the user writes in when it is absent, whatever language the source is in. Headings and fixed phrases defined here are rendered in that language. Files, commits, PRs and issues are always English.
 
 ## Hard boundaries
 

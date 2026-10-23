@@ -8,9 +8,7 @@ source "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/stage.sh"
 stage_line=$(flow_stage "$sid" "$tp")
 [ "${stage_line%% *}" = exec ] || exit 0
 
-pref() {
-  sed -n "s/^$1:[[:space:]]*//p" "$HOME/.claude/sin-flow/user.md" 2>/dev/null | sed 's/[[:space:]]#.*//; s/^"//; s/"$//' | head -1
-}
+pref() { "${CLAUDE_PLUGIN_ROOT}/bin/sin-flow-profile" user "$1" 2>/dev/null; }
 
 runs=$(pref learning_runs)
 case "$runs" in ''|*[!0-9]*) runs=10 ;; esac

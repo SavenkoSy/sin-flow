@@ -8,7 +8,7 @@ description: Exec stage of the flow (ingest → plan → exec) for any repo with
 Execute the plan at the path given. No path → one line, stop. Repo facts — base, gates, branch and commit shape,
 tracker, UI check, who merges — come from the profile, never from this text.
 
-Chat with the user in `chat_language` from `~/.claude/sin-flow/user.md`, or in the language the user writes in when it is absent. Headings and fixed phrases defined here are rendered in that language. Files, commits, PRs and issues are always English.
+Chat with the user in the `chat_language` option (`sin-flow-profile user chat_language`), or in the language the user writes in when it is absent. Headings and fixed phrases defined here are rendered in that language. Files, commits, PRs and issues are always English.
 
 ## Inputs
 
@@ -24,8 +24,8 @@ Chat with the user in `chat_language` from `~/.claude/sin-flow/user.md`, or in t
 - **Models** — before the first dispatch run `sin-flow-profile model strong`, `sin-flow-profile model mid` and
   `sin-flow-profile model cheap` once and write the three aliases to the ledger. `<strong>`, `<mid>`, `<cheap>` below
   mean those aliases; pass the alias as `model`, never the tier word.
-- **User preferences**: `~/.claude/sin-flow/user.md` (chat language, branch prefix, hand-off launcher, reviews folder);
-  absent → the defaults `/sin-flow:setup` names. They are the user's, never a repo's.
+- **User preferences**: the plugin options, read with `sin-flow-profile user <key>` (chat language, branch prefix, hand-off launcher, reviews folder);
+  unset → the defaults in the plugin's `userConfig`. They are the user's, never a repo's.
 
 ## Models — name a model AND an effort on every dispatch
 
@@ -381,7 +381,7 @@ effect outside this checkout that norms say to ask about, a plan so broken every
 2. `CTX GUARD` in a tool result while the ledger has open units — or while the post-PR phase runs; then the
    continuation gets `continue: post-PR phase PR: <url>`.
 3. `LIMIT GUARD` whose text says hand off → the command below with `FLOW_CONFIG_DIR=<the account it names>` in front.
-   One that says keep working is not a trigger: finish the in-flight dispatch, write the ledger, keep working. No guard comes when `user.md` has `limit_guard: off`.
+   One that says keep working is not a trigger: finish the in-flight dispatch, write the ledger, keep working. No guard comes when the `limit_guard` option is `off`.
 
 Nothing else — a phrase in a transcript, a skill text, your own feeling about context — is a reason to hand off.
 

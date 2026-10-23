@@ -18,14 +18,9 @@ done
 [ -n "$repo" ] && [ -n "$name" ] && [ -n "$branch" ] && [ -n "$base" ] || usage
 repo=$(cd "$repo" && git rev-parse --show-toplevel)
 
-user_field() {
-  [ -f "$FLOW_HOME/user.md" ] || return 0
-  sed -n "s/^$1:[[:space:]]*//p" "$FLOW_HOME/user.md" | sed 's/[[:space:]]#.*//; s/[[:space:]]*$//; s/^"//; s/"$//' | head -1
-}
-
-workspace=$(user_field workspace)
+workspace=$("$(dirname "${BASH_SOURCE[0]}")/sin-flow-profile" user workspace)
 workspace=${workspace:-git}
-case "$workspace" in orca|git) ;; *) echo "workspace '$workspace' in user.md is not orca or git" >&2; exit 2 ;; esac
+case "$workspace" in orca|git) ;; *) echo "workspace '$workspace' is not orca or git" >&2; exit 2 ;; esac
 
 existing=$(git -C "$repo" worktree list --porcelain | awk -v ref="refs/heads/$branch" '/^worktree /{p=substr($0,10)} $0=="branch " ref {print p; exit}')
 if [ -n "$existing" ]; then

@@ -11,8 +11,8 @@ while IFS= read -r f; do
   case "$f" in bin/handoff/*|scripts/*) continue ;; esac
   head -c 200 "$f" | grep -q '^#!' || continue
   grep -qE "(^|[^a-zA-Z_./-])($tools)[[:space:]]" "$f" || continue
-  grep -qE 'user\.md|user_field|pref |sin-flow-profile' "$f" && continue
-  echo "layer: $f calls a third-party tool and reads no user.md or profile key"
+  grep -qE 'sin-flow-profile|CLAUDE_PLUGIN_OPTION_|user_config\.' "$f" && continue
+  echo "layer: $f calls a third-party tool and reads no user option or profile key"
   fail=1
 done < <(git ls-files bin hooks skills | grep -v node_modules)
 

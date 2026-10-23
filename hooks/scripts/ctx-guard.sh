@@ -16,9 +16,7 @@ say() {
   exit 0
 }
 
-user_pref() {
-  awk -F': *' -v k="$1" '$1 == k { print $2; exit }' "$HOME/.claude/sin-flow/user.md" 2>/dev/null | sed -E 's/[[:space:]]+#.*$//; s/"//g; s/[[:space:]]+$//'
-}
+user_pref() { "${CLAUDE_PLUGIN_ROOT}/bin/sin-flow-profile" user "$1" 2>/dev/null; }
 
 window=1000000
 limit_thr=${LIMIT_GUARD_THRESHOLD:-90}
