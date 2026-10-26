@@ -73,16 +73,12 @@ agent notes. The profile key `notes.paths` adds the repo's own note globs, space
 
 ```bash
 WORK="$HOME/.claude/sin-flow/work"
-NOTES_PATHS="<notes.paths from the profile, or empty>"
+NOTES="evidence/* */evidence/* briefs/* */briefs/* tmp/* *.local.md plan.md */plan.md *-plan.md seed*.md */seed*.md progress.md */progress.md pr-body.md */pr-body.md gate-*.log */gate-*.log $(sin-flow-profile <key> get notes.paths)"
 find "$WORK" -type f ! -path '*/.git/*' -exec git hash-object {} + 2>/dev/null | sort -u > /tmp/flow-l1-$$.hashes
 while IFS= read -r p; do
   [ -z "$p" ] && continue
   [ ! -e "$p" ] && [ ! -L "$p" ] && git cat-file -e "HEAD:$p" 2>/dev/null && continue
-  case "$p" in
-    evidence/*|*/evidence/*|briefs/*|*/briefs/*|tmp/*|*.local.md|plan.md|*/plan.md|*-plan.md|seed*.md|*/seed*.md|progress.md|*/progress.md|pr-body.md|*/pr-body.md|gate-*.log|*/gate-*.log)
-      echo "L1 $p"; continue ;;
-  esac
-  set -f; hit=; for g in $NOTES_PATHS; do case "$p" in $g) hit=1 ;; esac; done; set +f
+  set -f; hit=; for g in $NOTES; do case "$p" in $g) hit=1 ;; esac; done; set +f
   [ -n "$hit" ] && { echo "L1 $p"; continue; }
   [ -L "$p" ] && case "$(readlink -f "$p")" in "$WORK"/*) echo "L1 $p"; continue ;; esac
   [ -f "$p" ] && grep -qx "$(git hash-object "$p")" /tmp/flow-l1-$$.hashes && echo "L1 $p"
