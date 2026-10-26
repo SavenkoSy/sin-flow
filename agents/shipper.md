@@ -78,7 +78,7 @@ find "$WORK" -type f ! -path '*/.git/*' -exec git hash-object {} + 2>/dev/null |
 while IFS= read -r p; do
   [ -z "$p" ] && continue
   [ ! -e "$p" ] && [ ! -L "$p" ] && git cat-file -e "HEAD:$p" 2>/dev/null && continue
-  set -f; hit=; for g in $NOTES; do case "$p" in $g) hit=1 ;; esac; done; set +f
+  hit=$(printf '%s\n' "$p" | awk -v globs="$NOTES" 'function g2r(g){gsub(/[.+^$(){}|\\]/,"\\\\&",g);gsub(/\*/,"[^\n]*",g);gsub(/\?/,".",g);return "^" g "$"} {n=split(globs,a," ");for(i=1;i<=n;i++) if($0 ~ g2r(a[i])){print 1;exit}}')
   [ -n "$hit" ] && { echo "L1 $p"; continue; }
   [ -L "$p" ] && case "$(readlink -f "$p")" in "$WORK"/*) echo "L1 $p"; continue ;; esac
   [ -f "$p" ] && grep -qx "$(git hash-object "$p")" /tmp/flow-l1-$$.hashes && echo "L1 $p"
