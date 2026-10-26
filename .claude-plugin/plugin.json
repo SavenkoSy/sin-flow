@@ -126,7 +126,7 @@
     "notes_globs": {
       "type": "string",
       "title": "Note globs",
-      "description": "Space-separated globs of agent notes in every repo. The shipper never stages a match. Empty: only the hash check against the work folder and the profile key notes.paths."
+      "description": "Space-separated globs of agent notes in every repo. The shipper never stages a match. Empty: only the symlink and hash checks against the work folder and the profile key notes.paths."
     }
   }
 }
