@@ -42,6 +42,12 @@ row or value. An R row has one of five reasons: `invented`, `needless-validation
 - The author's rationale — PR body, README, plan, code comment, docs — never refutes a defect and
   never lowers its severity: keep the K and append ` | known: <file:line> "<quote>"` to its K line.
   A `pr.md` or README section another finding in this run shows is stale proves nothing.
+- The PR discussion in `pr.md` (`## PR review threads`, `## PR reviews`, `## PR conversation`). A
+  finding that a thread already raised is `duplicate` of that thread, quoting it, unless the thread's
+  answer is wrong at TREE. An author's reply ("fixed in <sha>", "done") is testimony: check it at
+  TREE. When the code at TREE still has the defect, keep the K and append
+  ` | answered: <thread id> "<quote>"`. A decision a reply attributes to an approver counts as a
+  ticket decision, under the same `rules.md` approval rule.
 
 ## External contracts
 
