@@ -108,6 +108,7 @@ Claude Code keeps the values in `pluginConfigs["<id>"].options` of the user's `s
 | `codex_watch` | `""` | `orca` → the Orca workspace card shows each step of that Codex run |
 | `workspace` | `""` | `orca` or `git`: where `sin-flow-worktree` makes every stage's worktree; empty → `git`. `orca` also turns on the Stop hook `orca-quiet.sh`: it marks the Orca worktree read while background tasks run |
 | `work_remote` | `""` | a git remote for `~/.claude/sin-flow` (work notes and profiles); empty → local only |
+| `notes_globs` | `""` | space-separated globs of agent notes in every repo; the shipper never stages a match. The profile key `notes.paths` adds the globs of one repo |
 
 A repo profile may set `models.strong`, `models.mid`, `models.cheap` and `models.<stage>` (`setup`, `sync`, `ingest`,
 `plan`, `exec`, `review`, `learning`: the session a hand-off opens for that stage); it wins over the options for that repo. `sin-flow-profile model <tier|stage>`
