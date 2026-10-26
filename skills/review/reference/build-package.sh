@@ -131,6 +131,28 @@ write_issue() {
   ' "$WORK/issue.json"
 }
 
+write_discussion() {
+  local cut=0 endpoint
+  [ -z "$AT" ] || cut=$COMMIT_EPOCH
+  for endpoint in "pulls/$PR/comments threads" "pulls/$PR/reviews reviews" "issues/$PR/comments conversation"; do
+    { gh api --paginate "repos/$REPO/${endpoint% *}" 2>/dev/null || echo '[]'; } \
+      | jq -s 'add // []' > "$WORK/${endpoint#* }.json"
+  done
+  jq -rn --argjson cut "$cut" --arg sha8 "${SHA:0:8}" \
+    --slurpfile t "$WORK/threads.json" --slurpfile r "$WORK/reviews.json" --slurpfile c "$WORK/conversation.json" '
+    def kept: map(select($cut == 0 or (((.created_at // .submitted_at) | fromdateiso8601) < $cut)));
+    def note: if $cut == 0 then "" else " · older than \($sha8)" end;
+    ($t[0] | kept) as $t | ($r[0] | map(select(.body != "")) | kept) as $r | ($c[0] | kept) as $c
+    | "", "## PR review threads · \($t | length)" + note,
+      ($t | group_by(.in_reply_to_id // .id)[] | sort_by(.created_at)
+        | "", "### thread \(.[0].in_reply_to_id // .[0].id) · \(.[0].path):\(.[0].line // .[0].original_line)",
+          (.[] | "", "#### \(.user.login) · \(.created_at)", "", .body)),
+      "", "## PR reviews · \($r | length)" + note,
+      ($r[] | "", "### \(.user.login) · \(.state) · \(.submitted_at)", "", .body),
+      "", "## PR conversation · \($c | length)" + note,
+      ($c[] | "", "### \(.user.login) · \(.created_at)", "", .body)'
+}
+
 pr_mode() {
   PR=$(printf '%s' "$TARGET" | sed -E 's#^.*/pull/([0-9]+).*$#\1#')
   case "$PR" in '' | *[!0-9]*) die "not a PR number or url: $TARGET" ;; esac
@@ -193,6 +215,7 @@ pr_mode() {
       "", "## Body", "", $body, ""
     ' "$WORK/pr.json"
     write_issue
+    write_discussion
   } > "$PKG/pr.md"
 }
 
