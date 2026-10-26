@@ -68,19 +68,22 @@ for k in merge after_review branch_prefix; do printf '%s: %s\n' "$k" "$(sin-flow
 ## L1 guard — agent notes never enter the repo
 
 Plans, seeds, briefs, evidence, progress ledgers and anything copied from `~/.claude/sin-flow/work/` are
-agent notes. Before every `git add`, and again on `git diff --cached --name-only` right before
+agent notes. The profile key `notes.paths` adds the repo's own note globs, space-separated. Before every `git add`, and again on `git diff --cached --name-only` right before
 `git commit`, run the candidate paths through:
 
 ```bash
 WORK="$HOME/.claude/sin-flow/work"
+NOTES_PATHS="<notes.paths from the profile, or empty>"
 find "$WORK" -type f ! -path '*/.git/*' -exec git hash-object {} + 2>/dev/null | sort -u > /tmp/flow-l1-$$.hashes
 while IFS= read -r p; do
   [ -z "$p" ] && continue
   [ ! -e "$p" ] && [ ! -L "$p" ] && git cat-file -e "HEAD:$p" 2>/dev/null && continue
   case "$p" in
-    docs/plans/*|*/docs/plans/*|docs/domains/*/plans/*|evidence/*|*/evidence/*|briefs/*|*/briefs/*|tmp/*|*.local.md|plan.md|*/plan.md|*-plan.md|seed*.md|*/seed*.md|progress.md|*/progress.md|pr-body.md|*/pr-body.md|gate-*.log|*/gate-*.log|test/ui-tests/scripts/verify-batch-*)
+    docs/plans/*|*/docs/plans/*|docs/domains/*/plans/*|evidence/*|*/evidence/*|briefs/*|*/briefs/*|tmp/*|*.local.md|plan.md|*/plan.md|*-plan.md|seed*.md|*/seed*.md|progress.md|*/progress.md|pr-body.md|*/pr-body.md|gate-*.log|*/gate-*.log)
       echo "L1 $p"; continue ;;
   esac
+  set -f; hit=; for g in $NOTES_PATHS; do case "$p" in $g) hit=1 ;; esac; done; set +f
+  [ -n "$hit" ] && { echo "L1 $p"; continue; }
   [ -L "$p" ] && case "$(readlink -f "$p")" in "$WORK"/*) echo "L1 $p"; continue ;; esac
   [ -f "$p" ] && grep -qx "$(git hash-object "$p")" /tmp/flow-l1-$$.hashes && echo "L1 $p"
 done
