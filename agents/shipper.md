@@ -79,7 +79,7 @@ while IFS= read -r p; do
   [ -z "$p" ] && continue
   [ ! -e "$p" ] && [ ! -L "$p" ] && git cat-file -e "HEAD:$p" 2>/dev/null && continue
   case "$p" in
-    docs/plans/*|*/docs/plans/*|docs/domains/*/plans/*|evidence/*|*/evidence/*|briefs/*|*/briefs/*|tmp/*|*.local.md|plan.md|*/plan.md|*-plan.md|seed*.md|*/seed*.md|progress.md|*/progress.md|pr-body.md|*/pr-body.md|gate-*.log|*/gate-*.log)
+    evidence/*|*/evidence/*|briefs/*|*/briefs/*|tmp/*|*.local.md|plan.md|*/plan.md|*-plan.md|seed*.md|*/seed*.md|progress.md|*/progress.md|pr-body.md|*/pr-body.md|gate-*.log|*/gate-*.log)
       echo "L1 $p"; continue ;;
   esac
   set -f; hit=; for g in $NOTES_PATHS; do case "$p" in $g) hit=1 ;; esac; done; set +f
