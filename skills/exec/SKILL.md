@@ -91,8 +91,11 @@ The dispatching thread is the most expensive place in the chain when it fills wi
    <repo.path>/<name> <name>`; never a copy, never print one. Ledger `Base: <ref> (<why>)` and `Linked: <names>`.
 5. **Sensitive paths.** The repo's `.claude/sensitive-paths.txt` (or the profile's `sensitive_paths`): match the
    plan's files against it. A hit adds `<ATTENTION>` to the commit subject and the PR title, and the PR body names
-   the area and old → new. Ledger the hit. That prefix is the whole mechanism: do not stop, and do not write the
-   repo's sensitive-change record — it records an agreement, so it is added after one exists. An implementer
+   the area and old → new. Ledger the hit. That prefix is the whole mechanism: do not stop. Write the repo's
+   sensitive-change record only from an agreement that exists. A locked decision that records an approval (who,
+   when, channel, quote) is that agreement. It covers each implementation detail of the approved option: copy it
+   into the record as given, never mark a detail "not confirmed" and never ask the approver again. Only a change
+   to the approved behaviour itself goes to the final message as a question. An implementer
    reaching for a sensitive path the plan never listed: halt that unit, ledger it, report it — never widen scope.
 6. **`global-constraints.md`** once: the plan's binding rules, the repo `CLAUDE.md` rules a reviewer fails someone
    on, the profile's `## Never` and `## Run`, verbatim. **`review-preamble.md`** once: no subagents, read-only, do
@@ -132,7 +135,8 @@ round on a reporting failure.
 `git diff <base> -- <its files> > briefs/unit-<u>-diff.txt`, check `grep -c '^diff --git'` against the file list,
 dispatch one `sin-flow:read-only-analyst` with the brief, the report and the diff. One question: **what did the brief require
 that no test asserts?** Findings only: a requirement with no covering test; a test that passes with the code it names
-deleted; a test asserting a constant production also uses; a listed file the diff never touches; a spec deleted where
+deleted (only when the profile has no `gates.spec_cmd`; with it, the canary below measures this); a test asserting a
+constant production also uses; a listed file the diff never touches; a spec deleted where
 retargeting kept coverage. ≤ 30 lines, no code-quality judgement. The audits of wave N, any re-review of a fix and
 any adversarial check go out **in the same message** as wave N+1's implementers.
 
@@ -155,8 +159,14 @@ TAIL / PR / MERGE / NOTE`) is all you read. `STATUS: blocked` → its `NOTE` is 
 `local` per unit in wave order: the unit id, its title in English (translated when the plan's is not), its `FILES` (one path per line),
 one paragraph on what changed and why. No such key → nothing is committed until the final review.
 
-`Unit <u>: complete (<sha | uncommitted>, audit clean | skipped)` — move on without checking in. Do not stop between
-waves. Do not ask.
+**Canary** — when the profile sets `gates.spec_cmd`. When every implementer of the wave has returned, and before the
+next wave's dispatch, one `sin-flow:shipper` `gate` with `label: canary-<k>`, `commands: true` and `canary:` one line per
+unit (its id, then its `FILES`). The shipper reverts each unit's code, runs only its spec files, and restores the code.
+`CANARY reverted: green` → the unit's specs pass without its code: a finding for that unit's fix loop.
+
+Then `sin-flow-gate verdict <workspace> <u> <sha | uncommitted> <clean | skipped>` per unit, and append its line to
+the ledger as it prints it. `Unit <u>: complete (…)` → move on without checking in. `Unit <u>: not proven: …` → a
+finding for that unit's fix loop, then the canary again. Do not stop between waves. Do not ask.
 
 ## Final gate and final review — once, through the review pipeline
 
@@ -188,6 +198,10 @@ waves. Do not ask.
    run without Codex: no `codex.sh` call, no Codex turns. Stop when verify keeps no row step 5 does not
    settle; at most 3 rounds; rows still open → ledger `final-review open: K<n> — <claim>`. No team file → one scoped
    re-review after the fix, no second round.
+7. **Pre-ship reviewer** — when the profile sets `review.preship_agent`. After step 6, dispatch that `subagent_type`
+   once (`<strong>`, high) with `<pkg>/diff.patch` of the last package, the plan path and one ask: review this diff as
+   you review this team's PRs. Its points go through step 5 like verify's rows, then step 6. The type is not
+   available → ledger `preship: <type> not available`, go on.
 
 ## Visual check — when the profile sets `ui.visual_check` and a unit has `UI surface: yes`
 
@@ -271,7 +285,9 @@ merged PRs means team. **Team → the post-PR loop. Solo → the user's review.*
 
 ### Team — the post-PR loop
 
-The PR is ready until a point reproduces. The user does not merge here; the team does.
+The PR is ready until a point reproduces. The goal of this phase is an approved PR, and the team merges it, not the user.
+After each push, run step 1 again before you write to the user. Act on every new point without a question. Write to
+the user only when you wait for a person outside this session.
 
 1. **State.** `gh pr view <url> --json state,reviewDecision,reviews,comments,mergeStateStatus > <workspace>/pr.json`,
    grep it. `BEHIND` or `DIRTY` → one rebase round onto the base — an `sin-flow:implementer` on `<mid>`, effort low,
@@ -292,34 +308,32 @@ The PR is ready until a point reproduces. The user does not merge here; the team
    - **high** → the same re-verification; reproduced → step 6, not reproduced → a reply.
    - **A request for the plan, docs or evidence in the PR** → never a fix, never a docs commit; one reply, verbatim:
      «The plan and evidence are in #<issue> — everything is there.»
+   - **A point on docs, `DEPLOY.md` or specs only**, where what the product does stays the same → reproduced, it goes
+     into the batched round of step 6 with no thread reply; not reproduced → nothing. Such a point never reaches the
+     user: the chat carries only points that change what the product does, and the result.
 
    A rare or unobserved case — a volume, a limit, a race, a row that may not exist — with zero rows is not
    reproduced. Every reply is short, in English, and argues the PR is ready: what was checked, the number or the
    reason, «not changing; ready to merge». Only reproduced points reach step 6; only a point that reopens a product
-   decision goes to the user, all such points in one question. Never ask the user whether to fix or guard a point —
-   this step decides. The user comes back after your final message → this step for everything posted since, then
+   decision goes to the user, all such points in one question. The user comes back after your final message → this step for everything posted since, then
    your answer.
 5. **Base watcher** — every team PR, and any PR whose base is another feature branch. Before ending the turn, start
-   one background Bash (`run_in_background`): every 10 min, up to 24 h, `git fetch -q origin` and
-   `gh pr view <url> --json baseRefName,isDraft,mergeStateStatus,reviews,comments`. For a plan with `after:`, read the
-   `repo` cell of the `after:` row in the spec. Add to each check
-   `gh pr list -R <first repo> --head <first branch> --state merged --json url -q '.[0].url'`. It exits when
-   `baseRefName` changed, the state is `BEHIND` / `DIRTY`, a review or comment by anyone but the PR author and a
-   deploy bot is new since the last check (a check whose `gh` call failed or printed an empty state is skipped, never a wake), or — only when the base is another feature branch — the base has commits
-   the branch lacks. If the plan header has `after:`, it also exits when the PR of the first unit has state
-   `MERGED`. Find that PR as in `sin-flow:plan` Step 1. On wake → a new review or comment: step 4, then start the
-   watcher again. For a draft PR whose first PR merged, in the same repo: if `baseRefName` is still the first
+   one background Bash (`run_in_background`) in this checkout: `sin-flow-watch <url>`, or for a plan with `after:`
+   `sin-flow-watch <url> <first repo> <first branch>` (the `repo` cell of the `after:` row in the spec; the first PR as
+   in `sin-flow:plan` Step 1). It checks every 10 min for up to 24 h and prints one `WAKE <reason>` line: base
+   changed, `BEHIND` / `DIRTY`, new activity by anyone but the author and a deploy bot, new commits on a feature-branch
+   base, or the first PR merged. A failed or empty `gh` read is never a wake. On a `WAKE activity` → step 4, then start
+   the watcher again. For a draft PR whose first PR merged, in the same repo: if `baseRefName` is still the first
    branch, run `gh pr edit <url> --base <profile base>`. Then run the rebase round of step 1 onto the profile base,
    and push. Then, in both repo cases: run `gh pr ready <url>` and write one line to the user. Other wakes stay as
    they are: the rebase round of step 1, the push, one line to the user. After a rebase wake, start the watcher
-   again. After 24 h the watcher stops. A draft
-   stays a draft for a person.
+   again. A draft stays a draft for a person.
 6. **No fix is pushed unreviewed.** One batched round for every reproduced point and the user's: fix each point
    where it was flagged and in every sibling of the same pattern on the branch (the flagged query → every sibling
    query; the flagged error list → every rescue of that client; a flagged test fixture (a recorded response, a factory, a snapshot) → every
    fixture on the branch against its spec's inputs) — points fixed in one place only came back three times. Then Final review step 6 on the fix commits, then `sin-flow:shipper` `commit` — commit and push (a new commit shows the reviewer only the change), then a reply in each thread with
    the fix SHA. When the profile sets `review.request`, run `sin-flow-rerequest <PR url>` after every reply batch, with a push or without one: it re-requests
-   the profile's `review.request` and everyone who reviewed the PR.
+   the profile's `review.request` and everyone who reviewed the PR, and skips an approved PR.
 
 ## Final message — the one definition
 

@@ -22,9 +22,6 @@ profile folder has `review-team.md` and `quick` when it does not. `quick` = cont
 was at that commit. `--base <sha>` sets the fork point explicitly — for a PR whose base branch was
 rewritten after that commit.
 
-You dispatch and relay. The package script, the pipeline and the agents do the work: you never read
-`diff.patch`, `findings/*.md` or the code, and you never re-judge a verdict.
-
 `CTX GUARD` in a tool result: finish the step in flight and its chat (the review file is the trail), then say in
 one line that the next `/sin-flow:review` command — `post`, `recheck` or another PR — belongs in a new session, and stop.
 
@@ -118,9 +115,10 @@ grep '^lens .* failed' "$REVIEW"
 `/sin-flow:review recheck <PR>`, or "recheck", "they pushed the fixes", "approved or not?". `SHA` = the newest
 `$REVIEWS/$KEY-<pr>-*.md`; `K` = the rows posted from it.
 1. `"$REF/build-package.sh" pr <PR> "$PKG" --base <SHA> --depth quick`, then `$REF/pipeline.md` — the
-   commits since the review only.
+   commits since the review only — and `bash "$REF/eval.sh" responses "$KEY" <PR>`: the author's answer to
+   each comment we posted (`fixed`, `intentional`, `wrong`, `ignored`), appended to `$REVIEWS/responses.tsv`.
 2. Chat opens with one line: `approve` or `don't approve — K<n>, …`: each posted K row closed /
-   open at the head, then the new high/med rows.
+   open at the head, then the new high/med rows, then the answer counts from step 1.
 3. Every K row closed and no new high/med row → Approve, below, without asking. Anything else → no
    approve; the new high/med `reproduces` rows go through Post as in Review step 6.
 

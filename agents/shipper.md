@@ -15,8 +15,8 @@ Always: `mode: gate | local | commit | ship`. Optional everywhere: `profile: <ke
 unit — issue number, prefixed ticket, or the profile's local id such as `N-M`), `work_dir` (default
 `~/.claude/sin-flow/work/<key>/<id>/`).
 
-- `gate`: optional `commands` (overrides everything below; split it on `;` and newlines, and run each part as its
-  own command), optional `label` for the log name.
+- `gate`: optional `commands` (overrides everything below), optional `label` for the log name, optional `canary`
+  (one line per unit: the unit id, then its files).
 - `local` / `commit`: `title`, one paragraph on what changed and why (only the caller knows the why —
   build the message from it, not from the diff alone), optional `FILES`, optional `type`
   (`bug | task | story`), optional `trailer` (upstream mode only).
@@ -121,12 +121,17 @@ rm -f /tmp/flow-l1-$$.hashes
    commands and `docs/orchestrator/config.yml` `test_cmd` / `lint_cmd` / `security_cmd`; stack
    fallback — `Gemfile` → `bundle exec rspec` plus `rubocop` / `brakeman` when the Gemfile has them,
    `package.json` → its `lint`, `test`, `build` scripts. Nothing found → `STATUS: blocked`.
-3. Write the resolved list as the log's first lines, run `gates.prepare` if set, then each command in
-   order, each appending under a `=== <command> ===` header. Never `git checkout` or `git switch` in this mode.
-   Before the first command and after the last, `git branch --show-current` must print the branch you started
-   on. Empty or different → `STATUS: blocked`, `NOTE: HEAD moved to <ref>`.
-4. Stop at the first red: its last 40 lines go to `<log>.tail`, return `STATUS: red`. Never paste
-   output into the return.
+3. Write the resolved list to `<work_dir>/gate-<label>.commands`, one entry per line, `gates.prepare` first when
+   set. Copy the caller's `commands` text as it came. Then run `sin-flow-gate run <log> <that file>`. The script splits
+   the entries (backticked items, `;`, lines), runs each with `bash -c`, writes `=== <command> ===` and
+   `=== exit <n> · tests <count | none> ===` per entry, stops at the first red, and writes `<log>.tail`. A test runner
+   that ran 0 tests is red. Its one line is the result: `green`, or `red: …` → `STATUS: red` with that line in a
+   `NOTE`. Never `git checkout` or `git switch` in this mode. Before the script and after it, `git branch
+   --show-current` must print the branch you started on. Empty or different → `STATUS: blocked`, `NOTE: HEAD moved
+   to <ref>`. Never paste output into the return.
+4. `canary` given and the profile sets `gates.spec_cmd` → after a green step 3, for each unit line run
+   `sin-flow-gate canary <work_dir> <unit> <base> '<gates.spec_cmd>' <files…>` and put its line in a `NOTE`.
+   `CANARY blocked` → `STATUS: blocked`. No `gates.spec_cmd` → `NOTE: canary off`.
 
 `<push-remote>` = `fork` in upstream mode, else `origin`; upstream mode without a `fork` remote →
 `STATUS: blocked`, `NOTE: no fork remote → /sin-flow:setup`.

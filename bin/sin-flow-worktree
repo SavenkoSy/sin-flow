@@ -5,22 +5,35 @@ FLOW_HOME="${FLOW_HOME:-$HOME/.claude/sin-flow}"
 
 usage() {
   echo "usage: sin-flow-worktree --repo <checkout> --name <id>-<slug> --branch <branch> --base <origin/base | local branch>" >&2
+  echo "       sin-flow-worktree --remove <worktree path>" >&2
   exit 2
 }
 
-repo="" name="" branch="" base=""
+repo="" name="" branch="" base="" remove=""
 while [ $# -gt 0 ]; do
   case "$1" in
-    --repo|--name|--branch|--base) printf -v "${1#--}" '%s' "${2:?$1 needs a value}"; shift 2 ;;
+    --repo|--name|--branch|--base|--remove) printf -v "${1#--}" '%s' "${2:?$1 needs a value}"; shift 2 ;;
     *) usage ;;
   esac
 done
-[ -n "$repo" ] && [ -n "$name" ] && [ -n "$branch" ] && [ -n "$base" ] || usage
-repo=$(cd "$repo" && git rev-parse --show-toplevel)
 
 workspace=$("$(dirname "${BASH_SOURCE[0]}")/sin-flow-profile" user workspace)
 workspace=${workspace:-git}
 case "$workspace" in orca|git) ;; *) echo "workspace '$workspace' is not orca or git" >&2; exit 2 ;; esac
+
+if [ -n "$remove" ]; then
+  path=$(cd "$remove" && git rev-parse --show-toplevel)
+  main=$(git -C "$path" worktree list --porcelain | awk 'NR == 1 {print substr($0, 10)}')
+  [ "$path" != "$main" ] || { echo "$path is the main checkout, not a worktree" >&2; exit 2; }
+  branch=$(git -C "$path" branch --show-current)
+  if [ "$workspace" = orca ]; then orca worktree rm --worktree "path:$path" --json >/dev/null; else git -C "$main" worktree remove "$path"; fi
+  [ -z "$branch" ] || git -C "$main" branch -q -D "$branch"
+  printf 'removed: %s\nbranch: %s\n' "$path" "${branch:-none}"
+  exit 0
+fi
+
+[ -n "$repo" ] && [ -n "$name" ] && [ -n "$branch" ] && [ -n "$base" ] || usage
+repo=$(cd "$repo" && git rev-parse --show-toplevel)
 
 existing=$(git -C "$repo" worktree list --porcelain | awk -v ref="refs/heads/$branch" '/^worktree /{p=substr($0,10)} $0=="branch " ref {print p; exit}')
 if [ -n "$existing" ]; then

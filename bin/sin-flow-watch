@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+DEPLOY_BOTS='^vercel(\[bot\])?$'
+INTERVAL=${SIN_FLOW_WATCH_INTERVAL:-600}
+HOURS=${SIN_FLOW_WATCH_HOURS:-24}
+
+[ $# -eq 1 ] || [ $# -eq 3 ] || { echo "usage: sin-flow-watch <PR url> [<first repo> <first branch>]" >&2; exit 2; }
+url=$1
+first_repo=${2:-}
+first_branch=${3:-}
+deadline=$(( $(date +%s) + HOURS * 3600 ))
+
+read_state() {
+  gh pr view "$url" --json author,baseRefName,mergeStateStatus,reviews,comments 2>/dev/null \
+    | jq -r --arg bots "$DEPLOY_BOTS" '
+        .author.login as $author
+        | ([(.reviews[], .comments[]) | .author.login | select(. != $author and (test($bots) | not))] | length) as $seen
+        | "\(.baseRefName) \(.mergeStateStatus) \($seen)"' 2>/dev/null
+}
+
+first=""
+until [ -n "$first" ]; do
+  [ "$(date +%s)" -lt "$deadline" ] || { echo "TIMEOUT: no PR state read in ${HOURS} h"; exit 0; }
+  first=$(read_state)
+  [ -n "$first" ] || sleep "$INTERVAL"
+done
+read -r base0 _ seen0 <<<"$first"
+default=$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name 2>/dev/null)
+
+while [ "$(date +%s)" -lt "$deadline" ]; do
+  sleep "$INTERVAL"
+  git fetch -q origin 2>/dev/null
+  now=$(read_state)
+  [ -n "$now" ] || continue
+  read -r base merge seen <<<"$now"
+  [ "$base" = "$base0" ] || { echo "WAKE base: $base0 -> $base"; exit 0; }
+  case "$merge" in BEHIND | DIRTY) echo "WAKE $merge"; exit 0 ;; esac
+  [ "$seen" -gt "$seen0" ] && { echo "WAKE activity: $(( seen - seen0 )) new review or comment"; exit 0; }
+  if [ -n "$default" ] && [ "$base" != "$default" ] && git rev-parse -q --verify "origin/$base" >/dev/null; then
+    [ "$(git rev-list --count "HEAD..origin/$base")" -gt 0 ] && { echo "WAKE base has new commits: origin/$base"; exit 0; }
+  fi
+  if [ -n "$first_branch" ]; then
+    merged=$(gh pr list -R "$first_repo" --head "$first_branch" --state merged --json url -q '.[0].url' 2>/dev/null)
+    [ -n "$merged" ] && { echo "WAKE first PR merged: $merged"; exit 0; }
+  fi
+done
+echo "TIMEOUT: ${HOURS} h with no wake"

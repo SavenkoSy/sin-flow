@@ -95,6 +95,10 @@ The ledger says `blocked`, `red` or has a `SKIP`, and the merged diff changed a 
 the merge commit is live on `ui.server`, the same check there, through the profile's sign-in route. A `FAIL` → a fix
 PR at once, from a one-block plan, and one line to the user. Green → one line to the user.
 
+Then the user's close word («close», «done»): when the worktree is still there, `sin-flow-worktree --remove <its path>`
+removes it as the `workspace` option made it and deletes the local branch. Drop the worktree DB only when the profile
+names one. One line back.
+
 ## Pitfalls met so far
 
 - A stream-response link is not a full client-side visit: a non-stream error response reloads the whole page. Check

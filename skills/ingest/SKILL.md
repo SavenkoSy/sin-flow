@@ -34,12 +34,12 @@ Chat with the user in the `chat_language` option (`sin-flow-profile user chat_la
 - **Never post to Slack** — read tools only. Reply drafts are text in the chat; the user posts.
 - **Never comment on an issue in a repo the user does not own without a "yes" for that specific
   comment.** Draft it, show it, wait. An earlier "go ahead" does not cover it. In upstream mode the rule is `reference/upstream.md` § Write policy instead.
-- **Never write agent notes into a repo or worktree** (see also the user's own rules, if any).
+- **Never write agent notes into a repo or worktree.**
   Seeds, plans, evidence, drafts and findings go to `~/.claude/sin-flow/work/<key>/<id>/`.
 - **Never cut a branch or edit a tracked file in the shared checkout.** A writing exit makes its own
   worktree first; the main checkout stays on its branch for every other session.
-- **Never run a downstream stage in this session** — no `sin-flow:plan`, no `sin-flow:exec`, no
-  `sin-flow:implementer`. A PreToolUse hook denies them; the denial is the rule working.
+- **Never run a downstream stage in this session.** A PreToolUse hook denies `sin-flow:plan`, `sin-flow:exec`
+  and `sin-flow:implementer`.
 - **Never invent a case.** A risk, failure mode or edge case exists only if it was measured, read at
   a named `file:line`, or said by a person. Otherwise the sentence is "not checked".
 - **Never offer manual admin work as the fix,** and never propose an alternate look for a visual
@@ -232,7 +232,10 @@ State the exit in one line with its reason — «hotfix: one condition in one fi
 locked, no doc says otherwise» — **and run it in the same turn.** The exit, the owning epic and the
 id are yours; the user's word changes a verdict, it does not start one, and it is never a hotfix criterion. The one wait: a question that would
 change the verdict or the seed is still open — ask it, then act. After the tab opens, do not edit the
-seed; send a new fact to the plan tab in one message.
+seed; send a new fact to the plan tab in one message: `SendMessage` to the tab's name. When `ListAgents` does
+not list that name (the tab runs under another `claude.config_dir`), send it through the terminal the `handoff`
+option names (`orca`: `orca terminal send --terminal <handle> --enter --text`), then read that terminal once to
+confirm the tab took it.
 
 | Exit | When | Produces | Hands to |
 |---|---|---|---|

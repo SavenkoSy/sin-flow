@@ -6,8 +6,6 @@ description: 'One idempotent command that installs the flow on this machine, onb
 # sin-flow:setup — install → onboard → check → add
 
 One command, four modes, each idempotent: a second run asks nothing and changes nothing when everything is in place.
-Modelled on Rails `bin/setup` (safe to run any time), `brew doctor` (one success line), `flutter doctor` (`[✓] [!] [✗]`
-per group), `gh auth status` (check + ready fix in one line), Claude Code `/doctor` (report first, fix after a yes).
 
 Chat with the user in the `chat_language` option (`sin-flow-profile user chat_language`), or in the language the user writes in when it is absent. Fixed phrases defined here (`all good`, the questions, the fixes) are rendered in that language. Every file you write is English.
 
@@ -37,7 +35,7 @@ Chat with the user in the `chat_language` option (`sin-flow-profile user chat_la
    created here, and nothing is pushed by setup or by the Stop hook.
 2. `command -v gh git jq bash`, `gh auth status`. A miss is a row with its fix (`brew install jq`, `gh auth login`).
 3. Show the preferences with defaults — `chat_language`, `merge: squash`, `after_review: new-commit`,
-   `branch_prefix: ""`, `handoff: auto`, `context_guard: 40`, `limit_guard: off`, `learning_dir: ~/.claude/sin-flow/learning`, `learning_runs: 10`,
+   `branch_prefix: ""`, `handoff: auto`, `learning_dir: ~/.claude/sin-flow/learning`, `learning_runs: 10`,
    `learning_cwd:` (empty → `learning_dir`), `work_remote: ""`,
    `models_strong: opus`, `models_mid: sonnet`, `models_cheap: haiku`,
    `reviews_dir: ~/.claude/sin-flow/reviews` — ask once "keep the defaults?" — a user whose account has no Opus sets
@@ -174,7 +172,7 @@ always without options or paths, once per entry.
   in `test_cmd`, `lint_cmd`, `security_cmd` or `branch_format` (`delivery.mission_branch_format` counts).
 
 Profile format: flat `group.key: value` lines (lists as `["a","b"]`), prose sections `## Inferred`, `## Measure`, `## Run`,
-`## Ship`, `## Tracker`, `## Never`. Optional keys the stages read when set: `review.request` (logins exec asks for review and asks again after each reply batch), `pr.relink_after_bot: on` (shipper saves the PR body once more when a bot added a `Closes` line that GitHub did not link), `tracker.held_statuses` (Status options that a new board leaves out of scope). Keys that setup may write: `tracker.adapter`, `tracker.write.light`, `tracker.write.assign`, `tracker.write.status`, `group_by`. Required: `key`, `repo.slug`, `measure.doc`. Never a secret — pointers only.
+`## Ship`, `## Tracker`, `## Never`. Optional keys the stages read when set: `review.request` (logins exec asks for review and asks again after each reply batch), `pr.relink_after_bot: on` (shipper saves the PR body once more when a bot added a `Closes` line that GitHub did not link), `tracker.held_statuses` (Status options that a new board leaves out of scope), `gates.spec_cmd` (a test command that takes spec file paths; exec runs the canary with it, and no key means no canary), `review.preship_agent` (a `subagent_type` that exec runs on the final diff before the PR), `notes.paths` (extra globs the shipper treats as agent notes). Keys that setup may write: `tracker.adapter`, `tracker.write.light`, `tracker.write.assign`, `tracker.write.status`, `group_by`. Required: `key`, `repo.slug`, `measure.doc`. Never a secret — pointers only.
 
 ## Check (every later run)
 
@@ -203,6 +201,9 @@ For a source without a `.env.<source>_readonly` file the user already keeps, or 
 
 1. Ask only: where the credential lives (file) and the variable name, plus one sentence on what it is for. Default file
    name `.env.<source>_readonly` in the main checkout root.
+   When the file does not exist yet, give the user one line to run in their own terminal, never through `!`, because
+   the `!` shell cannot read input: `( umask 077; read -rs v; printf '<VAR>=%s\n' "$v" > <abs file> )`, then paste the
+   value and press Enter. For a new database role, the user runs `openssl rand -hex 24` in that terminal and uses the output for the role and the file.
 2. `git check-ignore -q <file>` in the repo; not ignored → fix "add to `.gitignore`" after a yes. `chmod 600` after a yes.
 3. One harmless call, never a write — the provider table:
 

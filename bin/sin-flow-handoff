@@ -88,9 +88,10 @@ if [ -n "$prompt" ]; then
   target_dir="$PWD"
   extra=""
 else
-  [ $# -ge 2 ] || { echo "usage: sin-flow-handoff [--detect] [--check TERMINAL] [--probe] [--new-workspace] [--cwd DIR] [--name NAME] [--model M (default: sin-flow-profile model <stage>)] [--goal TEXT] (--prompt TEXT | <sin-flow:stage|stage> <path | review: PR number or URL> [extra])" >&2; exit 2; }
+  [ $# -ge 2 ] || { echo "usage: sin-flow-handoff [--detect] [--check TERMINAL] [--probe] [--new-workspace] [--cwd DIR] [--name NAME] [--model M (default: sin-flow-profile model <stage>)] [--goal TEXT] (--prompt TEXT | <sin-flow:stage|stage> <path | review: PR number or URL | ingest: URL or text> [extra])" >&2; exit 2; }
   stage="sin-flow:${1#sin-flow:}"
-  if [ "$stage" = sin-flow:review ] && [[ "$2" =~ ^([0-9]+|https://github\.com/[^/]+/[^/]+/pull/[0-9]+/?)$ ]]; then
+  if { [ "$stage" = sin-flow:review ] && [[ "$2" =~ ^([0-9]+|https://github\.com/[^/]+/[^/]+/pull/[0-9]+/?)$ ]]; } ||
+     { [ "$stage" = sin-flow:ingest ] && [ ! -e "$2" ]; }; then
     target="$2"
     target_dir="$PWD"
   else
@@ -112,11 +113,9 @@ fi
 FLOW_CWD=$(cd "${cwd:-$target_dir}" && (git rev-parse --show-toplevel 2>/dev/null || pwd))
 FLOW_NAME="${name:-${stage#sin-flow:}}"
 FLOW_NAME="${FLOW_NAME:-continue-$$}"
-profile_key=$("$(dirname "$adapters")/sin-flow-profile" key "$FLOW_CWD" 2>/dev/null) || profile_key=""
 model_name="${stage#sin-flow:}"
 FLOW_MODEL="${model:-$("$(dirname "$adapters")/sin-flow-profile" model "${model_name:-strong}" "$FLOW_CWD")}" || exit 2
-FLOW_CONFIG_DIR="${FLOW_CONFIG_DIR:-}"
-[ -n "$FLOW_CONFIG_DIR" ] || [ -z "$profile_key" ] || FLOW_CONFIG_DIR=$("$(dirname "$adapters")/sin-flow-profile" "$profile_key" get claude.config_dir 2>/dev/null) || FLOW_CONFIG_DIR=""
+FLOW_CONFIG_DIR="${FLOW_CONFIG_DIR:-${CLAUDE_CONFIG_DIR:-}}"
 case "$FLOW_CONFIG_DIR" in "~"/*) FLOW_CONFIG_DIR="$HOME/${FLOW_CONFIG_DIR#\~/}" ;; esac
 [ -z "$FLOW_CONFIG_DIR" ] || [ -d "$FLOW_CONFIG_DIR" ] || { echo "FLOW_CONFIG_DIR=$FLOW_CONFIG_DIR is not a directory: no tab opened" >&2; exit 2; }
 FLOW_PROMPT="${FLOW_CONFIG_DIR:+CLAUDE_CONFIG_DIR=$(q "$FLOW_CONFIG_DIR") }claude -n $(q "$FLOW_NAME") --model $(q "$FLOW_MODEL") $(q "$text")"

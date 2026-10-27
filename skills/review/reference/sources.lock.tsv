@@ -1,19 +1,19 @@
 lens	repo	path	sha	date	note
 rails	igmarin/rails-agent-skills	skills/code-review/SKILL.md	03195c52ee7760f1713df6c099181dd9764478ac	2026-09-28	public rails-code-review skill, renamed in v4.0.0
-intent	bmad-code-org/BMAD-METHOD	skills/bmad-code-review/customize.toml	8f0d50e1817fdd8fcf05a20c524218222d13cd8d	2026-10-13	Intent Alignment Auditor lens, defined inline
+intent	bmad-code-org/BMAD-METHOD	skills/bmad-code-review/customize.toml	a27894e46a2663abfb7bf44d8fcd37d3b6127883	2026-10-18	Intent Alignment Auditor lens, defined inline
 paths	bmad-code-org/BMAD-METHOD	skills/bmad-code-review/review-prompts/edge-case-hunter.md	84def5a7d38401c7f4aadeff4d3e213d5208d88f	2026-09-05	-
-tests	bmad-code-org/BMAD-METHOD	skills/bmad-code-review/review-prompts/verification-gap.md	84def5a7d38401c7f4aadeff4d3e213d5208d88f	2026-09-05	-
+tests	bmad-code-org/BMAD-METHOD	skills/bmad-code-review/review-prompts/verification-gap.md	61e01f82644c4bb533750cfa0d6d61ab61d2cc9b	2026-10-18	-
 failures	anthropics/claude-plugins-official	plugins/pr-review-toolkit/agents/silent-failure-hunter.md	4ca561fb8532594e7a5faef945e85096fcec0616	2025-11-20	unchanged since initial plugin scaffold commit
 verify	anthropics/claude-plugins-official	plugins/code-review/commands/code-review.md	4ca561fb8532594e7a5faef945e85096fcec0616	2025-11-20	unchanged since initial plugin scaffold commit
 verify	obra/superpowers	skills/receiving-code-review/SKILL.md	3fb75974186ea7fada621d8ab77b3b02169baf57	2026-07-24	-
-verify	EveryInc/compound-engineering-plugin	skills/ce-code-review/references/subagent-template.md	8bc0d03f55d816b4db7837a761df4829b0ebc53b	2026-09-12	-
-verify	kodustech/kodus-ai	libs/code-review/infrastructure/agents/prompts/verifier-prompt.ts	311a28949f5886ddca86174259a682e0d36a845b	2026-10-04	refute-to-drop verifier prompt
+verify	EveryInc/compound-engineering-plugin	skills/ce-code-review/references/subagent-template.md	2df12e7487022f04b5d2c66dc9e18082b0bba2f7	2026-10-23	-
+verify	kodustech/kodus-ai	libs/code-review/infrastructure/agents/prompts/verifier-prompt.ts	eba422586d4bf10013242d2c518044d8e15d90ad	2026-10-24	refute-to-drop verifier prompt
 contract	EveryInc/compound-engineering-plugin	skills/ce-code-review/references/personas/api-contract-reviewer.md	1a9f16c45e659d3bcb572b9e73c50aabccdc8b86	2026-09-11	-
 context	Piebald-AI/claude-code-system-prompts	system-prompts/skill-code-review-correctness-finder-angles.md	c0037896bbd575d631df10eb4ac1b273c6f96f14	2026-07-20	Angle C, caller grep
 context	trailofbits/skills	plugins/fp-check/skills/fp-check/SKILL.md	ff4162dcb9cec5b7abe5ab039c868544b325275d	2026-06-22	execution context / caller analysis, step 0
 contract	bmad-code-org/BMAD-METHOD	skills/bmad-code-review/references/deletion-check.md	84def5a7d38401c7f4aadeff4d3e213d5208d88f	2026-09-05	-
 contract	Piebald-AI/claude-code-system-prompts	system-prompts/skill-code-review-correctness-finder-angles.md	c0037896bbd575d631df10eb4ac1b273c6f96f14	2026-07-20	Angle B/C
-verify	bmad-code-org/BMAD-METHOD	skills/bmad-code-review/step-03-triage.md	3208f492d43165bcabc1c68d814766e43adb5dec	2026-10-12	-
+verify	bmad-code-org/BMAD-METHOD	skills/bmad-code-review/step-03-triage.md	a27894e46a2663abfb7bf44d8fcd37d3b6127883	2026-10-18	-
 verify	EveryInc/compound-engineering-plugin	skills/ce-code-review/references/validator-batch-template.md	53af1a2eab6415be9881c1987dbc986dcb54465c	2026-09-13	-
 verify	affaan-m/ECC	agents/code-reviewer.md	6a9f075cd97c139a5f7e84e1e3f2c9ab095adf64	2026-07-26	-
 intent	bmad-code-org/BMAD-METHOD	skills/bmad-code-review/references/claims-check.md	84def5a7d38401c7f4aadeff4d3e213d5208d88f	2026-09-05	-

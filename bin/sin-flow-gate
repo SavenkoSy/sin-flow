@@ -1,0 +1,151 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+TEST_PATH='(^|/)(spec|specs|test|tests|__tests__)/|_spec\.[a-z]+$|_test\.[a-z]+$|\.test\.[a-z]+$|\.spec\.[a-z]+$|(^|/)test_[^/]*\.py$'
+
+usage() {
+  cat >&2 <<'EOF'
+usage: sin-flow-gate run <log> <commands-file>
+       sin-flow-gate count <log>
+       sin-flow-gate canary <work_dir> <unit> <base> <spec_cmd> <file>...
+       sin-flow-gate verdict <work_dir> <unit> <sha|uncommitted> <clean|skipped>
+EOF
+  exit 2
+}
+
+split_commands() {
+  while IFS= read -r line || [ -n "$line" ]; do
+    if [[ $line == *'`'* ]]; then
+      grep -oE '`[^`]+`' <<<"$line" | sed -E 's/^`//; s/`$//'
+    else
+      tr ';' '\n' <<<"$line"
+    fi
+  done <"$1" | sed -E 's/^[[:space:]]*(-[[:space:]]+)?//; s/[[:space:]]+$//' | sed -E "s/^\"(.*)\"$/\1/; s/^'(.*)'$/\1/" | grep -v '^$'
+}
+
+count_tests() {
+  awk '
+    /no tests ran|No test files found/ { last = "zero" }
+    /[0-9]+ examples?, [0-9]+ failures?/ || /[0-9]+ runs, [0-9]+ assertions/ || /(^|[^0-9a-z])[0-9]+ passed/ || /(^|[^0-9a-z])[0-9]+ failed/ { last = $0 }
+    END {
+      if (last == "") exit
+      if (last == "zero") { print 0; exit }
+      n = 0; pending = 0; runs = 0; skips = 0; examples = 0
+      line = last
+      while (match(line, /[0-9]+ [a-z]+/)) {
+        word = substr(line, RSTART, RLENGTH); split(word, part, " ")
+        if (part[2] ~ /^examples?$/) examples = part[1]
+        else if (part[2] == "pending") pending = part[1]
+        else if (part[2] == "runs") runs = part[1]
+        else if (part[2] ~ /^skips?$/) skips = part[1]
+        else if (part[2] == "passed" || part[2] == "failed" || part[2] ~ /^errors?$/) n += part[1]
+        line = substr(line, RSTART + RLENGTH)
+      }
+      if (examples > 0 || last ~ /examples?,/) print examples - pending
+      else if (runs > 0 || last ~ /runs,/) print runs - skips
+      else print n
+    }' "$1"
+}
+
+cmd_run() {
+  local log=$1 commands=$2 section status tests
+  [ -f "$commands" ] || usage
+  section=$(mktemp)
+  { echo "commands:"; split_commands "$commands" | sed 's/^/  /'; } >"$log"
+  while IFS= read -r cmd; do
+    echo "=== $cmd ===" >>"$log"
+    bash -c "$cmd" >"$section" 2>&1
+    status=$?
+    cat "$section" >>"$log"
+    tests=$(count_tests "$section")
+    echo "=== exit $status · tests ${tests:-none} ===" >>"$log"
+    if [ "$status" -ne 0 ]; then
+      tail -40 "$section" >"$log.tail"
+      rm -f "$section"
+      echo "red: $cmd (exit $status)"
+      return 1
+    fi
+    if [ "$tests" = 0 ]; then
+      tail -40 "$section" >"$log.tail"
+      rm -f "$section"
+      echo "red: $cmd ran 0 tests"
+      return 1
+    fi
+  done < <(split_commands "$commands")
+  rm -f "$section"
+  echo "green"
+}
+
+cmd_canary() {
+  local work=$1 unit=$2 base=$3 spec_cmd=$4
+  shift 4
+  local log="$work/canary-$unit.log" patch="$work/canary-$unit.patch" aside="$work/canary-$unit-aside"
+  local tests=() code=() untracked=() f status count
+  for f in "$@"; do
+    if grep -qE "$TEST_PATH" <<<"$f"; then tests+=("$f"); else code+=("$f"); fi
+  done
+  if [ ${#tests[@]} -eq 0 ] || [ ${#code[@]} -eq 0 ]; then
+    echo "CANARY none: no spec file or no code file in the unit" | tee "$log"
+    return 0
+  fi
+  git diff "$base" -- "${code[@]}" >"$patch"
+  while IFS= read -r f; do untracked+=("$f"); done < <(git ls-files --others --exclude-standard -- "${code[@]}")
+  restore() {
+    [ -s "$patch" ] && git apply "$patch"
+    for f in "${untracked[@]+"${untracked[@]}"}"; do mkdir -p "$(dirname "$f")"; mv "$aside/$f" "$f"; done
+  }
+  trap restore INT TERM
+  [ -s "$patch" ] && { git apply -R "$patch" || { echo "CANARY blocked: the patch does not reverse cleanly ($patch)" | tee "$log"; return 3; }; }
+  for f in "${untracked[@]+"${untracked[@]}"}"; do mkdir -p "$aside/$(dirname "$f")"; mv "$f" "$aside/$f"; done
+  { echo "=== reverted: $spec_cmd ${tests[*]} ==="; bash -c "$spec_cmd $(printf '%q ' "${tests[@]}")" 2>&1; } >"$log"
+  status=$?
+  restore
+  trap - INT TERM
+  if ! git diff "$base" -- "${code[@]}" | cmp -s - "$patch"; then
+    echo "CANARY blocked: the code did not come back; re-apply $patch" | tee -a "$log"
+    return 3
+  fi
+  [ "$status" -ne 0 ] && echo "CANARY reverted: red" >>"$log" || echo "CANARY reverted: green" >>"$log"
+  { echo "=== restored: $spec_cmd ${tests[*]} ==="; bash -c "$spec_cmd $(printf '%q ' "${tests[@]}")" 2>&1; } >"$log.restored"
+  status=$?
+  count=$(count_tests "$log.restored")
+  cat "$log.restored" >>"$log"
+  rm -f "$log.restored"
+  [ "$status" -eq 0 ] && echo "CANARY restored: green tests ${count:-none}" >>"$log" || echo "CANARY restored: red" >>"$log"
+  grep '^CANARY ' "$log" | paste -sd ' ' -
+}
+
+cmd_verdict() {
+  local work=$1 unit=$2 sha=$3 audit=$4 log="$1/canary-$2.log" reverted restored tests
+  if [ ! -f "$log" ]; then
+    echo "Unit $unit: complete ($sha, audit $audit)"
+    return 0
+  fi
+  reverted=$(sed -n 's/^CANARY reverted: //p' "$log")
+  restored=$(sed -n 's/^CANARY restored: //p' "$log")
+  tests=$(sed -n 's/^CANARY restored: green tests //p' "$log")
+  if grep -q '^CANARY none' "$log"; then
+    echo "Unit $unit: complete ($sha, audit $audit, canary none)"
+  elif [ "$reverted" = green ]; then
+    echo "Unit $unit: not proven: its specs pass with its code reverted"
+  elif [[ $restored != green* ]]; then
+    echo "Unit $unit: not proven: its specs fail with its code in place"
+  elif [ "$tests" = 0 ]; then
+    echo "Unit $unit: not proven: its specs ran 0 tests"
+  elif [ "$reverted" = red ]; then
+    echo "Unit $unit: complete ($sha, audit $audit, canary red, ${tests} tests)"
+  else
+    echo "Unit $unit: not proven: canary log has no result"
+  fi
+}
+
+[ $# -ge 1 ] || usage
+mode=$1
+shift
+case "$mode" in
+  run) [ $# -eq 2 ] || usage; cmd_run "$@" ;;
+  count) [ $# -eq 1 ] || usage; count_tests "$1" ;;
+  canary) [ $# -ge 5 ] || usage; cmd_canary "$@" ;;
+  verdict) [ $# -eq 4 ] || usage; cmd_verdict "$@" ;;
+  *) usage ;;
+esac
