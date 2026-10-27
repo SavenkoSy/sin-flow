@@ -108,6 +108,7 @@ Claude Code keeps the values in `pluginConfigs["<id>"].options` of the user's `s
 | `codex_watch` | `""` | `orca` → the Orca workspace card shows each step of that Codex run |
 | `workspace` | `""` | `orca` or `git`: where `sin-flow-worktree` makes every stage's worktree; empty → `git`. `orca` also turns on the Stop hook `orca-quiet.sh`: it marks the Orca worktree read while background tasks run |
 | `work_remote` | `""` | a git remote for `~/.claude/sin-flow` (work notes and profiles); empty → local only |
+| `notes_globs` | `""` | space-separated globs of agent notes in every repo; the shipper never stages a match. The profile key `notes.paths` adds the globs of one repo |
 
 A repo profile may set `models.strong`, `models.mid`, `models.cheap` and `models.<stage>` (`setup`, `sync`, `ingest`,
 `plan`, `exec`, `review`, `learning`: the session a hand-off opens for that stage); it wins over the options for that repo. `sin-flow-profile model <tier|stage>`
@@ -145,6 +146,7 @@ nothing; a non-zero exit makes `sin-flow-handoff` print the command instead. Its
    and only the deviations the user gave; then `sin-flow-infer --write <key>` fills `## Inferred` and you name the gates into it
    (below); add `## Measure` in one or two lines. Write `notes.mirror: on` into the frontmatter when the Inferred notes line
    says mirrored and the team has more than one author, else `notes.mirror: off` — a default the user flips.
+   `notes.paths` (absent by default): space-separated globs of the repo's own agent notes; the shipper never stages them.
    If the profile gets a board, also write `tracker.write.light: off`, `tracker.write.assign: off`,
    `tracker.write.status: off` and `group_by: milestone`. These are defaults that the user changes. The sync
    skill's `## Tracker and switches` gives their meanings.

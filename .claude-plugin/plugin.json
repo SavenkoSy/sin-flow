@@ -122,6 +122,11 @@
       "type": "string",
       "title": "Work notes remote",
       "description": "A git remote for ~/.claude/sin-flow (work notes and profiles). Empty: local only."
+    },
+    "notes_globs": {
+      "type": "string",
+      "title": "Note globs",
+      "description": "Space-separated globs of agent notes in every repo. The shipper never stages a match. Empty: only the symlink and hash checks against the work folder and the profile key notes.paths."
     }
   }
 }
