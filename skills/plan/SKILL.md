@@ -26,7 +26,7 @@ Chat with the user in the `chat_language` option (`sin-flow-profile user chat_la
 
 | Invocation | Meaning |
 |---|---|
-| `/sin-flow:plan` | the newest `plan.md` or `intake.md` under `~/.claude/sin-flow/work/<key>/`, `<key>` resolved from the cwd |
+| `/sin-flow:plan` | the newest `plan.md` under `~/.claude/sin-flow/work/<key>/`, `<key>` resolved from the cwd |
 | `/sin-flow:plan <id>` | `~/.claude/sin-flow/work/<key>/<id>/` — `<id>` is whatever the folder is named (`gh-<N>`, `batch-<N>`, `epic-<N>`, `<N-M>`); carry it unchanged into branch, tab and progress lines, never parse it as a number |
 | `/sin-flow:plan <path>` | that file |
 
@@ -131,7 +131,7 @@ the units and file clusters. A seed from ingest or an epic intake may also carry
   one number (Step 5); re-measure in full only if it disagrees or the base moved past its files.
 - **`## Open decisions`** become Rulings lines (Step 6).
 
-An epic seed or a legacy `intake.md` is the user's word; read it once. Check whether an adjacent batch the seed names has
+An epic seed is the user's word; read it once. Check whether an adjacent batch the seed names has
 started (`git branch -r --list`, `gh pr list -R <repo.slug>`) — a sequencing constraint is only real if it has.
 
 ## Step 2 — Read every ticket, latest comment first
@@ -243,7 +243,7 @@ query, numbers, date or base SHA is a claim and is measured as today.
 
 ## Step 6 — Write the plan in place
 
-Same folder: `work/<key>/<id>/plan.md` (from an intake, write `plan.md` beside it). **English.**
+Same folder: `work/<key>/<id>/plan.md`. **English.**
 Shape and order: `reference/plan-template.md` — follow it literally. The parts that carry judgement:
 
 **Verdicts — `builder` and `audit`** are the two fields exec reads before dispatching. You assign them

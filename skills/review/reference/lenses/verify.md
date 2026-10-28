@@ -35,7 +35,9 @@ row or value. An R row has one of five reasons: `invented`, `needless-validation
   refutes only the behaviour it names: a decision on a value's source is silent on its empty value.
   With `TEAM=yes` and an approval rule in `rules.md` (a sensitive-change or AC-deviation sign-off), the decision
   refutes only if it is recorded the way that rule says — who, when, channel, and not the PR's
-  author; otherwise keep a low K at the decision's line whose fix is that record, quoting the rule.
+  author; otherwise keep a low K at the decision's line whose fix is that record, quoting the rule. A recorded
+  approval covers each implementation detail of the approved option. A detail that the approver's quote does not
+  name is no finding. Only a diff that changes the approved behaviour keeps a K.
 - With `TEAM=yes`, a gap between what `pr.md` or the plan states (which keys or roles may call, a limit, an
   environment, a count) and what the diff does is an intent defect, never `invented` for want of an
   actor who would exploit it.

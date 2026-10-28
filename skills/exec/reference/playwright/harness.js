@@ -22,7 +22,7 @@ function silenceMedia() {
 }
 
 function reviewDir(label) {
-  const dir = path.join(process.env.FLOW_UI_SHOTS || path.join(os.homedir(), 'Desktop', 'sin-flow-shots'), label);
+  const dir = path.join(process.env.FLOW_UI_SHOTS || path.join(os.homedir(), '.claude', 'sin-flow', 'work', 'screens'), label);
   fs.mkdirSync(dir, { recursive: true });
   return dir;
 }

@@ -6,8 +6,6 @@ description: 'One idempotent command that installs the flow on this machine, onb
 # sin-flow:setup — install → onboard → check → add
 
 One command, four modes, each idempotent: a second run asks nothing and changes nothing when everything is in place.
-Modelled on Rails `bin/setup` (safe to run any time), `brew doctor` (one success line), `flutter doctor` (`[✓] [!] [✗]`
-per group), `gh auth status` (check + ready fix in one line), Claude Code `/doctor` (report first, fix after a yes).
 
 Chat with the user in the `chat_language` option (`sin-flow-profile user chat_language`), or in the language the user writes in when it is absent. Fixed phrases defined here (`all good`, the questions, the fixes) are rendered in that language. Every file you write is English.
 
@@ -37,7 +35,7 @@ Chat with the user in the `chat_language` option (`sin-flow-profile user chat_la
    created here, and nothing is pushed by setup or by the Stop hook.
 2. `command -v gh git jq bash`, `gh auth status`. A miss is a row with its fix (`brew install jq`, `gh auth login`).
 3. Show the preferences with defaults — `chat_language`, `merge: squash`, `after_review: new-commit`,
-   `branch_prefix: ""`, `handoff: auto`, `context_guard: 40`, `limit_guard: off`, `learning_dir: ~/.claude/sin-flow/learning`, `learning_runs: 10`,
+   `branch_prefix: ""`, `handoff: auto`, `learning_dir: ~/.claude/sin-flow/learning`, `learning_runs: 10`,
    `learning_cwd:` (empty → `learning_dir`), `work_remote: ""`,
    `models_strong: opus`, `models_mid: sonnet`, `models_cheap: haiku`,
    `reviews_dir: ~/.claude/sin-flow/reviews` — ask once "keep the defaults?" — a user whose account has no Opus sets
@@ -103,6 +101,7 @@ Claude Code keeps the values in `pluginConfigs["<id>"].options` of the user's `s
 | `models_mid` | `sonnet` | read-only analysts, implementers, shipper, review-poster, the review lenses on the mid tier |
 | `models_cheap` | `haiku` | the board agent |
 | `reviews_dir` | `~/.claude/sin-flow/reviews` | where `/sin-flow:review` writes review files |
+| `opensource_dir` | `~/.claude/sin-flow/opensource` | where setup clones a repo that is someone else's, one folder for each repo |
 | `codex_review` | `off` | `on` → the exec review at the end of a unit also runs OpenAI Codex CLI as one more finder, then gives Codex one reply turn on the verdict (`skills/review/reference/pipeline.md` § 3). Needs `codex` installed and `codex login`; without them the review goes on and the last message says so |
 | `codex_model_pr` | `""` | a Codex model family `<family>` (the newest listed `gpt-<version>-<family>` in `~/.codex/models_cache.json`), or a full model name → `/sin-flow:review` of a teammate's PR also runs Codex as a finder on that model; empty → pr mode runs no Codex |
 | `codex_watch` | `""` | `orca` → the Orca workspace card shows each step of that Codex run |
@@ -122,15 +121,15 @@ nothing; a non-zero exit makes `sin-flow-handoff` print the command instead. Its
 ## Onboard (first run in a repo — no profile)
 
 0. **Upstream repo** — the repo, from the URL or slug, else `origin` (its parent when `origin` is a fork, `gh repo view --json isFork,parent`),
-   is someone else's (`gh repo view <slug> --json viewerPermission` is `READ`, `TRIAGE` or empty): the checkout is `~/dev/opensources/<name>` (`<owner>-<name>` when that folder holds
-   another repo). Absent → `gh repo clone <slug> ~/dev/opensources/<name>`. Inside it `gh repo fork --remote --remote-name fork`:
+   is someone else's (`gh repo view <slug> --json viewerPermission` is `READ`, `TRIAGE` or empty): the checkout is `$(sin-flow-profile user opensource_dir)/<name>` (`<owner>-<name>` when that folder holds
+   another repo). Absent → `gh repo clone <slug> "$(sin-flow-profile user opensource_dir)/<name>"`. Inside it `gh repo fork --remote --remote-name fork`:
    `origin` stays the upstream, `fork` is the user's fork. A clone whose `origin` is a fork
    → `git remote rename origin fork`, then `upstream` renamed to `origin`, or `git remote add origin <parent URL>`.
    Continue in that folder; `${CLAUDE_PLUGIN_ROOT}/skills/ingest/reference/upstream.md` applies from here.
    A URL or slug of the user's own repo (`WRITE`, `MAINTAIN` or `ADMIN`) that is not this checkout's `origin` → one line
    «run /sin-flow:setup inside `<slug>`'s checkout», then stop, and the calling stage with it; never onboard this checkout under another slug.
 1. `sin-flow-infer` (read-only, ≈ 5 s) prints the `## Inferred <date>` block: base, issues/Projects, merge methods, team by
-   PR authors, the CI, lefthook and orchestrator files (`gate files:`), a stack fallback when no CI file exists,
+   PR authors, the CI and lefthook files (`gate files:`), a stack fallback when no CI file exists,
    dev server, sensitive paths.
 2. Find credential files: `ls -a <main checkout> | grep -E '^\.env\.[a-z0-9_]+_readonly$'`; for each, names only.
    Find the app's local secret files: `git -C <main checkout> ls-files --others --ignored --exclude-standard` lines
@@ -154,27 +153,29 @@ nothing; a non-zero exit makes `sin-flow-handoff` print the command instead. Its
 5. Hand back to the stage that called setup, at the step it stopped on.
 
 **Name the gates** — after every `sin-flow-infer --write`, read each file on its `gate files:` line in full and write
-these lines right under it. A command counts when a `run:` line (comments skipped) calls rspec, rubocop, brakeman,
-bundle-audit, bundler-audit, i18n-tasks with its subcommand, `rails test` or `rake test|spec` — each with its
-`bundle exec ` / `bin/` / `npx ` prefix — or `npm <script>` / `npm run <script>` (not ci or install), `pnpm <script>` /
-`pnpm run <script>` or `yarn <script>` (not install), eslint, jest, vitest, tsc, pytest, `go test` or `cargo test` — these written bare, never
-`npx eslint` or `npx tsc`;
-always without options or paths, once per entry.
+these lines right under it. A `gates.*` key in the profile wins over them. A command counts when a `run:` line
+(comments skipped) calls a test, lint or security command of the stack, always without options or paths, once per
+entry. Examples per stack:
+- JavaScript: `npm <script>` / `npm run <script>` (not ci or install), `pnpm <script>` / `pnpm run <script>`,
+  `yarn <script>` (not install), eslint, jest, vitest, tsc, written bare, never `npx eslint` or `npx tsc`.
+- Ruby: rspec, rubocop, brakeman, bundle-audit, bundler-audit, i18n-tasks with its subcommand, `rails test`,
+  `rake test|spec`, each with its `bundle exec ` / `bin/` / `npx ` prefix.
+- Python: pytest. Go: `go test`. Rust: `cargo test`.
+
+The lines to write:
 - `gates (CI): <entries joined by "; ">.` — one entry per `.github/workflows/*` file whose `on:` has `pull_request` or
   `push`: `` `cmd`, `cmd` — <file> (<all its triggers joined by />[ on <the pull_request/push branches joined by ", ">]) ``, <file> being the repo-relative path (`.github/workflows/ci.yml`);
   a file with no such command is left out. One entry for `.circleci/config.yml`, from the jobs listed under `workflows`
   without `filters.branches.only`: `` `cmd` (<workflow>/<job>, …), `cmd` (…) — .circleci/config.yml, workflows that run on
   feature branches ``, or, when none of those jobs calls such a command, `CircleCI: no gate command found in jobs that
   run on feature branches — .circleci/config.yml (workflows: <workflow>/<job>, …)`. No entry at all →
-  `gates (stack fallback, no CI found): …` from the Gemfile (`bundle exec rspec`, plus `bundle exec rubocop` /
-  `bundle exec brakeman` when it names them) and the package.json `lint` / `test` / `build` scripts.
+  `gates (stack fallback, no CI found): …` from the stack's manifest, for example the package.json `lint` / `test` /
+  `build` scripts, `bundle exec rspec` for a Gemfile, `pytest` for a pyproject.toml.
 - `gates (pre-commit, lefthook.yml): <hook> <name>: `<first line of run, ≤ 90 chars>`; ….` — every `pre-commit`,
   `commit-msg` and `pre-push` command or job with a `run:`.
-- `orchestrator config (docs/orchestrator/config.yml): <dotted.key>: `<value>`; ….` — every key whose dotted path ends
-  in `test_cmd`, `lint_cmd`, `security_cmd` or `branch_format` (`delivery.mission_branch_format` counts).
 
 Profile format: flat `group.key: value` lines (lists as `["a","b"]`), prose sections `## Inferred`, `## Measure`, `## Run`,
-`## Ship`, `## Tracker`, `## Never`. Optional keys the stages read when set: `review.request` (logins exec asks for review and asks again after each reply batch), `pr.relink_after_bot: on` (shipper saves the PR body once more when a bot added a `Closes` line that GitHub did not link), `tracker.held_statuses` (Status options that a new board leaves out of scope). Keys that setup may write: `tracker.adapter`, `tracker.write.light`, `tracker.write.assign`, `tracker.write.status`, `group_by`. Required: `key`, `repo.slug`, `measure.doc`. Never a secret — pointers only.
+`## Ship`, `## Tracker`, `## Never`. Optional keys the stages read when set: `review.request` (logins exec asks for review and asks again after each reply batch), `review.deploy_bots` (logins of deploy bots that the base watcher skips), `gates.lint_fix` (the lint autocorrect commands), `pr.relink_after_bot: on` (shipper saves the PR body once more when a bot added a `Closes` line that GitHub did not link), `tracker.held_statuses` (Status options that a new board leaves out of scope), `gates.spec_cmd` (a test command that takes spec file paths; exec runs the canary with it, and no key means no canary), `review.preship_agent` (a `subagent_type` that exec runs on the final diff before the PR), `notes.paths` (extra globs the shipper treats as agent notes). Keys that setup may write: `tracker.adapter`, `tracker.write.light`, `tracker.write.assign`, `tracker.write.status`, `group_by`. Required: `key`, `repo.slug`, `measure.doc`. Never a secret — pointers only.
 
 ## Check (every later run)
 
@@ -203,6 +204,9 @@ For a source without a `.env.<source>_readonly` file the user already keeps, or 
 
 1. Ask only: where the credential lives (file) and the variable name, plus one sentence on what it is for. Default file
    name `.env.<source>_readonly` in the main checkout root.
+   When the file does not exist yet, give the user one line to run in their own terminal, never through `!`, because
+   the `!` shell cannot read input: `( umask 077; read -rs v; printf '<VAR>=%s\n' "$v" > <abs file> )`, then paste the
+   value and press Enter. For a new database role, the user runs `openssl rand -hex 24` in that terminal and uses the output for the role and the file.
 2. `git check-ignore -q <file>` in the repo; not ignored → fix "add to `.gitignore`" after a yes. `chmod 600` after a yes.
 3. One harmless call, never a write — the provider table:
 

@@ -6,7 +6,7 @@ description: 'Self-review stage of the flow (sin-flow:setup, sin-flow:sync, sin-
 # sin-flow:learning
 
 Chat with the user in the `chat_language` option (`sin-flow-profile user chat_language`). When it is absent, use the language the user
-writes in. Headings and fixed phrases are rendered in that language. Files are English.
+writes in. Fixed phrases are rendered in that language. Files are English.
 
 ## The golden rule
 
@@ -22,11 +22,9 @@ nothing. This stage measures the flow on two numbers:
   no cost to either number is not a finding. It is at most a Deletions candidate.
 
 Every finding names its **layer** first, by the rules in `${CLAUDE_PLUGIN_ROOT}/ARCHITECTURE.md`. The user's settings (the sin-flow plugin options, their copies of `examples/`, `profiles/<key>/`)
-hold how the flow works for this user. The plugin holds the mechanism and the defaults that every user starts from. A
-habit of one user never becomes a plugin rule. Only in author mode does a finding also ask whether the mechanism
-itself failed. Then it goes to the plugin, in its own apply script. The repo is a column, not a separate flow. A
-failure mode seen in two or more repos is a sin-flow:* skill problem. A mode seen in one repo only is first a profile
-problem.
+hold how the flow works for this user. The plugin holds the mechanism and the defaults that every user starts from.
+Only in author mode does a finding also ask whether the mechanism itself failed. Then it goes to the plugin, in its own
+apply script. The repo is a column, not a separate flow. § Proposals sets the layer from the reach of the evidence.
 
 ## Arguments
 
@@ -161,8 +159,7 @@ Body:
 ## Proposals: diffs the user approves
 
 A proposal needs a mode counted on ≥ 2 sessions, or the user's explicit ask. An open inbox row is an ask. When a hook,
-a script or a check can carry the fix, propose that first and a text line second. A mode in one repo only targets that
-repo's profile first. A proposal never stops or blocks a stage to enforce a precondition that the flow could set up
+a script or a check can carry the fix, propose that first and a text line second. A proposal never stops or blocks a stage to enforce a precondition that the flow could set up
 itself. It fixes how the stage is opened, and a stage in the wrong state keeps working.
 
 Every run carries one **Deletions** entry, with the same evidence as an addition: lines of the stage skill that no
@@ -176,7 +173,9 @@ it as a whole.
 
 One proposal per numbered entry, each with:
 - **layer**: `user` (a plugin option, the user's copy of an `examples/` script), `profile` (`profiles/<key>/`) or `plugin`
-  (the mechanism, for every user). One user's habit or preference is `user` or `profile` in every mode. A `plugin` proposal holds no word
+  (the mechanism, for every user). A proposal that rests on sessions or a complaint from one repo, or on the words of
+  one user, is `user` or `profile` by default. It is `plugin` only with evidence from 2 or more users or a defect in
+  the mechanism. A `plugin` proposal holds no word
   that only one repo uses. Read it against each repo key in its evidence and one key that is not there. A `plugin`
   proposal for one tool or one practice also names the plugin option or profile key that turns it on, and says what a
   user with no such key gets.
@@ -258,31 +257,21 @@ hold.
 - An item a reader could not answer is marked so in the digest. The ledger entry names the missing input (a run-log
   column, a dump field) as a proposal, not as a fact.
 
-## Chat: the user's headings
+## Chat
 
-Plain language: a signature line with what was asked, then these headings in this order, then stop:
-
-- **WHAT HAPPENED**: one sentence, cause → effect. The mechanism, an arrow, then what the user saw.
-- **EVIDENCE**: the two numbers for the covered sessions, split by repo, and the `file:line` behind the cause, ≤ 3
-  lines.
-- **WHAT I PROPOSE**: two lists, «your settings» then «the plugin, for everyone», ≤ 6 lines in all. One line «now →
-  will be» per thing the user of the flow experiences, with its proposals folded in. No proposal numbers, no
-  identifiers. In user mode, one more line names `proposals-for-author.md` and the count of blocks added.
+The conclusion and the path, in the `chat_language` option, ≤ 15 lines. The proposals go in two lists, «your
+settings» then «the plugin, for everyone», with one line «now → will be» for each. In user mode, one more line names
+`proposals-for-author.md` and the count of blocks added. Counts carry their filter set in the digest.
 
 Copy the `===` final-message block of one covered exec session whole from `<sid8>.long.txt` to
 `LD/<date>/flow-<stage>/final-message-<sid8>.md`. Never quote it in chat and ask no question about it. Name it in chat
-only as a finding: when it breaks the Final message shape in `${CLAUDE_PLUGIN_ROOT}/skills/exec/SKILL.md`, or when a
-PR body is over 200 words.
-
-The whole report is ≤ 15 lines. Counts carry their filter set in the digest. Chat never holds a reader's paragraph,
-only the conclusion and the path.
+only as a finding, when it breaks the Final message shape in `${CLAUDE_PLUGIN_ROOT}/skills/exec/SKILL.md`.
 
 ## Boundaries
 
 - Runs outside every product repo and reads none except the `.ledger-paths` files. A claim that needs more says "not
   checked" and names the path to check.
-- Never writes to auto-memory, Slack, a ticket or a product repo. The one GitHub write is the author-mode plugin PR,
-  and it never merges that PR.
+- Never writes to an external system or a product repo except the author-mode plugin PR, and never merges that PR.
 - Never edits a skill, agent, hook, profile, plugin option or launcher without the user's approval and a backup made
   first. In user mode never edits the flow layer.
 - Never turns on a hook that can deny or stop a session before the live probe named in the proposal has run.

@@ -15,8 +15,8 @@ Always: `mode: gate | local | commit | ship`. Optional everywhere: `profile: <ke
 unit — issue number, prefixed ticket, or the profile's local id such as `N-M`), `work_dir` (default
 `~/.claude/sin-flow/work/<key>/<id>/`).
 
-- `gate`: optional `commands` (overrides everything below; split it on `;` and newlines, and run each part as its
-  own command), optional `label` for the log name.
+- `gate`: optional `commands` (overrides everything below), optional `label` for the log name, optional `canary`
+  (one line per unit: the unit id, then its files).
 - `local` / `commit`: `title`, one paragraph on what changed and why (only the caller knows the why —
   build the message from it, not from the diff alone), optional `FILES`, optional `type`
   (`bug | task | story`), optional `trailer` (upstream mode only).
@@ -96,11 +96,11 @@ rm -f /tmp/flow-l1-$$.hashes
 | what | convention | profile deviation |
 |---|---|---|
 | base | `gh repo view --json defaultBranchRef -q .defaultBranchRef.name` | `repo.base`; the prompt's `base` beats both |
-| branch | `docs/orchestrator/config.yml` `branch_format` if the repo has one; else `<prefix>/<type>/<id>/<slug>` | `git.branch` (template, e.g. `epic-<N>`; fill `<N>`/`<id>` verbatim from the prompt) |
+| branch | `<prefix>/<type>/<id>/<slug>` | `git.branch` (template, e.g. `epic-<N>`; fill `<N>`/`<id>` verbatim from the prompt) |
 | commit subject | `[<ID>] <title>` when the unit has an id, else `<title>` | `git.commit_subject` (template with `<id>`, `<title>`) |
 | commit unit | one commit per dispatch, staging judged from the diff | `git.commit_unit: story` → exactly the caller's `FILES` |
 | gates | what CI runs on a PR, then the repo's pre-commit hooks | `gates.prepare`, `gates.commands` |
-| lint bypass | never | `gates.legacy_lint_bypass: true` |
+| lint bypass | never | `gates.legacy_lint_bypass: true` with `gates.lint_fix` |
 
 - `<prefix>`: the user's `branch_prefix`; empty → the segment is dropped (`<type>/<id>/<slug>`).
 - `id` in the prompt may be the work folder's name (`gh-<N>`, `N-M`, `epic-<N>`): `<N>` is its number.
@@ -118,15 +118,19 @@ rm -f /tmp/flow-l1-$$.hashes
 2. Commands, first source that answers: the prompt's `commands`; `gates.commands`; the `run:` steps of
    `.github/workflows/*.yml` jobs triggered on `pull_request` or `push` (skip checkout, install, cache
    and service-setup steps), or the `run:` steps in `.circleci/config.yml`; `lefthook.yml` pre-commit
-   commands and `docs/orchestrator/config.yml` `test_cmd` / `lint_cmd` / `security_cmd`; stack
-   fallback — `Gemfile` → `bundle exec rspec` plus `rubocop` / `brakeman` when the Gemfile has them,
-   `package.json` → its `lint`, `test`, `build` scripts. Nothing found → `STATUS: blocked`.
-3. Write the resolved list as the log's first lines, run `gates.prepare` if set, then each command in
-   order, each appending under a `=== <command> ===` header. Never `git checkout` or `git switch` in this mode.
-   Before the first command and after the last, `git branch --show-current` must print the branch you started
-   on. Empty or different → `STATUS: blocked`, `NOTE: HEAD moved to <ref>`.
-4. Stop at the first red: its last 40 lines go to `<log>.tail`, return `STATUS: red`. Never paste
-   output into the return.
+   commands; the repo's own scripts — the `lint`, `test`, `build` scripts of `package.json`, a `test`
+   target in a `Makefile`, an executable `bin/test*`. Nothing found → `STATUS: blocked`.
+3. Write the resolved list to `<work_dir>/gate-<label>.commands`, one entry per line, `gates.prepare` first when
+   set. Copy the caller's `commands` text as it came. Then run `sin-flow-gate run <log> <that file>`. The script splits
+   the entries (backticked items, `;`, lines), runs each with `bash -c`, writes `=== <command> ===` and
+   `=== exit <n> · tests <count | none> ===` per entry, stops at the first red, and writes `<log>.tail`. A test runner
+   that ran 0 tests is red. Its one line is the result: `green`, or `red: …` → `STATUS: red` with that line in a
+   `NOTE`. Never `git checkout` or `git switch` in this mode. Before the script and after it, `git branch
+   --show-current` must print the branch you started on. Empty or different → `STATUS: blocked`, `NOTE: HEAD moved
+   to <ref>`. Never paste output into the return.
+4. `canary` given and the profile sets `gates.spec_cmd` → after a green step 3, for each unit line run
+   `sin-flow-gate canary <work_dir> <unit> <base> '<gates.spec_cmd>' <files…>` and put its line in a `NOTE`.
+   `CANARY blocked` → `STATUS: blocked`. No `gates.spec_cmd` → `NOTE: canary off`.
 
 `<push-remote>` = `fork` in upstream mode, else `origin`; upstream mode without a `fork` remote →
 `STATUS: blocked`, `NOTE: no fork remote → /sin-flow:setup`.
@@ -150,9 +154,9 @@ rm -f /tmp/flow-l1-$$.hashes
    L1 guard on both passes.
 5. `git commit` with the convention subject and the paragraph as the body; upstream mode: the caller's `trailer`,
    when given, as the last line.
-6. Hook failure. `gates.legacy_lint_bypass: true` and a rubocop block → `rubocop -a` (then `-A`) on
-   the touched files, re-run their specs; structural cops that survive → run the same cops on
-   `git show HEAD:<file>`; the same set survives → commit with `--no-verify` and record the offences
+6. Hook failure. `gates.legacy_lint_bypass: true`, `gates.lint_fix` set and a lint block → run each
+   `gates.lint_fix` entry in order on the touched files until the hook passes, re-run their specs; offences
+   that survive → run the same linter on `git show HEAD:<file>`; the same set survives → commit with `--no-verify` and record the offences
    in a `NOTE` and in the PR body's What. Any other hook failure, or an offence this diff introduced →
    last lines to `<work_dir>/hook.tail`, `STATUS: blocked`, no bypass.
 

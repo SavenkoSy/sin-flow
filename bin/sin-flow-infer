@@ -18,7 +18,7 @@ infer() {
   echo "## Inferred $today (not config — re-inferred on every /sin-flow:setup run)"
   echo "repo: $slug (git remote origin)."
 
-  local view prs default issues projects merges cfg_base bases authors
+  local view prs default issues projects merges bases authors
   if view=$(gh repo view "$slug" --json defaultBranchRef,hasIssuesEnabled,hasProjectsEnabled,squashMergeAllowed,mergeCommitAllowed,rebaseMergeAllowed 2>/dev/null); then
     default=$(jq -r '.defaultBranchRef.name' <<<"$view")
     issues=$(jq -r 'if .hasIssuesEnabled then "enabled" else "disabled" end' <<<"$view")
@@ -30,19 +30,12 @@ infer() {
   prs=$(gh pr list -R "$slug" --state merged --limit 20 --json baseRefName,author 2>/dev/null || echo '[]')
   bases=$(jq -r 'group_by(.baseRefName) | map("\(.[0].baseRefName) \(length)") | join(", ")' <<<"$prs")
   authors=$(jq -r '[.[].author.login] | unique | length' <<<"$prs")
-  cfg_base=""
-  if [ -f "$dir/docs/orchestrator/config.yml" ]; then
-    cfg_base=$(sed -n 's/^[[:space:]]*base_branch:[[:space:]]*["'\'']\{0,1\}\([^"'\'' #]*\).*/\1/p' "$dir/docs/orchestrator/config.yml" | head -1)
-  fi
   local base_line="base: $default (gh repo view)"
   [ -n "$bases" ] && base_line="$base_line; last 20 merged PRs by base: $bases"
-  [ -n "$cfg_base" ] && base_line="$base_line; docs/orchestrator/config.yml base_branch: $cfg_base"
   local others
   others=$(jq -r --arg d "$default" '[.[].baseRefName | select(. != $d)] | unique | join(", ")' <<<"$prs")
   if [ -n "$others" ] && [ "$(jq -r --arg d "$default" '[.[] | select(.baseRefName == $d)] | length' <<<"$prs")" = "0" ]; then
     base_line="$base_line — CONFLICT: no merged PR targets $default → ask"
-  elif [ -n "$cfg_base" ] && [ "$cfg_base" != "$default" ]; then
-    base_line="$base_line — CONFLICT with config.yml → ask"
   fi
   echo "$base_line."
   echo "tracker: GitHub issues $issues, Projects $projects (gh repo view)."
@@ -57,27 +50,28 @@ infer() {
     echo "team: not inferable — no merged PRs."
   fi
 
-  local f ci_files="" gate_files="" stack="" dev="" s
+  local f ci_files="" gate_files="" stack="" dev="" s key="" profile_gates=""
   for f in "$dir"/.github/workflows/*.yml "$dir"/.github/workflows/*.yaml "$dir/.circleci/config.yml"; do
     if [ -f "$f" ]; then ci_files="${ci_files:+$ci_files, }${f#"$dir"/}"; fi
   done
   gate_files=$ci_files
-  for f in "$dir/lefthook.yml" "$dir/docs/orchestrator/config.yml"; do
-    if [ -f "$f" ]; then gate_files="${gate_files:+$gate_files, }${f#"$dir"/}"; fi
-  done
+  if [ -f "$dir/lefthook.yml" ]; then gate_files="${gate_files:+$gate_files, }lefthook.yml"; fi
   if [ -n "$gate_files" ]; then echo "gate files (setup names the gates): $gate_files."; fi
-  if [ -z "$ci_files" ]; then
-    if [ -f "$dir/Gemfile" ]; then
-      stack='`bundle exec rspec`'
-      if grep -q rubocop "$dir/Gemfile"; then stack="$stack, \`bundle exec rubocop\`"; fi
-      if grep -q brakeman "$dir/Gemfile"; then stack="$stack, \`bundle exec brakeman\`"; fi
-    fi
+  key=${write_key:-$(sin-flow-profile key "$dir" 2>/dev/null || true)}
+  if [ -n "$key" ]; then profile_gates=$(sin-flow-profile "$key" get gates.commands 2>/dev/null || true); fi
+  if [ -n "$profile_gates" ]; then
+    echo "gates: gates.commands in the profile wins over CI and the fallback."
+  elif [ -z "$ci_files" ]; then
     if [ -f "$dir/package.json" ]; then
       for s in lint test build; do
         if jq -e --arg s "$s" '(.scripts // {}) | has($s)' "$dir/package.json" >/dev/null; then stack="${stack:+$stack, }\`npm run $s\`"; fi
       done
     fi
-    if [ -n "$stack" ]; then echo "gates (stack fallback, no CI found): $stack."; else echo "gates: no CI and no known stack — ask."; fi
+    if [ -f "$dir/Makefile" ] && grep -q '^test:' "$dir/Makefile"; then stack="${stack:+$stack, }\`make test\`"; fi
+    for f in "$dir"/bin/test*; do
+      if [ -f "$f" ] && [ -x "$f" ]; then stack="${stack:+$stack, }\`${f#"$dir"/}\`"; fi
+    done
+    if [ -n "$stack" ]; then echo "gates (the repo's own scripts, no CI found): $stack."; else echo "gates: no CI and no test script in the repo — ask."; fi
   fi
   if [ -f "$dir/package.json" ]; then
     s=$(jq -r '.scripts.dev // empty' "$dir/package.json")

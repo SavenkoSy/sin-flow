@@ -7,8 +7,9 @@ url=$1
 repo=${BASH_REMATCH[1]}
 n=${BASH_REMATCH[2]}
 
-pr=$(gh pr view "$url" --json author,state,latestReviews)
+pr=$(gh pr view "$url" --json author,state,reviewDecision)
 [ "$(jq -r .state <<<"$pr")" = OPEN ] || { echo "rerequest: none · PR not open"; exit 0; }
+[ "$(jq -r .reviewDecision <<<"$pr")" != APPROVED ] || { echo "rerequest: none · PR approved"; exit 0; }
 author=$(jq -r .author.login <<<"$pr")
 
 configured=""
@@ -16,7 +17,8 @@ if key=$(sin-flow-profile key 2>/dev/null); then
   configured=$(sin-flow-profile "$key" get review.request 2>/dev/null | tr ', ' '\n\n' || true)
 fi
 
-logins=$( { printf '%s\n' "$configured"; jq -r '.latestReviews[].author.login' <<<"$pr"; } \
+reviewers=$(gh api --paginate "repos/$repo/pulls/$n/reviews" --jq '.[] | select(.user.type != "Bot") | .user.login')
+logins=$( { printf '%s\n' "$configured"; printf '%s\n' "$reviewers"; } \
   | grep -v -e '^$' -e '\[bot\]$' -e '^null$' | grep -vxF "$author" | sort -u || true)
 [ -n "$logins" ] || { echo "rerequest: none · no reviewer"; exit 0; }
 

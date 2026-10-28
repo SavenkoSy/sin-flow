@@ -1,6 +1,6 @@
 ---
 name: ingest
-description: 'Stage 0 of the flow (sin-flow:ingest → sin-flow:plan → sin-flow:exec) for one request or a few related ones in any repo with a flow profile. Takes one or more sources — an issue URL, `GH-N`, a Slack permalink (read only), a Rollbar item, the request in plain words, a screenshot, a log excerpt, a draft path, or `epic N` / a list of `N-M` story ids — reads it in full, verifies the claim in code, measures it read-only through the profile''s measurement route and sources, explains the mechanism in fixed headings WHAT HAPPENED · EVIDENCE · WHAT WE DO, locks decisions one question per turn, and ends in exactly one exit the repo''s channels enable: plan (seed → sin-flow:plan tab), hotfix (one-block plan → sin-flow:exec tab, PR without asking), data-fix (a support recipe a human runs), answer (a reply draft) or investigation (a written finding). Notes live in ~/.claude/sin-flow/work/<key>/<id>/, never in the repo. The one stage where the user is in the loop. Use when invoked as `/sin-flow:ingest [key] <source>` or when the user says "there''s a bug", "look into this ticket", "what is this ticket", "support writes", "look at the thread", "Rollbar is spamming", "ours or theirs?", "look at why", "make a fix", "take epic N into work".'
+description: 'Stage 0 of the flow (sin-flow:ingest → sin-flow:plan → sin-flow:exec) for one request or a few related ones in any repo with a flow profile. Takes one or more sources — an issue URL, `GH-N`, a Slack permalink (read only), a Rollbar item, the request in plain words, a screenshot, a log excerpt, a draft path, or `epic N` / a list of `N-M` story ids — reads it in full, verifies the claim in code, measures it read-only through the profile''s measurement route and sources, explains the mechanism with its evidence, locks decisions one question per turn, and ends in exactly one exit the repo''s channels enable: plan (seed → sin-flow:plan tab), hotfix (one-block plan → sin-flow:exec tab, PR without asking), data-fix (a support recipe a human runs), answer (a reply draft) or investigation (a written finding). Notes live in ~/.claude/sin-flow/work/<key>/<id>/, never in the repo. The one stage where the user is in the loop. Use when invoked as `/sin-flow:ingest [key] <source>` or when the user says "there''s a bug", "look into this ticket", "what is this ticket", "support writes", "look at the thread", "Rollbar is spamming", "ours or theirs?", "look at why", "make a fix", "take epic N into work".'
 ---
 
 # sin-flow:ingest — the front for one request or a few related ones
@@ -34,12 +34,12 @@ Chat with the user in the `chat_language` option (`sin-flow-profile user chat_la
 - **Never post to Slack** — read tools only. Reply drafts are text in the chat; the user posts.
 - **Never comment on an issue in a repo the user does not own without a "yes" for that specific
   comment.** Draft it, show it, wait. An earlier "go ahead" does not cover it. In upstream mode the rule is `reference/upstream.md` § Write policy instead.
-- **Never write agent notes into a repo or worktree** (see also the user's own rules, if any).
+- **Never write agent notes into a repo or worktree.**
   Seeds, plans, evidence, drafts and findings go to `~/.claude/sin-flow/work/<key>/<id>/`.
 - **Never cut a branch or edit a tracked file in the shared checkout.** A writing exit makes its own
   worktree first; the main checkout stays on its branch for every other session.
-- **Never run a downstream stage in this session** — no `sin-flow:plan`, no `sin-flow:exec`, no
-  `sin-flow:implementer`. A PreToolUse hook denies them; the denial is the rule working.
+- **Never run a downstream stage in this session.** A PreToolUse hook denies `sin-flow:plan`, `sin-flow:exec`
+  and `sin-flow:implementer`.
 - **Never invent a case.** A risk, failure mode or edge case exists only if it was measured, read at
   a named `file:line`, or said by a person. Otherwise the sentence is "not checked".
 - **Never offer manual admin work as the fix,** and never propose an alternate look for a visual
@@ -182,30 +182,12 @@ and say so in the first message: "not measured" is honest; a silent skip is not.
 
 ## 4. Talk to the user
 
-The first message opens with a signature line — the issue number, permalink or screenshot path and which
-surface; none for the user's own words — then three fixed headings, in this order, every time, even
-when the whole thing is three sentences:
+The first message: what happens and why, the evidence for each half, and the recommended exit, in the
+user's chat language. Mechanism first, questions after. It says what is true today, read from the code or measured.
 
-- **WHAT HAPPENED** — **one sentence**, cause → effect: the mechanism, an arrow, then what the user of
-  the product sees — not what the code does. No identifier in it.
-- **EVIDENCE** — what proves each half: the effect by a number with its filter set, the cause by
-  `file:line` or a number; each with its tag (measured / read at / inferred); "not measured" or
-  "not checked" on its own line for a half nobody checked.
-- **WHAT WE DO** — one recommendation, the exit it implies, whose loop it is in. Anything a person
-  runs — a command, a recipe — verbatim in a code block; every file the user opens by its absolute path,
-  one per line.
-
-Mechanism first, questions after. Plain sentence first, identifier second; no `file:line` chains,
-probe narration or option (a)/(b)/(c) in the opening. "didn't get it" / "simpler" → the framing
-failed: restart from the visible symptom, one mechanism sentence, delete the rest — never the same
-explanation longer. The first message and each question say what is true today — whose record it is, what the
-product does now — read from the code or measured.
-
-**Then one question per turn.** Each question carries three lines: what we decide (as the user of
-the product sees it, no identifier), two or three options with what changes for that user, and your
-pick with why. Product decisions only — contract, semantics, what a number counts, what the user
+**Then one question per turn.** Each question names the decision, two or three options, and your pick
+with why. Product decisions only — contract, semantics, what a number counts, what the user
 sees, a new column or param. Never names, file placement or spec structure: those are yours.
-Never `AskUserQuestion`.
 
 - **Look for the answer before you ask.** Before a question, check whether the code, the platform or
   the docs already answer it. If one does, record it as your decision with its `file:line` or link,
@@ -232,7 +214,9 @@ State the exit in one line with its reason — «hotfix: one condition in one fi
 locked, no doc says otherwise» — **and run it in the same turn.** The exit, the owning epic and the
 id are yours; the user's word changes a verdict, it does not start one, and it is never a hotfix criterion. The one wait: a question that would
 change the verdict or the seed is still open — ask it, then act. After the tab opens, do not edit the
-seed; send a new fact to the plan tab in one message.
+seed; send a new fact to the plan tab in one message: `SendMessage` to the tab's name. When `ListAgents` does
+not list that name (the tab runs under another account), send it through the terminal the `handoff` option
+names, then read that terminal once to confirm the tab took it.
 
 | Exit | When | Produces | Hands to |
 |---|---|---|---|
@@ -264,7 +248,7 @@ then one question per turn) and ends in the `plan` exit for the whole batch:
 
 When step 1 or 2 shows the fix already merged but the failing environment does not carry it —
 Rollbar occurrences on a version older than the fix's merge, or `git branch -r --contains
-<merge-sha>` missing the deployed branch — say so under **WHAT WE DO** and name the release command
+<merge-sha>` missing the deployed branch — say so in the recommendation and name the release command
 or skill the repo's `CLAUDE.md` names. **Do not run it.** A release is the user's move; the verdict
 here is still one of the exits, usually `answer`.
 

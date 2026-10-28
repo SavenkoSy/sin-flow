@@ -69,7 +69,7 @@ write_local_diff() {
 write_rules() {
   : > "$PKG/rules.md"
   {
-    printf '%s\n' CLAUDE.md CLAUDE.local.md
+    printf '%s\n' CLAUDE.md
     cut -f1 "$PKG/files.txt" \
       | awk -F/ '{ d = ""; for (i = 1; i < NF; i++) { d = d $i "/"; print d "CLAUDE.md" } }' \
       | LC_ALL=C sort -u

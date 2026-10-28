@@ -19,12 +19,11 @@ or one you doubt, is an F row: a gap. "All covered", "adequately covered", "ever
 a spec" and any line that clears several behaviours at once are forbidden; a behaviour you did not
 map to a spec line is a gap, and "pinned by a spec" is never a DECLINED reason.
 
-- **Stale VCR cassette.** VCR matches method + URI only by default, so when the diff changes a
-  request body or query (OpenSearch DSL, a JSON payload, GraphQL, a partner POST) and the cassette
-  the spec uses is not in `files.txt`, the spec replays the old response and proves nothing about
-  the new shape. Read the repo's VCR config (`match_requests_on` in `spec/support` or
-  `spec/*_helper.rb`) first: if it matches `:body`, a stale cassette fails loudly — no finding.
-- **Mock that does not encode the real contract.** A stub of the client or collaborator whose
+- **Stale HTTP recording.** A recorder that matches method + URI only replays the old response
+  when the diff changes a request body or query and its recording is not in `files.txt`. Read the
+  recorder's match config first (STACK `ruby` or `mixed`: VCR `match_requests_on` in `spec/support`
+  or `spec/*_helper.rb`). If it matches the body, a stale recording fails loudly: no finding.
+- **Success-only mock.** A stub of the client or collaborator whose
   behavior the change depends on returns only the success case: no cap (page size, max window,
   batch limit), no error path (timeout, 4xx/5xx, rate limit), no second page. Quote the real
   contract where it is visible — in the client code, a cassette, the partner's doc in TREE, or
@@ -82,4 +81,3 @@ to DECLINED:
 ## Sources
 
 - `tests bmad-code-org/BMAD-METHOD skills/bmad-code-review/review-prompts/verification-gap.md`
-- Not in the lock: «A green test is not proof» from the user's own rules, if any.

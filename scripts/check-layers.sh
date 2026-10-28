@@ -22,6 +22,8 @@ if [ -d "$flow_home/profiles" ] && git rev-parse --verify --quiet "$base" >/dev/
     printf '%s\n' "$HOME"
     sed -n 's/^repo\.slug:[[:space:]]*//p' "$flow_home"/profiles/*/profile.md | tr '/' '\n'
     sed -n 's/^repo\.path:[[:space:]]*//p' "$flow_home"/profiles/*/profile.md | sed 's#.*/##'
+    for d in "$flow_home"/profiles/*/; do basename "$d"; done | grep -vxF -e orca -e core -e sin-flow | awk 'length > 3'
+    [ -f "$flow_home/private-terms.txt" ] && grep -v -e '^[[:space:]]*$' -e '^#' "$flow_home/private-terms.txt"
   } | tr -d '"' | grep -vxF -e '' -e sin-flow -e "$(basename "$root")" | sort -u)
   added=$( { git diff "$base" -- . ':!*.html'; git ls-files --others --exclude-standard | grep -v '\.html$' | xargs -I{} sed 's/^/+/' {}; } \
     | grep '^+' | grep -v '^+++')
