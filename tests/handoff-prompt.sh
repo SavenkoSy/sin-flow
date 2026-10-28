@@ -26,7 +26,7 @@ touch "$plain/x.md"
 fresh_home print
 want=$(sin-flow-profile model strong "$plain")
 out=$(sin-flow-handoff --probe --cwd "$plain" --name launch-posts --prompt "Continue the posts" | sed -n 2p)
-expect_eq "case 1" "cd '$plain' && CLAUDE_CONFIG_DIR='$CLAUDE_CONFIG_DIR' claude -n 'launch-posts' --model '$want' 'Continue the posts'" "$out"
+expect_eq "case 1" "cd '$plain' && CLAUDE_CONFIG_DIR='$CLAUDE_CONFIG_DIR' FLOW_EXPECT_CONFIG_DIR='$CLAUDE_CONFIG_DIR' claude -n 'launch-posts' --model '$want' 'Continue the posts'" "$out"
 
 fresh_home print
 out=$(sin-flow-handoff --probe --cwd "$plain" --prompt "it's done" | sed -n 2p)
@@ -44,7 +44,7 @@ chmod +x "$scratch/script.sh"
 want=$(sin-flow-profile model strong "$PWD")
 out=$(sin-flow-handoff --probe --name t --prompt "go on")
 expect_eq "case 4" "--probe --name t --prompt go on
-CLAUDE_CONFIG_DIR='$CLAUDE_CONFIG_DIR' claude -n 't' --model '$want' 'go on'" "$out"
+CLAUDE_CONFIG_DIR='$CLAUDE_CONFIG_DIR' FLOW_EXPECT_CONFIG_DIR='$CLAUDE_CONFIG_DIR' claude -n 't' --model '$want' 'go on'" "$out"
 
 fresh_home print
 rc=0
@@ -68,7 +68,7 @@ case "$out" in *"'/sin-flow:plan $plain/x.md'") ;; *) fail "case 8: got $out" ;;
 fresh_home print
 cfg=$(mktemp -d "$scratch/cfg.XXXXXX")
 out=$(FLOW_CONFIG_DIR="$cfg" sin-flow-handoff --probe --cwd "$plain" --prompt x | sed -n 2p)
-case "$out" in "cd '$plain' && CLAUDE_CONFIG_DIR='$cfg' claude"*) ;; *) fail "case 9: got $out" ;; esac
+case "$out" in "cd '$plain' && CLAUDE_CONFIG_DIR='$cfg' FLOW_EXPECT_CONFIG_DIR='$cfg' claude"*) ;; *) fail "case 9: got $out" ;; esac
 
 fresh_home print
 rc=0
@@ -201,4 +201,42 @@ fresh_home print
 out=$(sin-flow-handoff --probe --cwd "$plain" sin-flow:ingest "https://github.com/o/r/issues/1" | sed -n 2p)
 case "$out" in *"'/sin-flow:ingest https://github.com/o/r/issues/1'") ;; *) fail "case 29: got $out" ;; esac
 
-echo "ok: 29 cases"
+usage_homes() {
+  fresh_home print
+  HOME=$FLOW_HOME
+  other=$FLOW_HOME/${3:-.claude-other}
+  state=$HOME/.claude/state/sessions
+  mkdir -p "$other" "$state"
+  now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  jq -cn --arg h "$CLAUDE_CONFIG_DIR" --argjson w "$1" --arg ts "$now" '{limit_5h: 10, limit_7d: $w, config_home: $h, ts: $ts}' > "$state/caller.json"
+  jq -cn --arg h "$other" --argjson w "$2" --arg ts "$now" '{limit_5h: 10, limit_7d: $w, config_home: $h, ts: $ts}' > "$state/other.json"
+  printf '{}' > "$state/other.statusline-input.json"
+  export HOME
+}
+
+account_of() { sed -n 2p | sed -n "s/^cd '[^']*' && CLAUDE_CONFIG_DIR='\([^']*\)' FLOW_EXPECT_CONFIG_DIR='\([^']*\)' claude.*/\1 \2/p"; }
+
+saved_home=$HOME
+usage_homes 50 10
+out=$(sin-flow-handoff --probe --cwd "$plain" --prompt x | account_of)
+expect_eq "case 30 caller under the limit" "$CLAUDE_CONFIG_DIR $CLAUDE_CONFIG_DIR" "$out"
+
+usage_homes 99 20
+out=$(sin-flow-handoff --probe --cwd "$plain" --prompt x | account_of)
+expect_eq "case 31 caller over the limit" "$other $other" "$out"
+
+usage_homes 99 99
+out=$(sin-flow-handoff --probe --cwd "$plain" --prompt x | account_of)
+expect_eq "case 32 both over the limit" "$CLAUDE_CONFIG_DIR $CLAUDE_CONFIG_DIR" "$out"
+
+usage_homes 99 20
+cfg=$(mktemp -d "$scratch/cfg.XXXXXX")
+out=$(FLOW_CONFIG_DIR="$cfg" sin-flow-handoff --probe --cwd "$plain" --prompt x | account_of)
+expect_eq "case 33 FLOW_CONFIG_DIR wins" "$cfg $cfg" "$out"
+
+usage_homes 99 20 orca/home
+out=$(sin-flow-handoff --probe --cwd "$plain" --prompt x | account_of)
+expect_eq "case 34 a home outside the account folders is never chosen" "$CLAUDE_CONFIG_DIR $CLAUDE_CONFIG_DIR" "$out"
+HOME=$saved_home
+
+echo "ok: 34 cases"
