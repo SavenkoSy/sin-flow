@@ -104,10 +104,30 @@ fresh_home orca
 out=$(clean_env sin-flow-handoff --detect)
 expect_eq "case 17" orca "$out"
 
+fake_orca=$(mktemp -d "$scratch/orca.XXXXXX")
+shown=$(mktemp -d "$scratch/shown.XXXXXX")
+cat > "$fake_orca/orca" <<EOF
+#!/bin/sh
+[ "\$1 \$2" = "worktree list" ] || exit 9
+jq -n --arg p "$plain" --arg s "$shown" '{result: {worktrees: [{id: "w1::\(\$p)", path: \$p}, {id: "w2::\(\$s)", path: \$s}]}}'
+EOF
+chmod +x "$fake_orca/orca"
+hidden=$(mktemp -d "$scratch/hidden.XXXXXX")
+
 rc=0
-out=$(clean_env sin-flow-handoff --probe --cwd "$plain" --prompt x) || rc=$?
+out=$(PATH="$fake_orca:$PATH" clean_env sin-flow-handoff --probe --cwd "$plain" --prompt x) || rc=$?
 expect_eq "case 18 rc" 0 "$rc"
-case "$out" in "orca terminal create"*) ;; *) fail "case 18: got $out" ;; esac
+case "$out" in "orca terminal create --worktree id:w1::$plain "*) ;; *) fail "case 18: got $out" ;; esac
+
+rc=0
+out=$(PATH="$fake_orca:$PATH" clean_env sin-flow-handoff --probe --cwd "$hidden" --prompt x 2>&1) || rc=$?
+expect_eq "case 18b rc" 3 "$rc"
+case "$out" in *"Orca shows no workspace for $hidden "*) ;; *) fail "case 18b: got $out" ;; esac
+
+rc=0
+out=$(PATH="$fake_orca:$PATH" clean_env ORCA_WORKTREE_ID="w2::$shown" sin-flow-handoff --probe --cwd "$hidden" --prompt x) || rc=$?
+expect_eq "case 18c rc" 0 "$rc"
+case "$out" in "orca terminal create --worktree id:w2::$shown "*) ;; *) fail "case 18c: got $out" ;; esac
 
 fake=$(mktemp -d "$scratch/fake.XXXXXX")
 printf '#!/bin/sh\n' > "$fake/tmux"
