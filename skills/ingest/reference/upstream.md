@@ -63,8 +63,8 @@ or the whole body where the repo dictates nothing:
 - Never claim a human reviewed or tested what no human did.
 - Visual proof the template asks for: images uploaded to the PR, never committed; when they cannot be uploaded,
   the section says so and the final message tells the user.
-- These override, in upstream mode only: Why/What/Rollback, the 200-word cap, the non-closing `Ref #<N>` rule and
-  the AI-attribution strip.
+- In upstream mode only, these override exec's default PR body, the non-closing `Ref #<N>` rule and
+  the shipper's AI-attribution strip.
 
 ## Review replies
 One per review comment, inline, in English, plain:

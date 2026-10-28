@@ -22,7 +22,15 @@ echo "$n" > "$QUEUE/n"
 cat "$QUEUE/$n.json"
 EOF
 printf '#!/usr/bin/env bash\n[ "$1" = fetch ] && exit 0\nexit 1\n' > "$scratch/bin/git"
-chmod +x "$scratch/bin/gh" "$scratch/bin/git"
+cat > "$scratch/bin/sin-flow-profile" <<'EOF'
+#!/usr/bin/env bash
+case "$1" in
+  key) echo demo ;;
+  demo) [ "$2 $3" = "get review.deploy_bots" ] && printf '%s\n' "${BOTS:-}" ;;
+  *) exit 1 ;;
+esac
+EOF
+chmod +x "$scratch/bin/gh" "$scratch/bin/git" "$scratch/bin/sin-flow-profile"
 
 pr() {
   jq -n --arg base "$1" --arg merge "$2" --argjson logins "$3" --arg body "$4" \
@@ -47,7 +55,7 @@ run_case() {
     "$root/bin/sin-flow-watch" https://github.com/o/r/pull/1
 }
 
-out=$(run_case <<'EOF'
+out=$(BOTS="other, vercel" run_case <<'EOF'
 FAIL
 main CLEAN '[]' x
 FAIL
@@ -84,7 +92,22 @@ EOF
 )
 [ "$out" = "WAKE DIRTY" ] || fail "case 4: got $out"
 
+out=$(run_case <<'EOF'
+main CLEAN '[]' x
+main CLEAN '["vercel[bot]"]' x
+EOF
+)
+[ "$out" = "WAKE activity: 1 new review or comment" ] || fail "case 7: an empty review.deploy_bots skips no bot: got $out"
+
+out=$(BOTS="vercel" run_case <<'EOF'
+main CLEAN '[]' x
+main CLEAN '["vercel[bot]", "vercel"]' x
+main DIRTY '[]' x
+EOF
+)
+[ "$out" = "WAKE DIRTY" ] || fail "case 8: review.deploy_bots skips the bot with and without [bot]: got $out"
+
 [ "$(head -1 "$root/bin/sin-flow-watch")" = "#!/usr/bin/env bash" ] || fail "case 5: no bash shebang"
 grep -q 'echo "\$s" | jq' "$root/bin/sin-flow-watch" && fail "case 6: parses JSON through echo"
 
-echo "ok: 6 cases"
+echo "ok: 8 cases"

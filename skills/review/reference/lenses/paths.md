@@ -9,9 +9,9 @@ or bad; a handled path is dropped silently.
 Push the input each entry receives through the changed code twice, concurrently, out of order and
 half-way, and say what the data looks like afterwards.
 
-- **Retries.** Sidekiq / ActiveJob retry (`sidekiq_options retry`, `retry_on`), `rescue … retry`,
-  SQS redelivery after the visibility timeout, a cron that re-runs the same window. What does the
-  second run do: write twice, skip a step the first run did (a fan-out computed from "rows written
+- **Retries.** A job retry, a rescue that retries, a queue redelivery after its visibility timeout,
+  a cron that re-runs the same window (STACK `ruby`: Sidekiq, ActiveJob `retry_on`, SQS). What does
+  the second run do: write twice, skip a step the first run did (a fan-out computed from "rows written
   in this attempt"), or write onto a different record because the lookup now matches another row?
 - **Idempotency and duplicate events.** The same message twice; `found` after `not_found`; a
   re-export or backfill over rows already handled. Does an upsert leave an old marker in place?

@@ -41,8 +41,7 @@ list is also its digest form: the items are the timeline columns and the stage-s
    redundant validation · hypothetical · style · test gap. Only `real` is a post-PR defect. The reader reads
    that review file and may run read-only `gh pr view` / `gh api` on that PR.
 9. Final output — the orchestrator's final chat message after the PR line, verbatim from `.long.txt`, with
-   its line and word count; the PR body's word count (`gh pr view <url> --json body`); and the user's next
-   USER line about it, if any.
+   its line and word count, and the user's next USER line about it, if any.
 
 ## plan
 

@@ -123,6 +123,12 @@
       "title": "Work notes remote",
       "description": "A git remote for ~/.claude/sin-flow (work notes and profiles). Empty: local only."
     },
+    "opensource_dir": {
+      "type": "string",
+      "title": "Open-source folder",
+      "description": "Where /sin-flow:setup clones a repo of another owner that you change through your fork.",
+      "default": "~/.claude/sin-flow/opensource"
+    },
     "notes_globs": {
       "type": "string",
       "title": "Note globs",

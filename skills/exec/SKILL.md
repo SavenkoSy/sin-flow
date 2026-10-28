@@ -1,6 +1,6 @@
 ---
 name: exec
-description: Exec stage of the flow (ingest → plan → exec) for any repo with a flow profile. Executes an approved plan from ~/.claude/sin-flow/work/<key>/<id>/plan.md with subagents — the plan diffed against its GitHub issue first, implementers in waves (one message per wave when files are disjoint), a model and an effort named on every dispatch, a coverage audit per unit, one final review through the review pipeline, a visual check when the profile asks for one, every gate and git step through the `sin-flow:shipper` agent — then opens the PR without asking. A team repo gets the post-PR loop; a solo repo waits for the user's "merge" and merges by the user's `merge` preference (squash by default). Ends in the one final message defined here. Use when invoked as `/sin-flow:exec <plan path>` or handed a plan to execute.
+description: Exec stage of the flow (ingest → plan → exec) for any repo with a flow profile. Executes an approved plan from ~/.claude/sin-flow/work/<key>/<id>/plan.md with subagents — the plan diffed against its GitHub issue first, implementers in waves (one message per wave when files are disjoint), a model and an effort named on every dispatch, a coverage audit per unit, one final review through the review pipeline, a visual check when the profile asks for one, every gate and git step through the `sin-flow:shipper` agent — then opens the PR without asking. A team repo gets the post-PR loop; a solo repo waits for the user's go-ahead to merge and merges by the `merge` option (squash by default). Ends in the one final message defined here. Use when invoked as `/sin-flow:exec <plan path>` or handed a plan to execute.
 ---
 
 # sin-flow:exec — execute the plan, ship one PR
@@ -180,7 +180,7 @@ finding for that unit's fix loop, then the canary again. Do not stop between wav
    `cat <workspace>/global-constraints.md >> <pkg>/rules.md`.
 4. **Run** `${CLAUDE_PLUGIN_ROOT}/skills/review/reference/pipeline.md` as written, every lens as `subagent_type: sin-flow:reviewer` with the lens table's
    model. Each reviewer returns one line — ledger it, and each `codex.sh` line too: the `CODEX · found …` stats line
-   is the per-PR record of the Codex trial. Read `<pkg>/verdict.md` only; never open `findings/`. Render
+   is the per-PR Codex record. Read `<pkg>/verdict.md` only; never open `findings/`. Render
    the review file into the reviews folder (user preference) as `<key>-<branch>.md` (`-<sha8>` added when that
    file already holds the review of another commit).
 5. **Rows → one fix dispatch.** `reproduces` rows and `possible` rows of every severity go into ONE fix dispatch,
@@ -212,11 +212,9 @@ FAIL / SHOTS`; ledger it, and act on it as § After of that file says.
 
 ## Finish — ship, then report. The PR happens before the final message.
 
-1. **PR body** `<workspace>/pr-body.md`, ≤ 200 words, English, in the shipper's shape (§ Mode `ship`: the `[<ID>]`
-   signature, a non-closing `Ref #<N>`), then three headings: **Why** (the goal, from the plan
-   header), **What** (one line per shipped unit), **Rollback** (revert of the merged change; a step the deploy needs
-   reversed, if any). A heading with no content says so. Nothing else — no test plan, no checklist, no decisions, no
-   deferred rows, no AI attribution. Before writing it, reconcile against `git diff --stat <base>`: a file the body
+1. **PR body** `<workspace>/pr-body.md`, English, in the shipper's shape (§ Mode `ship`: the `[<ID>]`
+   signature, a non-closing `Ref #<N>`), then the goal from the plan header and one line per shipped unit.
+   Before writing it, reconcile against `git diff --stat <base>`: a file the body
    does not account for means the body is wrong. The diff carries no agent notes — a plan, ledger or evidence file
    in it is a defect: `sin-flow:shipper` removes it before the push.
 2. **`sin-flow:shipper` mode `ship`**: branch, base, PR title in English (the plan's, translated when it is not, with the
@@ -234,7 +232,7 @@ FAIL / SHOTS`; ledger it, and act on it as § After of that file says.
 4. **The final message** (below), then the post-PR phase that fits the repo — same turn, no pause.
 
 **Never ask before pushing or opening the PR** — except § Upstream mode's first public write — and blocked units do not hold it: a plan where 8 of 9 units are
-green ships those 8, and the ninth is a line under NOT AS IN THE TICKET.
+green ships those 8, and the ninth is a line in the final message under what differs from the ticket.
 
 ## Upstream mode — `repo.fork` set
 
@@ -266,7 +264,7 @@ merged PRs means team. **Team → the post-PR loop. Solo → the user's review.*
    **collected, not one at a time**: one implementer on the touched unit's `builder:` (mid when they span units,
    strong only when the forcing list is hit), the visual check again when a rendered surface changed, then one
    `sin-flow:shipper` gate + `commit` for the batch (a new commit); ledger `Round <k>: complete (<sha>)`.
-4. **Merge on the user's word.** "merge", or an approval that says so → `ExitWorktree` with `action: keep` if you are in
+4. **Merge on the user's go-ahead.** A message that asks to merge or approves the merge → `ExitWorktree` with `action: keep` if you are in
    one, then run `gh pr view <PR> --json isDraft,baseRefName`. For a plan with `after:`, also run
    `gh pr list -R <first repo> --head <first branch> --state merged --json url -q '.[0].url'`. Find the first repo
    and branch as in `sin-flow:plan` Step 1. If the output is empty, stop and write one line: the first unit merges first.
@@ -308,9 +306,6 @@ the user only when you wait for a person outside this session.
    - **high** → the same re-verification; reproduced → step 6, not reproduced → a reply.
    - **A request for the plan, docs or evidence in the PR** → never a fix, never a docs commit; one reply, verbatim:
      «The plan and evidence are in #<issue> — everything is there.»
-   - **A point on docs, `DEPLOY.md` or specs only**, where what the product does stays the same → reproduced, it goes
-     into the batched round of step 6 with no thread reply; not reproduced → nothing. Such a point never reaches the
-     user: the chat carries only points that change what the product does, and the result.
 
    A rare or unobserved case — a volume, a limit, a race, a row that may not exist — with zero rows is not
    reproduced. Every reply is short, in English, and argues the PR is ready: what was checked, the number or the
@@ -338,32 +333,18 @@ the user only when you wait for a person outside this session.
 ## Final message — the one definition
 
 Every flow stage that ships a PR ends with this message, and only this one. The user reads it to learn what the
-product does now, not how the run went. Plain words, in the chat language. A line or a heading is written only when
-it carries something; never one that says «none» or «nothing».
+product does now, not how the run went. Plain words, in the chat language, ≤ 15 non-blank lines.
 
-Shape — ≤ 15 non-blank lines from the signature to the closing line:
-
-```
-<ticket or plan id> · <PR link>
-
-**WHAT WE DID**
-**HOW IT WORKS NOW**
-**NOT AS IN THE TICKET**
-```
-
-- The signature line — the ticket or plan id and the PR link — sits above the headings; it is not a heading.
-- **WHAT WE DID** — what changed in the product, one line per shipped piece, in the ticket's words.
-- **HOW IT WORKS NOW** — the product after the merge as its user or the calling system sees it: what starts it, what
-  happens, what comes out. Behind a flag → off, then on. Something that must happen at deploy (a migration, a
-  console step, a schedule) is one plain line here.
-- **NOT AS IN THE TICKET** — only when something works differently from what the ticket or the plan asked: a
-  `Ruling:` that changed behaviour, a unit that did not ship, a user's order that reversed the plan, an item left «not checked».
-  One plain line each — asked → now → why.
+- The ticket or plan id and the PR link.
+- The result: what changed in the product and how it works after the merge
+  (behind a flag: off, then on). A step the deploy needs is one line.
+- What differs from the ticket or the plan, one line each (asked → now → why): a `Ruling:` that changed behaviour,
+  a unit that did not ship, a user's order that reversed the plan, an item left «not checked». Only when there is one.
 - The ledger has `CODEX · skipped · <reason>` → one closing line: Codex did not review this PR, and the reason in
   plain words. It is the one review fact the message carries.
 - Solo repo only, closing lines: each screenshot (up to 3; more → the folder) as its own absolute file path on its own
   line with what it shows in a few words; then how to try the change after the merge (the page or the command), when
-  HOW IT WORKS NOW does not say it; then «say "merge"».
+  the result does not say it; then one line: the PR merges by the `merge` option on the user's go-ahead.
 
 Never in it — they live in the PR body, the plan or the ledger, and the user asks for one when needed: code identifiers,
 class, table or column names the ticket does not use, `file:line`, SQL or any query, rule / task / finding codes,

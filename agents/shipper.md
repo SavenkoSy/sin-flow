@@ -96,11 +96,11 @@ rm -f /tmp/flow-l1-$$.hashes
 | what | convention | profile deviation |
 |---|---|---|
 | base | `gh repo view --json defaultBranchRef -q .defaultBranchRef.name` | `repo.base`; the prompt's `base` beats both |
-| branch | `docs/orchestrator/config.yml` `branch_format` if the repo has one; else `<prefix>/<type>/<id>/<slug>` | `git.branch` (template, e.g. `epic-<N>`; fill `<N>`/`<id>` verbatim from the prompt) |
+| branch | `<prefix>/<type>/<id>/<slug>` | `git.branch` (template, e.g. `epic-<N>`; fill `<N>`/`<id>` verbatim from the prompt) |
 | commit subject | `[<ID>] <title>` when the unit has an id, else `<title>` | `git.commit_subject` (template with `<id>`, `<title>`) |
 | commit unit | one commit per dispatch, staging judged from the diff | `git.commit_unit: story` → exactly the caller's `FILES` |
 | gates | what CI runs on a PR, then the repo's pre-commit hooks | `gates.prepare`, `gates.commands` |
-| lint bypass | never | `gates.legacy_lint_bypass: true` |
+| lint bypass | never | `gates.legacy_lint_bypass: true` with `gates.lint_fix` |
 
 - `<prefix>`: the user's `branch_prefix`; empty → the segment is dropped (`<type>/<id>/<slug>`).
 - `id` in the prompt may be the work folder's name (`gh-<N>`, `N-M`, `epic-<N>`): `<N>` is its number.
@@ -118,9 +118,8 @@ rm -f /tmp/flow-l1-$$.hashes
 2. Commands, first source that answers: the prompt's `commands`; `gates.commands`; the `run:` steps of
    `.github/workflows/*.yml` jobs triggered on `pull_request` or `push` (skip checkout, install, cache
    and service-setup steps), or the `run:` steps in `.circleci/config.yml`; `lefthook.yml` pre-commit
-   commands and `docs/orchestrator/config.yml` `test_cmd` / `lint_cmd` / `security_cmd`; stack
-   fallback — `Gemfile` → `bundle exec rspec` plus `rubocop` / `brakeman` when the Gemfile has them,
-   `package.json` → its `lint`, `test`, `build` scripts. Nothing found → `STATUS: blocked`.
+   commands; the repo's own scripts — the `lint`, `test`, `build` scripts of `package.json`, a `test`
+   target in a `Makefile`, an executable `bin/test*`. Nothing found → `STATUS: blocked`.
 3. Write the resolved list to `<work_dir>/gate-<label>.commands`, one entry per line, `gates.prepare` first when
    set. Copy the caller's `commands` text as it came. Then run `sin-flow-gate run <log> <that file>`. The script splits
    the entries (backticked items, `;`, lines), runs each with `bash -c`, writes `=== <command> ===` and
@@ -155,9 +154,9 @@ rm -f /tmp/flow-l1-$$.hashes
    L1 guard on both passes.
 5. `git commit` with the convention subject and the paragraph as the body; upstream mode: the caller's `trailer`,
    when given, as the last line.
-6. Hook failure. `gates.legacy_lint_bypass: true` and a rubocop block → `rubocop -a` (then `-A`) on
-   the touched files, re-run their specs; structural cops that survive → run the same cops on
-   `git show HEAD:<file>`; the same set survives → commit with `--no-verify` and record the offences
+6. Hook failure. `gates.legacy_lint_bypass: true`, `gates.lint_fix` set and a lint block → run each
+   `gates.lint_fix` entry in order on the touched files until the hook passes, re-run their specs; offences
+   that survive → run the same linter on `git show HEAD:<file>`; the same set survives → commit with `--no-verify` and record the offences
    in a `NOTE` and in the PR body's What. Any other hook failure, or an offence this diff introduced →
    last lines to `<work_dir>/hook.tail`, `STATUS: blocked`, no bypass.
 

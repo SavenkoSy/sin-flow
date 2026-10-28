@@ -21,7 +21,7 @@ Then, inside your repo:
 ## One shot
 
 ```
-/sin-flow:ingest <issue URL | GH-N | Slack permalink | Rollbar item | "plain words" | screenshot | log>
+/sin-flow:ingest <issue URL | GH-N | link to a connected source | "plain words" | screenshot | log>
 ```
 
 Ingest reads the source in full, checks the claim against the code, measures it read-only, and tells you
@@ -70,7 +70,7 @@ Not every request is code. Ingest picks the exit that fits, among the ones your 
 ## Any open-source repo
 
 Found a bug in a tool you use? Paste its GitHub URL to `/sin-flow:ingest`. You don't need a clone first.
-Setup clones it into `~/dev/opensources/<name>` and adds your fork as the remote `fork`. The branch goes to
+Setup clones it into the `opensource_dir` option folder (default `~/.claude/sin-flow/opensource/<name>`) and adds your fork as the remote `fork`. The branch goes to
 your fork, and the issue and the PR go upstream.
 
 The project's rules win: its CONTRIBUTING, its templates, AGENTS.md and its AI policy. Maintainers see
@@ -79,9 +79,9 @@ only the issue and the PR. The plan and the measurements stay with you.
 ## What it won't do
 
 - **Start from a blank repo.** It reads your history, CI and tracker to decide how to work. No history, nothing to read.
-- **Work outside GitHub.** Issues, Projects boards, PRs and reviews all go through `gh`. Slack and Rollbar are read only. A board write (light, assignee, status) occurs only if its profile switch is on. A new profile has all three off.
+- **Work outside GitHub.** Issues, Projects boards, PRs and reviews all go through `gh`. Connected sources, for example a chat thread or an error tracker, are read only. A board write (light, assignee, status) occurs only if its profile switch is on. A new profile has all three off.
 - **Run without you at the start.** Ingest asks. Plan and exec don't.
-- **Post to Slack.** It reads Slack threads when Slack is connected; replies are drafts you post.
+- **Post to a connected source.** It reads a link that a connected source can read (for example a chat thread); replies are drafts you post.
 - **Put its notes in your repo.** Seeds, plans and evidence stay in `~/.claude/sin-flow/`, never in a commit.
 - **Change itself on its own.** Learning proposes; nothing is edited before your yes.
 

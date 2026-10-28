@@ -12,9 +12,9 @@ what the caller sees instead. Walk the `## Flow` lines in `<pkg>/context.md` to 
   `rescue nil` modifier. List what it catches beyond the intended error — `NoMethodError` from a
   typo, `ActiveRecord::RecordInvalid`, `ActiveRecord::StatementInvalid`, a timeout — and whether
   the handler only logs and continues, returns `nil` / `[]` / `{}` / `false`, or re-raises.
-- **Rescue inside a job or consumer.** A `rescue` in `perform` or a message handler that does not
-  re-raise ends the retry: Sidekiq / ActiveJob marks the job done, the SQS message is deleted.
-  Check `retry_on` / `discard_on` against what the code actually raises.
+- **Rescue inside a job or consumer.** A job or message handler that rescues and does not re-raise
+  ends the retry: the runner marks the job done and the queue deletes the message. Check the retry and
+  discard settings against what the code raises (STACK `ruby`: Sidekiq, ActiveJob `retry_on`, SQS).
 - **Degraded run marked success.** A per-item rescue that counts or logs errors into a degraded or
   partial result, after which the run is still recorded as success (`context.md`
   `## End of run`, `degraded → success`), is a swallowed failure whatever the repo's

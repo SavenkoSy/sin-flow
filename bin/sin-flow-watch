@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-DEPLOY_BOTS='^vercel(\[bot\])?$'
 INTERVAL=${SIN_FLOW_WATCH_INTERVAL:-600}
 HOURS=${SIN_FLOW_WATCH_HOURS:-24}
 
@@ -10,12 +9,17 @@ url=$1
 first_repo=${2:-}
 first_branch=${3:-}
 deadline=$(( $(date +%s) + HOURS * 3600 ))
+deploy_bots=""
+if key=$(sin-flow-profile key 2>/dev/null); then
+  deploy_bots=$(sin-flow-profile "$key" get review.deploy_bots 2>/dev/null | tr ',' ' ' || true)
+fi
 
 read_state() {
   gh pr view "$url" --json author,baseRefName,mergeStateStatus,reviews,comments 2>/dev/null \
-    | jq -r --arg bots "$DEPLOY_BOTS" '
+    | jq -r --arg bots "$deploy_bots" '
         .author.login as $author
-        | ([(.reviews[], .comments[]) | .author.login | select(. != $author and (test($bots) | not))] | length) as $seen
+        | ($bots | split(" ") | map(select(. != "") | sub("\\[bot\\]$"; ""))) as $skip
+        | ([(.reviews[], .comments[]) | .author.login | select(. != $author and ((sub("\\[bot\\]$"; "") | IN($skip[])) | not))] | length) as $seen
         | "\(.baseRefName) \(.mergeStateStatus) \($seen)"' 2>/dev/null
 }
 
