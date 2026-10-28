@@ -61,7 +61,7 @@ option, default `~/.claude/sin-flow/learning`). Every file of this stage lives t
 ## Setup: pick the rows
 
 **Who starts a run**: the user, or `${CLAUDE_PLUGIN_ROOT}/hooks/scripts/learning-launch.sh` at the end of a
-`sin-flow:exec` session. The hook launches when `learning_runs` (default 10) exec rows are undigested, no `claude -n
+`sin-flow:exec` session. The hook launches when `learning_runs` (default 0: never) exec rows are undigested, no `claude -n
 learning` process runs, and nothing was launched since `LD/ledger.md` last changed. It runs `sin-flow-handoff --cwd
 <learning_cwd> --name learning sin-flow:learning <path> all` and appends one line to `LD/launch.log`. Resolve
 `<strong>` and `<mid>` once with `sin-flow-profile model strong|mid` from this cwd.
@@ -252,15 +252,18 @@ hold.
 - The run ends with an empty `inbox.md` table. Closed rows move to `inbox-archive.md`. Each open row goes to the user
   one at a time, with your pick, until it is closed. A row the user accepts becomes a numbered proposal with its layer
   and goes through the apply scripts like every other. Never edit a live target straight from the walk. A new row takes the next number after the highest in both files.
-- On `CTX GUARD`: let the readers in flight finish, write the digest and the ledger entry for their sessions, tell the
-  user in one line to run `/sin-flow:learning <same mode>` in a new session, and stop.
+- On `CTX GUARD` or `LIMIT GUARD`: let the readers in flight finish, write the digests, the ledger entry and
+  `LD/<date>/continue.md` (the steps left and the inbox verdicts). Hand off with `sin-flow-handoff --cwd <this cwd>
+  --name learning sin-flow:learning <anchor> "continue: read <continue.md>"`. After it prints `opened:`, this session
+  writes nothing more and stops. When no tab opens, tell the user that line in one line, and stop.
 - An item a reader could not answer is marked so in the digest. The ledger entry names the missing input (a run-log
   column, a dump field) as a proposal, not as a fact.
 
 ## Chat
 
-The conclusion and the path, in the `chat_language` option, ≤ 15 lines. The proposals go in two lists, «your
-settings» then «the plugin, for everyone», with one line «now → will be» for each. In user mode, one more line names
+The conclusion and the path, in the `chat_language` option, ≤ 15 lines. The proposals go in three lists: «your
+settings», «only for you», then «the plugin, for everyone». «Only for you» holds a change that acts only in author
+mode, such as the apply scripts or a step that only the plugin author runs. Each proposal gets one line «now → will be». In user mode, one more line names
 `proposals-for-author.md` and the count of blocks added. Counts carry their filter set in the digest.
 
 Copy the `===` final-message block of one covered exec session whole from `<sid8>.long.txt` to

@@ -95,7 +95,7 @@ only the issue and the PR. The plan and the measurements stay with you.
 Every finished session is a row in a run log. `/sin-flow:learning` reads those runs with parallel readers,
 ranks what went wrong per stage, and proposes diffs. You say yes or no; a yes is applied with a backup.
 
-You start it yourself, or the plugin does: when an exec session ends with `learning_runs` (default 10)
+You start it yourself, or the plugin does: when an exec session ends with `learning_runs` (default 0: never)
 undigested exec runs in the log, a SessionEnd hook opens `/sin-flow:learning all` in a new tab in `learning_cwd` (default `learning_dir`), once per digest. Run it outside your product repos. Both are plugin options.
 
 - **User mode** (marketplace install): proposals change only your plugin options and repo profiles. Ideas for the

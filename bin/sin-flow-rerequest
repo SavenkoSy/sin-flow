@@ -9,15 +9,25 @@ n=${BASH_REMATCH[2]}
 
 pr=$(gh pr view "$url" --json author,state,reviewDecision)
 [ "$(jq -r .state <<<"$pr")" = OPEN ] || { echo "rerequest: none · PR not open"; exit 0; }
-[ "$(jq -r .reviewDecision <<<"$pr")" != APPROVED ] || { echo "rerequest: none · PR approved"; exit 0; }
+decision=$(jq -r .reviewDecision <<<"$pr")
 author=$(jq -r .author.login <<<"$pr")
 
 configured=""
+ignored=""
 if key=$(sin-flow-profile key 2>/dev/null); then
   configured=$(sin-flow-profile "$key" get review.request 2>/dev/null | tr ', ' '\n\n' || true)
+  ignored=$(sin-flow-profile "$key" get review.ignored_approvers 2>/dev/null | tr ',' ' ' || true)
 fi
+[ "$decision" != APPROVED ] || [ -n "$ignored" ] || { echo "rerequest: none · PR approved"; exit 0; }
 
-reviewers=$(gh api --paginate "repos/$repo/pulls/$n/reviews" --jq '.[] | select(.user.type != "Bot") | .user.login')
+reviews=$(gh api --paginate "repos/$repo/pulls/$n/reviews" --jq '.[] | [.user.login, .user.type, .state] | @tsv')
+approvers=$(awk -F'\t' -v skip="$ignored" '
+  BEGIN { k = split(skip, s, " "); for (i = 1; i <= k; i++) { sub(/\[bot\]$/, "", s[i]); drop[s[i]] = 1 } }
+  $3 != "COMMENTED" { login = $1; sub(/\[bot\]$/, "", login); if (!(login in drop)) last[$1] = $3 }
+  END { for (l in last) if (last[l] == "APPROVED") print l }' <<<"$reviews")
+[ "$decision" != APPROVED ] || [ -z "$approvers" ] || { echo "rerequest: none · PR approved"; exit 0; }
+
+reviewers=$(awk -F'\t' '$2 != "Bot" { print $1 }' <<<"$reviews")
 logins=$( { printf '%s\n' "$configured"; printf '%s\n' "$reviewers"; } \
   | grep -v -e '^$' -e '\[bot\]$' -e '^null$' | grep -vxF "$author" | sort -u || true)
 [ -n "$logins" ] || { echo "rerequest: none · no reviewer"; exit 0; }

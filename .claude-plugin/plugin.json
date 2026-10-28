@@ -25,9 +25,9 @@
     "learning_runs": {
       "type": "number",
       "title": "Learning runs",
-      "description": "How many undigested exec runs start a learning session when an exec session ends.",
-      "default": 10,
-      "min": 1
+      "description": "How many undigested exec runs start a learning session when an exec session ends. 0: never launch.",
+      "default": 0,
+      "min": 0
     },
     "learning_cwd": {
       "type": "string",
