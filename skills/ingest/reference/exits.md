@@ -8,9 +8,12 @@ Read only the section for the chosen exit. Paths: `<work>` = `~/.claude/sin-flow
 ## Ticket map (plan, hotfix, epic)
 
 One unit by default — fewer, bigger. Several sources are not several units. They become one unit, unless the split rule below applies. Split only when the
-parts live in different repos, or one part must merge before another can start. Show the map — per
-unit: title, repo, type, `after: <id>` for the second case — and lock it with one question; the
-answer goes into `## Decisions`. Same repo: the unit starts at once on the branch of `<id>`. Different repo: the unit waits for the PR of `<id>` in its own plan tab (`sin-flow:plan` Step 1). Then run everything below once per unit, in map order. A unit in
+parts live in different repos, or one part must merge before another can start. The map is your decision, not a
+question: show it in the first message (per unit: title, repo, type, `after: <id>` for the second case) and record it
+under `## Decisions`. Same repo: the unit starts at once on the branch of `<id>`. Different repos: every unit starts at
+once in its own plan tab, with no `after:`. The spec carries the shared contract as far as ingest knows it. The unit that
+fixes the contract first sends the final contract to the other tab (`SKILL.md` § 5, a new fact). `after: <id>` across
+repos only when a unit cannot start at all without the merged code of `<id>`. It waits in `sin-flow:plan` Step 1. Then run everything below once per unit, in map order. A unit in
 another repo takes everything from that repo's profile. A unit in a repo with no profile runs `sin-flow:setup`'s
 onboard for that repo in this session first, then goes on like every other unit: its own seed, `after: <id>` when
 it waits, and its tab in the same turn as the others. Never leave a unit of the map for later.

@@ -35,7 +35,7 @@ Chat with the user in the `chat_language` option (`sin-flow-profile user chat_la
    created here, and nothing is pushed by setup or by the Stop hook.
 2. `command -v gh git jq bash`, `gh auth status`. A miss is a row with its fix (`brew install jq`, `gh auth login`).
 3. Show the preferences with defaults — `chat_language`, `merge: squash`, `after_review: new-commit`,
-   `branch_prefix: ""`, `handoff: auto`, `learning_dir: ~/.claude/sin-flow/learning`, `learning_runs: 10`,
+   `branch_prefix: ""`, `handoff: auto`, `learning_dir: ~/.claude/sin-flow/learning`, `learning_runs: 0`,
    `learning_cwd:` (empty → `learning_dir`), `work_remote: ""`,
    `models_strong: opus`, `models_mid: sonnet`, `models_cheap: haiku`,
    `reviews_dir: ~/.claude/sin-flow/reviews` — ask once "keep the defaults?" — a user whose account has no Opus sets
@@ -90,7 +90,7 @@ Claude Code keeps the values in `pluginConfigs["<id>"].options` of the user's `s
 | `chat_language` | absent → the language the user writes in | language of the chat; files, commits, PRs and issues stay English |
 | `handoff` | `auto` | how a stage starts the next one: `auto` — a new tab in the detected terminal, else print · `same-session` · `print` — print the ready command and copy it to the clipboard · `tmux`, `cmux`, `iterm`, `ghostty`, `warp`, `orca` — that terminal's adapter, when detection cannot tell · a path to the user's own script |
 | `learning_dir` | `~/.claude/sin-flow/learning` | where `/sin-flow:learning` keeps digests, inbox and ledger |
-| `learning_runs` | `10` | how many undigested `sin-flow:exec` runs start a learning session when an exec session ends |
+| `learning_runs` | `0` | how many undigested `sin-flow:exec` runs start a learning session when an exec session ends. `0`: never |
 | `learning_cwd` | `learning_dir` | where that learning session starts; its `CLAUDE.md`, else `<learning_dir>/ledger.md`, is the hand-off path |
 | `merge` | `squash` | merge method for the user's own PRs |
 | `after_review` | `new-commit` | how review fixes land on an open PR: a new commit on top |
@@ -141,7 +141,7 @@ nothing; a non-zero exit makes `sin-flow-handoff` print the command instead. Its
    - for each `.env.<source>_readonly`: "what is the source `<source>` for?" (one sentence → `purpose`);
    - UI stack found (next/react/rails views): "check the UI with Playwright? URL?" — optional.
 4. Write `~/.claude/sin-flow/profiles/<key>/profile.md`: frontmatter with `key`, `repo.slug`, `repo.path` (the main
-   checkout, `dirname "$(git rev-parse --path-format=absolute --git-common-dir)"`, `$HOME` written as `~`), `repo.fork` (the slug of remote `fork`, only when it exists), `repo.local_files` (the step 2 secret files, repo-relative; exec links them into every worktree), `measure.doc`
+   checkout, `dirname "$(git rev-parse --path-format=absolute --git-common-dir)"`, `$HOME` written as `~`), `repo.fork` (the slug of remote `fork`, only when it exists), `repo.local_files` (the step 2 secret files, repo-relative; exec copies them into every worktree), `measure.doc`
    and only the deviations the user gave; then `sin-flow-infer --write <key>` fills `## Inferred` and you name the gates into it
    (below); add `## Measure` in one or two lines. Write `notes.mirror: on` into the frontmatter when the Inferred notes line
    says mirrored and the team has more than one author, else `notes.mirror: off` — a default the user flips.
@@ -175,7 +175,7 @@ The lines to write:
   `commit-msg` and `pre-push` command or job with a `run:`.
 
 Profile format: flat `group.key: value` lines (lists as `["a","b"]`), prose sections `## Inferred`, `## Measure`, `## Run`,
-`## Ship`, `## Tracker`, `## Never`. Optional keys the stages read when set: `review.request` (logins exec asks for review and asks again after each reply batch), `review.deploy_bots` (logins of deploy bots that the base watcher skips), `gates.lint_fix` (the lint autocorrect commands), `pr.relink_after_bot: on` (shipper saves the PR body once more when a bot added a `Closes` line that GitHub did not link), `tracker.held_statuses` (Status options that a new board leaves out of scope), `gates.spec_cmd` (a test command that takes spec file paths; exec runs the canary with it, and no key means no canary), `review.preship_agent` (a `subagent_type` that exec runs on the final diff before the PR), `notes.paths` (extra globs the shipper treats as agent notes). Keys that setup may write: `tracker.adapter`, `tracker.write.light`, `tracker.write.assign`, `tracker.write.status`, `group_by`. Required: `key`, `repo.slug`, `measure.doc`. Never a secret — pointers only.
+`## Ship`, `## Tracker`, `## Never`. Optional keys the stages read when set: `review.request` (logins exec asks for review and asks again after each reply batch), `review.deploy_bots` (logins of deploy bots that the base watcher skips), `review.ignored_approvers` (logins whose approval `sin-flow-rerequest` does not count, and with no key every approval counts), `gates.lint_fix` (the lint autocorrect commands), `pr.relink_after_bot: on` (shipper saves the PR body once more when a bot added a `Closes` line that GitHub did not link), `tracker.held_statuses` (Status options that a new board leaves out of scope), `gates.spec_cmd` (a test command that takes spec file paths; exec runs the canary with it, and no key means no canary), `review.preship_agent` (a `subagent_type` that exec runs on the final diff before the PR), `notes.paths` (extra globs the shipper treats as agent notes). Keys that setup may write: `tracker.adapter`, `tracker.write.light`, `tracker.write.assign`, `tracker.write.status`, `group_by`. Required: `key`, `repo.slug`, `measure.doc`. Never a secret — pointers only.
 
 ## Check (every later run)
 

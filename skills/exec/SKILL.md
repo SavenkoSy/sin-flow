@@ -87,8 +87,8 @@ The dispatching thread is the most expensive place in the chain when it fills wi
    (`EnterWorktree`). Otherwise, when this checkout is busy — a dirty tree, another branch, another session in it →
    `sin-flow-worktree --repo <this checkout> --name <id> --branch <header's branch:> --base <base>`, `EnterWorktree` on its `path:`, everything there. No
    `branch:` line → `sin-flow:shipper` names it by convention on its first `local` / `commit`. Never work on the base branch.
-   Then each name in the profile's `repo.local_files` that this checkout lacks and `repo.path` has → `ln -s
-   <repo.path>/<name> <name>`; never a copy, never print one. Ledger `Base: <ref> (<why>)` and `Linked: <names>`.
+   Then each name in the profile's `repo.local_files` that this checkout lacks and `repo.path` has → `cp -p
+   <repo.path>/<name> <name>`; never a link, never print one. Ledger `Base: <ref> (<why>)` and `Copied: <names>`.
 5. **Sensitive paths.** The repo's `.claude/sensitive-paths.txt` (or the profile's `sensitive_paths`): match the
    plan's files against it. A hit adds `<ATTENTION>` to the commit subject and the PR title, and the PR body names
    the area and old → new. Ledger the hit. That prefix is the whole mechanism: do not stop. Write the repo's
@@ -272,10 +272,10 @@ merged PRs means team. **Team → the post-PR loop. Solo → the user's review.*
    `gh pr edit <PR> --base <profile base>`, then the rebase round of Team step 1. For a plan with no `after:`, if
    `baseRefName` is not the profile base, stop and write the same line. Then, if `isDraft` is `true`, run `gh pr ready <PR>`, then
    `bash ~/.claude/sin-flow/merge.sh <PR> <MERGE from the ship block>` — the user's copy of
-   `${CLAUDE_PLUGIN_ROOT}/examples/merge.sh.example` (absent → copy it there first, `chmod +x`). The example waits for
-   checks, merges by that method (squash when empty), deletes the remote and local branch, removes the worktree,
-   fast-forwards the local base without ever switching the main checkout's branch, and prints the merge commit; the
-   user's copy may keep the worktree or differ otherwise. Ledger
+   `${CLAUDE_PLUGIN_ROOT}/examples/merge.sh.example` (absent → copy it there first, `chmod +x`). It waits for checks,
+   merges by that method (squash when empty) and prints the merge commit. What it removed (a branch, the worktree) is
+   only what its output and the disk show, never what this text or the example says. After the merge, each
+   `sin-flow-handoff` takes `--cwd` = the plan's worktree when `test -d` finds it, else the main checkout. Ledger
    `Plan <id>: merged <sha>`, `status: merged` in the plan header; one line back; then § After the merge of
    `reference/visual-check.md`. Exit 3 — the PR conflicts with its
    base → the rebase round of Team step 1, then `merge.sh` once more, no question. Any other non-zero exit → paste its
@@ -299,7 +299,9 @@ the user only when you wait for a person outside this session.
 3. **The user's review** → one fix round. The user's questions about code → a `sin-flow:read-only-analyst`. A
    question that reopens a product decision is not a task here: answer from the plan's `ingest-miss:` line and the rejected alternative
    beside it; reversing it is the user's call.
-4. **A teammate's review.** Re-run step 1 first. Per point, by its severity label (none → low, unless it names a wrong result that a user or a caller sees):
+4. **A teammate's review.** Re-run step 1 first. Then run `sin-flow-unanswered <url>`: each line it prints is a point of
+   this step (a thread whose last comment is not yours, or a PR comment after your last one), and its reply goes in that
+   thread. Never find points by a time window. Per point, by its severity label (none → low, unless it names a wrong result that a user or a caller sees):
    - **low** → a reply, never a fix.
    - **medium** → reproduce it: a failing spec, a measured row, a read-only query by the profile's `## Measure`.
      Not reproduced → a reply, no fix.
@@ -317,8 +319,8 @@ the user only when you wait for a person outside this session.
    `sin-flow-watch <url> <first repo> <first branch>` (the `repo` cell of the `after:` row in the spec; the first PR as
    in `sin-flow:plan` Step 1). It checks every 10 min for up to 24 h and prints one `WAKE <reason>` line: base
    changed, `BEHIND` / `DIRTY`, new activity by anyone but the author and a deploy bot, new commits on a feature-branch
-   base, or the first PR merged. A failed or empty `gh` read is never a wake. On a `WAKE activity` → step 4, then start
-   the watcher again. For a draft PR whose first PR merged, in the same repo: if `baseRefName` is still the first
+   base, or the first PR merged. A failed or empty `gh` read is never a wake. Every wake → step 4 first. A `WAKE activity` needs
+   nothing more: start the watcher again. For a draft PR whose first PR merged, in the same repo: if `baseRefName` is still the first
    branch, run `gh pr edit <url> --base <profile base>`. Then run the rebase round of step 1 onto the profile base,
    and push. Then, in both repo cases: run `gh pr ready <url>` and write one line to the user. Other wakes stay as
    they are: the rebase round of step 1, the push, one line to the user. After a rebase wake, start the watcher
@@ -340,6 +342,8 @@ product does now, not how the run went. Plain words, in the chat language, ≤ 1
   (behind a flag: off, then on). A step the deploy needs is one line.
 - What differs from the ticket or the plan, one line each (asked → now → why): a `Ruling:` that changed behaviour,
   a unit that did not ship, a user's order that reversed the plan, an item left «not checked». Only when there is one.
+- The merge waits for another PR or a deploy (a plan `after:` row, a stacked base, a contract that another repo's PR
+  ships) → one line: which one, and whether it merged. Only when there is one.
 - The ledger has `CODEX · skipped · <reason>` → one closing line: Codex did not review this PR, and the reason in
   plain words. It is the one review fact the message carries.
 - Solo repo only, closing lines: each screenshot (up to 3; more → the folder) as its own absolute file path on its own
@@ -349,7 +353,7 @@ product does now, not how the run went. Plain words, in the chat language, ≤ 1
 Never in it — they live in the PR body, the plan or the ledger, and the user asks for one when needed: code identifiers,
 class, table or column names the ticket does not use, `file:line`, SQL or any query, rule / task / finding codes,
 test, lint, review or CI figures, findings closed without a fix, a «Not fixed» list, a «Result check»
-section, who waits for what, bot, session or ledger lines, account-limit notes, questions about skill or memory text.
+section, bot, session or ledger lines, account-limit notes, questions about skill or memory text.
 A question that needs the user's decision is asked after the message, in the shape the user's own rules give, if
 any — never folded into it.
 
