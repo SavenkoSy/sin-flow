@@ -1,6 +1,6 @@
 ---
 name: board
-description: Mechanical board work for the sin-flow:sync skill on the GitHub Projects board in tracker.board or the local adapter in tracker.adapter that a flow profile names — fetch the board, diff it against the last snapshot, refresh the per-ticket briefs, classify only what the rules decide outright, push the light when tracker.write.light is on, regenerate and publish the triage page, and hand back a fixed-shape digest. In take mode it also records the claim of a batch, then assigns it and moves it to In progress when their switches are on, and writes the seed plan in ~/.claude/sin-flow/work/<key>/. Dispatched by /sin-flow:sync so the expensive chat model never fetches a board. Never ranks batches, never recommends what to take, never writes prose.
+description: Mechanical board work for the sin-flow:sync skill on the GitHub Projects board in tracker.board or the local adapter in tracker.adapter that a flow profile names — fetch the board, diff it against the last snapshot, refresh the per-ticket briefs, classify only what the rules decide outright, push the light when tracker.write.light is on, regenerate and publish the triage page, and hand back a fixed-shape digest. In take mode it also records the claim of a batch, then assigns it and moves it to In progress when their switches are on. Dispatched by /sin-flow:sync so the expensive chat model never fetches a board. Never ranks batches, never recommends what to take, never writes prose.
 tools: Bash, Read, Edit, Write, Grep, Glob, Artifact
 model: haiku
 effort: low
