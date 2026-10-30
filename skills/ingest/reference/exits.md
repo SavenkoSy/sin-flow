@@ -49,10 +49,15 @@ rev-parse --git-dir` equals `git rev-parse --git-common-dir`; otherwise the cwd 
 
 **A linked worktree is reused** only when the cwd's main checkout is `<repo>`. With the `workspace` option `orca` any linked worktree is the workspace the
 user made for this work, whatever its name; elsewhere only one whose basename is the unit's id (`gh-<N>`,
-`<N-M>`, `epic-<N>`). It must be clean (`git status --porcelain` prints nothing) and, after `git fetch
-origin <base>`, `git rev-list --count origin/<base>..HEAD` is 0 — otherwise ask the user, never create a
-second one. Then in the cwd: `git merge --ff-only origin/<base>`, `git branch -m <branch>`. Only the first
-unit takes it; every other unit gets a new one as below.
+`<N-M>`, `epic-<N>`). It must be clean (`git status --porcelain` prints nothing). Then `git fetch origin <base>`
+and, in the cwd:
+- `git rev-list --count origin/<base>..HEAD` is 0: `git merge --ff-only origin/<base>`, `git branch -m <branch>`.
+- the count is not 0, but the PR of the current branch is merged: `git switch -c <branch> origin/<base>`, and the old
+  branch stays. A squash merge leaves the old commits outside `<base>`, so the count alone does not show it. The check:
+  `gh pr list --head "$(git branch --show-current)" --state merged --limit 1 --json number --jq length` prints 1.
+- otherwise: ask the user, never create a second one.
+
+Only the first unit takes it; every other unit gets a new one as below.
 
 **From the primary checkout, and for every further unit, a new worktree.** One call makes it, in Orca or in git
 as the `workspace` option says (default git):

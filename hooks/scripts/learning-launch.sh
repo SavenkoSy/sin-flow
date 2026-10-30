@@ -11,7 +11,8 @@ stage_line=$(flow_stage "$sid" "$tp")
 pref() { "${CLAUDE_PLUGIN_ROOT}/bin/sin-flow-profile" user "$1" 2>/dev/null; }
 
 runs=$(pref learning_runs)
-case "$runs" in '' | 0) exit 0 ;; *[!0-9]*) runs=10 ;; esac
+runs=${runs%%.*}
+case "$runs" in '' | 0 | *[!0-9]*) exit 0 ;; esac
 log="${FLOW_RUNS_LOG:-$HOME/.claude/sin-flow/runs.tsv}"
 covered=$("${CLAUDE_PLUGIN_ROOT}"/skills/learning/scripts/covered-sids.sh)
 count=$(awk -F'\t' 'NR>1 && $3=="exec" && $16 ~ /^(sin-flow:|flow-)/ {print $5}' "$log" 2>/dev/null | cut -c1-8 | grep -vxF -f <(printf '%s\n' "$covered") | wc -l | tr -d ' ')

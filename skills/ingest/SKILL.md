@@ -150,7 +150,6 @@ rules it binds (roles, `LIMIT`, forbidden columns, how to close a tunnel).
   failure with `tunnel` set: run the `tunnel` string verbatim as its own Bash call, nothing chained to
   it, then the preflight again. Still down: one line to the user naming the missing piece (VPN, SSO),
   then wait. Never "did you turn on the VPN?", and never a `!` command for the tunnel.
-  a worktree copy; source it inside the same subprocess that uses `$VAR`.
 - **No route → no number.** `measure.doc: none`, or the source is down: write "not measured: <why>",
   every claim stays `inferred`, and the seed carries `RULING_NEEDED: measure before exec`.
 

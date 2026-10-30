@@ -392,8 +392,7 @@ action` line, write the ledger's hand-off section. An implementer that died mid-
 
 It opens a new tab through the user's `handoff:` preference — never a split, never the user's tab. `opened: …` →
 append `handoff written`, tell the user in one line which tab to write in — any later message belongs there — and end
-the turn. `session: unknown` → the tab is not confirmed: say so and name the row in `mode:`; never kill the started
-exec without the user's explicit yes. `paste into a new terminal tab …` or `continue in this session: …` → no tab opened: append `handoff
+the turn. `paste into a new terminal tab …` or `continue in this session: …` → no tab opened: append `handoff
 written`, relay the printed command in one line, and end the turn. Non-zero → nothing took over: no `handoff written`, one line with the exit code and the printed command,
 keep working here. A hand-off to another account whose `config:` is this session's own config is the same: nothing
 took over. Do not rely on `/compact`: the ledger is the trail.

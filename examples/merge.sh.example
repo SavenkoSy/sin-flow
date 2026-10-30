@@ -20,7 +20,7 @@ if [ "$(git branch --show-current)" != "$base" ]; then
 elif [ -n "$(git status --porcelain --untracked-files=no)" ]; then
   echo "$base not updated: the main checkout has local changes"
 else
-  git pull --ff-only || echo "$base not updated: git pull --ff-only failed"
+  git pull --ff-only origin "$base" || echo "$base not updated: git pull --ff-only origin $base failed"
 fi
 tree=$(git worktree list --porcelain | awk -v b="branch refs/heads/$branch" '/^worktree / {w = $2} $0 == b {print w}')
 [ -z "$tree" ] || git worktree remove "$tree" || echo "worktree kept, not clean: $tree"

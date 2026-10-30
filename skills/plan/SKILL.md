@@ -197,7 +197,7 @@ measuring when it is up`, start `until <preflight> >/dev/null 2>&1; do sleep 15;
 `not measured — <source> unavailable (<reason>)`, stays `inferred`, gets its bounded query written
 as that unit's first exec step, and the header carries `RULING_NEEDED: measure before exec`.
 A probe the auto-mode classifier denies is the same path, with the reason `classifier denied`: do not
-retry it, do not ask, and never hand the user a `!` command; write its inbox row (Step 10) and go on
+retry it and never hand the user a `!` command; write its inbox row (Step 10) and go on
 with code reads and `work/` notes.
 
 **`measure.doc: none`** → every number is `not measured — no route`; claims stay `inferred`; numbers
@@ -327,8 +327,12 @@ not in the check. Re-mirror if the plan changed.
   any by-design behaviour that looks like a bug. Unproven reason it no longer reproduces → say it is
   unproven and list the candidates. Never a comment that reads as "QA was wrong".
 - with `tracker.board` and `tracker.write.status: on`: if verified fixed or verified not-reproducible,
-  move Status to the board's QA column. The Status field and option ids are in
-  `~/.claude/sin-flow/profiles/<key>/board/rules.md`. A person blocks it: leave the status and write an
+  move Status to the board's QA column by name, one command per ticket with literal values:
+  `gh project item-edit <number> --owner <owner> --url <issue url> --field Status --value <QA column>`.
+  `tracker.board` is `<owner>#<number>`. The column name, and the field and option ids for a `gh` older
+  than 2.97 (no `--field`), are in `~/.claude/sin-flow/profiles/<key>/board/rules.md`. The Bash shell can
+  be zsh, which does not split an unquoted `$var`: never pass ids or ticket pairs through `set -- $var`.
+  A person blocks it: leave the status and write an
   `ingest-miss:` line. Upstream blocks it: unassign only with `tracker.write.assign: on`. In each case,
   name the upstream ticket and what unblocks it. A switch that is off or absent: no board write, and the
   plan row says `board: not written (switch off)`. **Never `Blocked`. Never close** — the close is not ours.
@@ -360,7 +364,6 @@ Tell exec: work in that worktree; the plan's Finish line is standing authorizati
 and harness stay in `work/` — never committed. Relay the `opened:` or printed line.
 
 **Read the output and the exit code.** `opened: …` — exec runs in a new tab; never start a second one.
-`session: unknown` — the tab is not confirmed: say so, name the row in `mode:`, never kill the started exec without the user's explicit yes.
 `paste into a new terminal tab …` — no tab: relay the printed command in one line.
 `continue in this session: …` — the user chose one session: invoke `sin-flow:exec` with that path here.
 Non-zero — nothing started: `1` bad path, `2` bad option or `handoff:` setting, any other code is the
