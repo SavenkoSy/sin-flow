@@ -332,9 +332,11 @@ not in the check. Re-mirror if the plan changed.
   `tracker.board` is `<owner>#<number>`. The column name, and the field and option ids for a `gh` older
   than 2.97 (no `--field`), are in `~/.claude/sin-flow/profiles/<key>/board/rules.md`. The Bash shell can
   be zsh, which does not split an unquoted `$var`: never pass ids or ticket pairs through `set -- $var`.
-  A person blocks it: leave the status and write an
-  `ingest-miss:` line. Upstream blocks it: unassign only with `tracker.write.assign: on`. In each case,
-  name the upstream ticket and what unblocks it. A switch that is off or absent: no board write, and the
+  Every other no-code verdict (a person or a product decision blocks it, the fix is in another repo
+  or an environment value, the behaviour is by design): move Status back to `claims[<n>].from` in
+  `~/.claude/sin-flow/profiles/<key>/board/state.json`, else to the first entry of `scope.statuses`.
+  With `tracker.write.assign: on`, also set the assignees back to `claims[<n>].was`. A person blocks it:
+  also write an `ingest-miss:` line. In each case, name the blocker and what unblocks it. A switch that is off or absent: no board write, and the
   plan row says `board: not written (switch off)`. **Never `Blocked`. Never close** — the close is not ours.
 
 A local tracker: the disposition is the unit's row in the plan (`no code — <why>`).

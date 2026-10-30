@@ -139,6 +139,11 @@ History while you are there: `gh pr list --repo <slug> --state merged --search "
 `git log -S '<condition>' --oneline -- <file>`. A bug fixed once before is a regression or a release
 gap; both change the verdict.
 
+Who already works on each ticket source: `gh pr list --repo <slug> --state all --search "<n>"` and
+`git ls-remote --heads origin | grep -iE '(^|/)<id>([/-]|$)'`, with `<id>` from § Ids. A merged PR
+means the work is done, unless a newer comment reopens it. Another person's open PR or branch means
+the ticket is theirs. Say who, and drop it from the units.
+
 ## 3. Measure
 
 The route is the profile's and nothing else: `measure.doc` (a path, or `none`), `measure.preflight`,

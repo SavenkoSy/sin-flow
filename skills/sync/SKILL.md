@@ -1,6 +1,6 @@
 ---
 name: sync
-description: 'Board stage of the flow (sin-flow:sync → sin-flow:plan → sin-flow:exec) for any repo whose flow profile names a GitHub Projects board in `tracker.board` or a local tracker adapter in `tracker.adapter`; the first argument is the profile key (default: the key of the cwd). Every milestone on the board is in scope. The mechanical half runs in the `sin-flow:board` subagent on the cheap tier: it fetches the board, diffs it, refreshes the per-ticket briefs, classifies what the rules decide outright, republishes the triage page and hands back a fixed-shape digest. This session never fetches a board. Phase 1 reports that digest, closes the tickets the agent parked, and proposes which batch to take. Phase 2 takes a named batch — the agent records the claim, then assigns it and moves it to In progress if the profile''s write switches permit, and writes the seed plan in ~/.claude/sin-flow/work/<key>/ — then hands off to sin-flow:plan. Use when invoked as `/sin-flow:sync [key] [take <batch>|new]`, when asked to sync/refresh the board triage, to see what is open or blocked, or to take/assign a batch.'
+description: 'Board stage of the flow (sin-flow:sync → sin-flow:ingest → sin-flow:plan → sin-flow:exec) for any repo whose flow profile names a GitHub Projects board in `tracker.board` or a local tracker adapter in `tracker.adapter`; the first argument is the profile key (default: the key of the cwd). Every milestone on the board is in scope. The mechanical half runs in the `sin-flow:board` subagent on the cheap tier: it fetches the board, diffs it, refreshes the per-ticket briefs, classifies what the rules decide outright, republishes the triage page and hands back a fixed-shape digest. This session never fetches a board. Phase 1 reports that digest, closes the tickets the agent parked, and proposes which batch to take. Phase 2 takes a named batch — the agent records the claim, then assigns it and moves it to In progress if the profile''s write switches permit — then runs sin-flow:ingest on the batch in this session. Use when invoked as `/sin-flow:sync [key] [take <batch>|new]`, when asked to sync/refresh the board triage, to see what is open or blocked, or to take/assign a batch.'
 ---
 
 # sin-flow:sync — one board per profile
@@ -12,7 +12,7 @@ one batch in a single move.
 | Phase | Ends with |
 |---|---|
 | **1 — Sync and propose** | a ranked proposal of which batch to take, then **stop and wait** |
-| **2 — Take a batch** | the batch is claimed and a planning session is running |
+| **2 — Take a batch** | the batch is claimed and `sin-flow:ingest` runs on it in this session |
 
 Phase 2 runs **only** when the user says the word. Never take a batch on your own initiative, and
 read **Discussing a batch is not taking it** below before you believe you have been told to.
@@ -31,7 +31,8 @@ Profile keys that sync reads. The contract for a local adapter is
 | `tracker.write.light` | `off` | push the light of each classified ticket to the tracker |
 | `tracker.write.assign` | `off` | in take mode, make the user the only assignee |
 | `tracker.write.status` | `off` | in take mode, move the taken tickets to `In progress` |
-| `group_by` | `milestone` | the groups on the page: `epic`, `milestone`, `priority`, `label`, or `rules` (the batches of `board/rules.md`) |
+| `group_by` | `milestone` | the groups on the page: `epic`, `milestone`, `priority`, `label`, `rules` (the batches of `board/rules.md`), or `field:<name>` (the values of that single-select field of the board) |
+| `tracker.skip_milestones` | absent | a comma list of milestones. The page shows their tickets in a group of their own, and a batch proposal never holds them |
 
 An absent switch is `off`. With an adapter, a write step that `<adapter> supports <key>` does not
 list is `off` too. The page shows lights, groups and claims with every switch off.
@@ -57,12 +58,12 @@ dispatch prompt as `resolved: <line>`.
 the board folder first.
 
 Read the switches with `sin-flow-profile <key> get <field> || true`: `tracker.write.light`,
-`tracker.write.assign`, `tracker.write.status` and `group_by`. The CLI reads these four and
+`tracker.write.assign`, `tracker.write.status`, `group_by` and `tracker.skip_milestones`. The CLI reads these five and
 `tracker.adapter` from `profile.md` only, never from the team file `.claude/flow.md`. An absent
 switch is `off`; an absent `group_by` is `milestone`. When `sin-flow-profile <key> get tracker.adapter` prints a path, run
 `<adapter> supports <key>` (`~` expanded). A step it does not list is `off`. A non-zero exit → one
 line with the first line of its stderr, and stop. Give the result in each dispatch prompt as
-`writes: light=<on|off> assign=<on|off> status=<on|off>` and `group_by: <mode>`.
+`writes: light=<on|off> assign=<on|off> status=<on|off>`, `group_by: <mode>` and `skip_milestones: <list | none>`.
 
 Resolve `<cheap>` once for the key's checkout (`sin-flow-profile <key> get repo.path`, `~` expanded; missing → the cwd): `sin-flow-profile model cheap <checkout>`.
 
@@ -78,8 +79,8 @@ session leaves no room for the conversation that follows. So:
 
 | | |
 |---|---|
-| **`sin-flow:board` subagent** (cheap tier) | fetches the board, diffs it, refreshes the ticket briefs, classifies only what the rules decide outright, pushes the light if `tracker.write.light` is on, regenerates and republishes the page, verifies. In take mode: records the claim, then assigns and moves to `In progress` if their switches are on, writes the seed plan. Hands back one fixed-shape digest. |
-| **You** (this session, the strong tier) | read the digest. Report it to the user in the chat language. **Decide everything the agent parked.** Rank the batches and recommend one. Answer the user's follow-ups from the briefs on disk. On the user's word, dispatch take mode and hand off to `sin-flow:plan`. |
+| **`sin-flow:board` subagent** (cheap tier) | fetches the board, diffs it, refreshes the ticket briefs, classifies only what the rules decide outright, pushes the light if `tracker.write.light` is on, regenerates and republishes the page, verifies. In take mode: records the claim, then assigns and moves to `In progress` if their switches are on. Hands back one fixed-shape digest. |
+| **You** (this session, the strong tier) | read the digest. Report it to the user in the chat language. **Decide everything the agent parked.** Rank the batches and recommend one. Answer the user's follow-ups from the briefs on disk. On the user's word, dispatch take mode and run `sin-flow:ingest` on the batch. |
 
 **You never fetch a board, never read `classification.json`, never read or write
 `board-triage.html`, never call `Artifact`.** If you find yourself about to, the dispatch failed —
@@ -87,8 +88,7 @@ say so and fix the dispatch, don't do the agent's work in here.
 
 ## Hard boundaries — yours
 
-- **Never run git** except the worktree step of §6. The seed plan lives in `~/.claude/sin-flow/work/<key>/<id>/plan.md`, outside every
-  repo, and is never committed: it is an agent note (see also the user's own rules, if any).
+- **Never run git** yourself. From §6 on, the rules of `sin-flow:ingest` apply.
 - **Never open, retitle or comment on an issue.** A block reason or a disposition is the human's.
 - **Never move a ticket to any status except phase 2's `In progress`, and only when `tracker.write.status` is on.**
 - **Never write code**, or a plan that prescribes code before the tickets are measured.
@@ -123,7 +123,7 @@ One call, nothing before it.
 ```
 Agent(subagent_type: "sin-flow:board", model: "<cheap>", description: "Sync <key> board",
       prompt: "key: <key>\nmode: sync\nresolved: <line>\nwrites: light=<on|off> assign=<on|off> status=<on|off>\n
-               group_by: <mode>\n\nRun the sync pass in
+               group_by: <mode>\nskip_milestones: <list | none>\n\nRun the sync pass in
                ${CLAUDE_PLUGIN_ROOT}/skills/sync/reference/board-pass.md and return the SYNC DIGEST
                template, nothing else.")
 ```
@@ -155,7 +155,8 @@ Then the table, which is the part the user reads first — one row per group, em
 
 In `group_by: rules`, the groups are the batches of `board/rules.md`, as before. After a switch to
 `rules`, the agent gives a batch to each ticket that has none, or parks it. In the other
-modes, the field that `group_by` names gives the groups. Inside a group, tickets sort by resolved
+modes, the field that `group_by` names gives the groups: with `field:<name>`, that field of the board.
+The tickets of a milestone in `tracker.skip_milestones` show in a group named after that milestone. Inside a group, tickets sort by resolved
 priority `High`, `Medium`, `Low`, then empty, then by number.
 
 **New** — each new ticket: linked number, group, light, and **one sentence of what a user of the
@@ -243,7 +244,8 @@ for 8 tickets. and then for 3."*
 - Rank batches by how much 🟢 unstarted work each holds; **lead with the recommendation**, one line.
 - Name the **clusters inside a batch that share a file** — those must travel in one branch.
 - Flag any ticket in the recommended batch that is **not code in the profile's repo**.
-- Deferred tickets and the `Claimed` group are excluded from the proposal.
+- Deferred tickets, the `Claimed` group and the tickets of a milestone in `tracker.skip_milestones` are
+  excluded from the proposal.
 
 Then **stop.** Do not assign, do not move statuses, do not write a plan, do not launch anything,
 do not ask whether to proceed.
@@ -274,14 +276,6 @@ heading with no content says so on its line.
 
 ## Discussing a batch is not taking it
 
-The single failure the user has had to correct most often, in the user's own words:
-
-> you started again. we are still discussing the yellows!!! why did you start. I want to add
-> something else!
-
-> I don't understand why you started the planner for 45 when we have not finished. I said
-> "add to the batch" but I had not said TAKE the batch yet.
-
 The user assembles a batch out loud, over several turns, before taking it. Assembling is not taking.
 
 | The user says | You do |
@@ -290,65 +284,47 @@ The user assembles a batch out loud, over several turns, before taking it. Assem
 | "add to the batch", "let's add 7 greens", "let's talk about the yellows", "I'll add something else", "leave it out of this scope", "976 stays out of this one" | **nothing** — keep the running list, keep talking |
 
 The trigger is **take**, said as an instruction, nothing else. When you are not certain, keep
-talking. Asking "take it?" once costs one line; starting a planner the user did not ask for costs
+talking. Asking "take it?" once costs one line; starting ingest the user did not ask for costs
 the whole session.
 
 While the user is assembling, hold the list in the conversation and restate it when it changes. Do not
-write a seed plan, do not assign anything, do not dispatch the agent, do not open a tab.
+assign anything, do not dispatch the agent, do not run `sin-flow:ingest`.
 
 ## 5. Dispatch take mode
 
 ```
 Agent(subagent_type: "sin-flow:board", model: "<cheap>", description: "Take <batch> on <key>",
       prompt: "key: <key>\nmode: take <batch name>\ntickets: <numbers, when the user narrowed the batch>\n
-               resolved: <line>\nwrites: light=<on|off> assign=<on|off> status=<on|off>\ngroup_by: <mode>\n\n
+               resolved: <line>\nwrites: light=<on|off> assign=<on|off> status=<on|off>\ngroup_by: <mode>\nskip_milestones: <list | none>\n\n
                Run the take pass in ${CLAUDE_PLUGIN_ROOT}/skills/sync/reference/board-pass.md and return
                the TAKE DIGEST template, nothing else.")
 ```
 
 The agent records the claim of every ticket in `state.json` `claims`. Then, if
 `tracker.write.assign` is on, it assigns every ticket to the user (state.json `owner`) and removes
-the previous assignee. If `tracker.write.status` is on, it moves them to `In progress`. It writes
-the seed plan and republishes the page. It does not launch
-anything.
+the previous assignee. If `tracker.write.status` is on, it moves them to `In progress`. It republishes the page. It does
+not launch anything.
 
-Report: tickets taken, **every teammate displaced by name and ticket**, the seed plan's path, and
-how many tickets are genuinely codeable versus blocked on something outside the repo.
+Report: tickets taken, and **every teammate displaced by name and ticket**.
 
-## 6. Hand off to `sin-flow:plan`
+## 6. Run `sin-flow:ingest` on the batch, in this session
 
-Phase 2 does not end with a question. The user already chose the batch; "shall I plan it now?" is
-a stop the user did not ask for.
+Phase 2 does not end with a question. The user already chose the batch. "Shall I ingest it now?" is
+a stop the user did not ask for. Answer every part of the user's current message first.
 
-Answer every part of the user's current message before the hand-off: take-updates are reversible,
-the launch is not.
-
-**The next stage never inherits this session's model.** `sin-flow:plan` runs on `<strong>`: `sin-flow-handoff` resolves it from `--cwd`; with `--cwd` omitted, add `--model <strong>` from `sin-flow-profile model strong`.
-
-**Worktree first.** A taken batch is an ingest from the board, so it gets its worktree the same way:
-`sin-flow-worktree --repo <the checkout below> --name <id>-<slug> --branch <branch> --base origin/<base>`, with
-`<id>` the seed's folder name and `<slug>` kebab-case from the batch name. In Orca it makes an Orca workspace, so
-the plan and exec tabs show in its own row; when it prints `mode: orca`, close its `shell:` as `skills/ingest/reference/exits.md` says. Write `worktree: <path>` into the
-seed header; `sin-flow:plan` keeps that checkout. No checkout below → skip this step; plan creates the worktree.
+Invoke the skill in this session, with the taken tickets as its sources:
 
 ```
-sin-flow-handoff [--cwd <worktree>] --name plan-<id> sin-flow:plan <absolute seed path>
+Skill(skill: "sin-flow:ingest", args: "<key> <prefix><n> <prefix><n> …")
 ```
 
-`<id>` is the seed's folder name (`batch-<N>` or `gh-<N>`). The checkout is `sin-flow-profile <key> get repo.path`
-with `~` expanded; missing → the main checkout of this session's cwd when the `resolve` line says `cwd profile: <key>`
-(its `repo.slug` matches): `dirname "$(git rev-parse --path-format=absolute --git-common-dir)"`; neither → omit
-`--cwd` — `sin-flow:plan` resolves the profile from the seed's `profile:` line.
+From here `sin-flow:ingest` runs as written. It reads and measures each ticket, asks only the
+questions it asks anyway, makes the worktree, writes the seed and hands off to `sin-flow:plan`. Do
+not repeat any of its steps, and do not open a tab for it.
 
-**Read the output and the exit code.** `opened: …` — planning runs in a new tab; never start a second one.
-`paste into a new terminal tab …` — no tab: relay the printed command in one line.
-`continue in this session: …` → invoke `sin-flow:plan` with that path in this session.
-Non-zero — no tab opened: `1` bad path, `2` bad option or `handoff:` setting, any other code is the
-launcher's own. Invoke `sin-flow:plan` in this session instead, and say in one line what you substituted.
-
-Put the `opened:` or printed line in your closing report, then stop. Planning belongs to that session now.
-
-**`CTX GUARD` in a tool result:** finish the in-flight dispatch; a batch already taken gets this hand-off now; otherwise say in one line that the talk continues in a new `/sin-flow:sync <key>` session (`board/digest.md` and `tickets.md` carry it), and stop.
+**`CTX GUARD` in a tool result before the invocation:** finish the in-flight dispatch. Then say in one line
+that the talk continues in a new session: `/sin-flow:ingest <key> <tickets>` for a batch already taken, else
+`/sin-flow:sync <key>` (`board/digest.md` and `tickets.md` carry it). Stop.
 
 ---
 
@@ -371,13 +347,12 @@ ${CLAUDE_PLUGIN_ROOT}/skills/sync/
   tickets.md                  one short brief per in-scope ticket. Your drill-down.
   digest.md                   the agent's last hand-back, verbatim. Survives a compaction.
   runs.log                    one appended line per pass
-~/.claude/sin-flow/work/<key>/<id>/plan.md   the seed a take writes
 ```
 
 ## Scope
 
 **No milestone filter.** Every open issue on the board is in scope; each row carries its milestone
-so the split stays *visible*, nothing filters on it.
+so the split stays *visible*. `tracker.skip_milestones` filters the batch proposal only, never the page.
 
 **The status filter must not widen beyond `scope.statuses` in `board/state.json`.** Statuses that
 mean someone is holding the ticket — QA, In progress, In review, Blocked — are out on every board:

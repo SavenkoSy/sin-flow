@@ -7,7 +7,7 @@ dispatched you runs a stronger model; the reading, the ranking and the recommend
 and your digest is its only input.
 
 Your dispatch prompt names the **profile key**, the **mode** (`sync`, `new` or `take <batch name>`), and
-the `resolved:`, `writes:` and `group_by:` lines. Everything else you read from disk.
+the `resolved:`, `writes:`, `group_by:` and `skip_milestones:` lines. Everything else you read from disk.
 
 ---
 
@@ -21,7 +21,7 @@ Profile facts come from the profile through the CLI, never from `state.json`:
 | base branch | `sin-flow-profile <key> get repo.base`, else the `base:` line of `sin-flow-profile <key> section Inferred` |
 | board (`<org>#<project number>`) | `sin-flow-profile <key> get tracker.board` |
 | tracker adapter | `sin-flow-profile <key> get tracker.adapter`, `~` expanded. Absent → the built-in GitHub adapter |
-| write switches, `group_by` | the `writes:` and `group_by:` lines of the dispatch prompt |
+| write switches, `group_by`, `skip_milestones` | the `writes:`, `group_by:` and `skip_milestones:` lines of the dispatch prompt |
 | ticket prefix | `sin-flow-profile <key> get tracker.id_prefix` |
 | sensitive areas | the `sensitive:` line of `sin-flow-profile <key> section Inferred` |
 
@@ -32,8 +32,9 @@ Profile facts come from the profile through the CLI, never from `state.json`:
 <board>/
   state.json           board state: artifactUrl, artifactTitle, favicon, owner, batches, scope
                        (projectId, lightFieldId, lightOptionIds, statuses, assigneeFilter),
-                       lastSync, lastBatch (optional),
-                       claims (optional): {"<n>": {"batch": "<id>", "at": "<ISO date>"}}
+                       lastSync,
+                       claims (optional): {"<n>": {"batch": "<batch name>", "at": "<ISO date>",
+                         "from": "<status>", "was": ["<login>"]}}
   rules.md             this board's batch table, classification keys, Status field ids, examples
   board-triage.html    the published page; you regenerate its DATA array and #footer
   classification.json  the judgment per issue. Irreplaceable. Authoritative for the light.
@@ -65,8 +66,7 @@ improving on them is not.
 - **Never open, retitle, close or comment on an issue.** Never run `git`. Never write code.
 - **Never move a ticket to any status except `In progress`, only in take mode, and only when
   `status=on`.**
-- **Never edit another profile's files.** A pass on one key touches that key's `board/` only, plus
-  the one seed file in take mode.
+- **Never edit another profile's files.** A pass on one key touches that key's `board/` only.
 - **Never touch the page's furniture** — title, favicon, eyebrow, `<h1>`, legend, `BATCH_META`,
   `BATCH_ORDER`, stat tiles, columns, selectors. You regenerate `DATA` and `#footer`. Nothing else.
   Two exceptions, both in step 7: when `group_by` is not `rules`, you write `BATCH_ORDER` and
@@ -276,8 +276,10 @@ or not — `renderBatchGrid` walks `BATCH_ORDER`, not the data. Do not tidy it a
 | `milestone` | `m` |
 | `priority` | the resolved priority, without a `(inferred)` mark, else `No priority` |
 | `label` | the first entry of `l` in sorted order, else `No label` |
+| `field:<name>` | `g`, else `No <name>` |
 
-In each mode, a ticket with a `claims` entry gets `b: "Claimed"`.
+In each mode, a ticket whose `m` is in `skip_milestones` gets `b: <its milestone>`. A ticket with a
+`claims` entry gets `b: "Claimed"`, and that rule wins.
 
 Inside each group, sort the `DATA` rows by resolved priority `High`, `Medium`, `Low`, then empty,
 then by `n`. A `(inferred)` mark sorts with its level.
@@ -295,7 +297,8 @@ When `group_by` is not `rules`:
 
 1. Before the first write of `BATCH_ORDER`, copy the page to `<board>/board-triage.rules.html`,
    once. Never overwrite that copy.
-2. Write `BATCH_ORDER` again: the group names sorted A to Z, each `No …` group at the end, and
+2. Write `BATCH_ORDER` again: the group names sorted A to Z, each `No …` group at the end, then the
+   `skip_milestones` groups, and
    `Claimed` last.
 3. Write `BATCH_META` again: one generated entry for each group, in the shape of the current
    entries, with no prose.
@@ -329,6 +332,11 @@ Re-run the read of step 2 and, only when `light=on`, confirm **zero divergences*
 `classification.json`, ignoring the parked tickets. Anything still divergent is a failed write or a
 mid-sync edit — restore it the way step 6 does and put it in `NOTES`.
 
+Check the shape of `<board>/tickets.md`: the line after each `### ` line starts with `Problem:`.
+`awk '/^### /{h=1;next} h{if($0 !~ /^Problem:/) bad++; h=0} END{exit bad>0}' <board>/tickets.md`
+exits 0. A non-zero exit: write the file again in the step 4 shape, one block after the other, and run
+the check again.
+
 Update `lastSync` in `state.json` (`at`, `by`, `ticketCount`).
 
 ## 10. Write the digest, log the run, hand back
@@ -351,9 +359,10 @@ that name — all of it, unless the prompt lists the ticket numbers, then exactl
 
 ## 11. Record the claim, then assign only when `assign=on`
 
-First, in each mode, write `claims[<n>] = {"batch": "<id>", "at": "<today>"}` into `state.json` for
-each ticket of the take. `<id>` is the seed id: derive it now, the way step 13 says. Keep every
-other key of `state.json`. The claim puts the ticket in the `Claimed` group of the page (step 7).
+First, in each mode, write `claims[<n>] = {"batch": "<batch name>", "at": "<today>", "from":
+"<status>", "was": [<assignee logins>]}` into `state.json` for each ticket of the take. `from` and `was`
+are the status and the assignees before the take. `sin-flow:plan` reads them for a no-code ticket.
+Keep every other key of `state.json`. The claim puts the ticket in the `Claimed` group of the page (step 7).
 
 When `assign=off`, assign nobody and put `assign: not written (switch off)` in the TAKE DIGEST
 `NOTES` slot. When `assign=on`, assign every ticket in the batch to the user (state.json `owner`).
@@ -378,59 +387,7 @@ One aliased mutation: `projectId` from `state.json`, the `Status` field id and i
 option id from `<board>/rules.md`. Item ids come from the issue-side query under **Reference**,
 filtered on `scope.projectNumber`.
 
-## 13. Write the seed plan — file only, no git
-
-The id: `gh-<N>` when the take holds one ticket (one ticket is never a batch), `batch-<N>` when it
-holds two or more. **`<N>` of a batch is the highest existing batch number plus one — no skips,
-exactly one file per take.** Derive it:
-
-```bash
-{ ls ~/.claude/sin-flow/work/<key>/ 2>/dev/null | sed -n 's/^batch-\([0-9]*\)$/\1/p'
-  jq -r '.lastBatch // empty' <board>/state.json; } | sort -n | tail -1
-```
-
-Write `~/.claude/sin-flow/work/<key>/<id>/plan.md` (`mkdir -p`), outside every repo, then set
-`lastBatch` in `state.json` to `<N>` for a batch. Put the number and the path in the digest's `SEED`
-slot.
-
-Base commit, read-only: `gh api repos/<repo.slug>/commits/<base> --jq .sha`.
-
-English. `> Created: YYYY-MM-DD` as the very first line, then the header the next stage reads
-verbatim:
-
-```
-profile: <key>
-repo: <repo.slug>
-base: <base>
-exit: plan
-status: ready-for-dev
-source: <board URL>
-ticket: <prefix><n>[, <prefix><n> …]
-taken: <YYYY-MM-DD> by <owner> · base <sha>
-```
-
-`<board URL>` is `https://github.com/orgs/<org>/projects/<number>`. No `worktree:` line here —
-`sin-flow:sync` §6 adds it after the take.
-
-**Three sections, in this order, and no others** — never an optional heading. The optional sections
-(`## Problem`, `## Root cause (measured)`, `## Evidence`, `## Decisions`, `## Open decisions`,
-`## Not in scope`) belong to `sin-flow:ingest`.
-
-- **`## Tickets`** — number + link, title, light, resolved priority, assignee. Under the table,
-  **anything not code in the profile's repo**, one line each, and **the next agent's job**, one
-  sentence: read each ticket (**latest comment first**), measure it before believing it, write the
-  verify + fix plan into this same file.
-- **`## File clusters`** — which tickets share a file, and therefore must be one branch with
-  sequential commits. Verify each path exists at the base commit
-  (`gh api repos/<repo.slug>/contents/<path>?ref=<sha> --silent`); mark any that does not as
-  NOT FOUND.
-- **`## Finish line`** — one line: *the coding stage commits, pushes and opens the PR itself, in
-  the same session, without asking.* It authorizes the downstream stages, never this pass.
-
-**Not in it:** ticket bodies, restated root causes, repro steps, measurement procedure, branch names
-(the plan stage derives the branch from the profile). The plan says *verify first*.
-
-## 14. Republish and hand back
+## 13. Republish and hand back
 
 When `status=on`, the taken tickets are now `In progress` and have left the page's scope. When
 `status=off`, they stay in scope in the `Claimed` group: do not drop their blocks from
@@ -439,10 +396,10 @@ When `status=on`, the taken tickets are now `In progress` and have left the page
 `tickets.md`. Write and return the `TAKE DIGEST`, and append to `runs.log`:
 
 ```
-<ISO date>	take	batch=<name>	taken=<n>	displaced=<n>	seed=<id>	publish=<ok|failed>
+<ISO date>	take	batch=<name>	taken=<n>	displaced=<n>	publish=<ok|failed>
 ```
 
-Do not launch anything. Do not ask a question. The caller hands off to `sin-flow:plan`.
+Do not launch anything. Do not ask a question. The caller runs `sin-flow:ingest` on the batch.
 
 ---
 
@@ -494,10 +451,6 @@ BOARD: <resolved line, verbatim> · batch <name> · <n> tickets taken · publish
 WRITES: light=<on|off> assign=<on|off> status=<on|off> · group_by: <mode>
 TAKEN: <prefix><n>, …
 DISPLACED: <login> off <prefix><n> · … <or none>
-SEED: <absolute path> · id <id> (previous highest batch <N-1>) · one file
-CLUSTERS: <file> ← <prefix><n>, <prefix><n> · … <or none>
-NOT FOUND: <path claimed by a ticket that does not exist at the base commit> <or none>
-NOT CODE IN THIS REPO: <prefix><n> · <what it needs instead> <or none>
 NOTES: <or none>
 ```
 

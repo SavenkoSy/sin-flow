@@ -61,6 +61,7 @@ Optional keys:
 | `u` | string | the URL of the ticket |
 | `updated` | ISO time | the last change; the briefs refresh when it is newer than their stamp |
 | `light` | `green`, `yellow`, `red` or `null` | the light that the tracker holds now. Required on each ticket when `supports` lists `light` |
+| `g` | string or `null` | the value of the field that `group_by: field:<name>` names. Absent → the group is `No <name>` |
 
 When `supports` lists `light`, `read` gives the `light` key on each ticket, `null` when the tracker
 has no light. Without it, sync cannot see a light that a teammate changed, and writes over it.

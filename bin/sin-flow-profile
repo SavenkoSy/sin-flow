@@ -84,7 +84,7 @@ get_field() {
   if [ -f "$PROFILES/$key/profile.md" ]; then
     v=$(field_in "$PROFILES/$key/profile.md" "$field")
   fi
-  if [ -z "$v" ] && [[ $field != tracker.write.* && $field != group_by && $field != tracker.adapter ]] && team=$(team_file_for "$key"); then
+  if [ -z "$v" ] && [[ $field != tracker.write.* && $field != group_by && $field != tracker.skip_milestones && $field != tracker.adapter ]] && team=$(team_file_for "$key"); then
     v=$(field_in "$team" "$field")
   fi
   [ -n "$v" ] || return 1
@@ -202,7 +202,7 @@ validate_key() {
     case "$v" in ""|on|off) ;; *) errs+=("tracker.write.$sw '$v' is not on or off") ;; esac
   done
   v=$(field_in "$f" group_by) || true
-  case "$v" in ""|epic|milestone|priority|label|rules) ;; *) errs+=("group_by '$v' is not one of epic, milestone, priority, label, rules") ;; esac
+  case "$v" in ""|epic|milestone|priority|label|rules|field:?*) ;; *) errs+=("group_by '$v' is not one of epic, milestone, priority, label, rules, field:<name>") ;; esac
   v=$(field_in "$f" tracker.adapter) || true
   case "$v" in ""|/*|"~"/*) ;; *) errs+=("tracker.adapter $v is not an absolute or ~ path") ;; esac
   if [ -n "$v" ] && { [ ! -f "$(expand_home "$v")" ] || [ ! -x "$(expand_home "$v")" ]; }; then errs+=("tracker.adapter $v is not an executable file"); fi

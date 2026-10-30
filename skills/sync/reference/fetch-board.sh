@@ -8,6 +8,11 @@ BOARD=$("$PROFILE_CLI" "$1" get tracker.board) || { echo "no tracker.board in pr
 ORG=${BOARD%%#*}
 PROJ=${BOARD##*#}
 STATE="$("$PROFILE_CLI" "$1" dir)/board/state.json"
+GROUP_BY=$("$PROFILE_CLI" "$1" get group_by 2>/dev/null) || GROUP_BY=""
+GROUP_FIELD=""
+case "$GROUP_BY" in field:?*) GROUP_FIELD=${GROUP_BY#field:} ;; esac
+GROUP_QUERY=""
+[ -z "$GROUP_FIELD" ] || GROUP_QUERY="group: fieldValueByName(name: \"$GROUP_FIELD\") { ... on ProjectV2ItemFieldSingleSelectValue { name } }"
 [ -f "$STATE" ] || { echo "no board state at $STATE" >&2; exit 1; }
 
 RAW=$(mktemp)
@@ -27,6 +32,7 @@ for _ in $(seq 1 30); do
             fieldValueByName(name: \"Status\") { ... on ProjectV2ItemFieldSingleSelectValue { name } }
             priority: fieldValueByName(name: \"Priority\") { ... on ProjectV2ItemFieldSingleSelectValue { name } }
             light: fieldValueByName(name: \"Light\") { ... on ProjectV2ItemFieldSingleSelectValue { name } }
+            $GROUP_QUERY
             content {
               ... on Issue {
                 number title url state createdAt updatedAt repository { name }
@@ -48,7 +54,7 @@ done
 
 STATUSES=$(jq -c '.scope.statuses' "$STATE")
 ASSIGNEE_FILTER=$(jq -c '.scope.assigneeFilter // {}' "$STATE")
-jq --indent 1 -n --argjson statuses "$STATUSES" --argjson filter "$ASSIGNEE_FILTER" '
+jq --indent 1 -n --argjson statuses "$STATUSES" --argjson filter "$ASSIGNEE_FILTER" --arg gf "$GROUP_FIELD" '
 def nz(d): if . == null or . == "" then d else . end;
 {"🟢 Ready now": "green", "🟡 Check first": "yellow", "🔴 Blocked upstream": "red"} as $light
 | ($filter | with_entries(select(.key | startswith("_") | not))) as $required
@@ -77,5 +83,5 @@ def nz(d): if . == null or . == "" then d else . end;
         s: $status,
         light: $light[(.light // {}).name | nz("")],
         updated: $issue.updatedAt
-      })
+      } + (if $gf == "" then {} else {g: ((.group // {}).name | nz(null))} end))
 | sort_by(.n)' "$RAW"

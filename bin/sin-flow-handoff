@@ -133,6 +133,7 @@ model_name="${stage#sin-flow:}"
 FLOW_MODEL="${model:-$("$(dirname "$adapters")/sin-flow-profile" model "${model_name:-strong}" "$FLOW_CWD")}" || exit 2
 FLOW_CONFIG_DIR="${FLOW_CONFIG_DIR:-$(pick_account)}"
 case "$FLOW_CONFIG_DIR" in "~"/*) FLOW_CONFIG_DIR="$HOME/${FLOW_CONFIG_DIR#\~/}" ;; esac
+[ -n "${CLAUDE_CONFIG_DIR:-}" ] || [ "${FLOW_CONFIG_DIR%/}" != "$HOME/.claude" ] || FLOW_CONFIG_DIR=""
 [ -z "$FLOW_CONFIG_DIR" ] || [ -d "$FLOW_CONFIG_DIR" ] || { echo "FLOW_CONFIG_DIR=$FLOW_CONFIG_DIR is not a directory: no tab opened" >&2; exit 2; }
 FLOW_PROMPT="${FLOW_CONFIG_DIR:+CLAUDE_CONFIG_DIR=$(q "$FLOW_CONFIG_DIR") FLOW_EXPECT_CONFIG_DIR=$(q "$FLOW_CONFIG_DIR") }claude -n $(q "$FLOW_NAME") --model $(q "$FLOW_MODEL") $(q "$text")"
 export FLOW_CWD FLOW_NAME FLOW_MODEL FLOW_PROMPT FLOW_CONFIG_DIR
