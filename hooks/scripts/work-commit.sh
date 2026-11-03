@@ -13,7 +13,12 @@ if ! git -C "$root" add -A >/dev/null 2>>"$log"; then
   exit 0
 fi
 if ! git -C "$root" diff --cached --quiet; then
-  if git -C "$root" commit -q -m "autosave $stamp" >/dev/null 2>>"$log"; then
+  amend=
+  if [ "$(git -C "$root" log -1 --format=%s 2>/dev/null)" = "autosave $today" ] &&
+    [ -z "$(git -C "$root" branch -r --contains HEAD 2>/dev/null)" ]; then
+    amend=--amend
+  fi
+  if git -C "$root" commit -q $amend -m "autosave $today" >/dev/null 2>>"$log"; then
     printf '%s\tcommitted\t%s\n' "$stamp" "$(git -C "$root" rev-parse --short HEAD)" >>"$log"
   else
     printf '%s\tcommit failed\n' "$stamp" >>"$log"
