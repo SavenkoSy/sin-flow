@@ -46,11 +46,32 @@ expect_eq "amend keeps the files" "work/a work/b work/c" "$(git -C "$FLOW_HOME" 
 stop
 expect_eq "no change, no commit" "2" "$(count)"
 
+dd if=/dev/zero of="$FLOW_HOME/work/big.log" bs=1m count=51 2>/dev/null
+echo g > "$FLOW_HOME/work/g"
+stop
+expect_eq "big new file stays out" "" "$(git -C "$FLOW_HOME" ls-files work/big.log)"
+expect_eq "small file next to it goes in" "work/g" "$(git -C "$FLOW_HOME" ls-files work/g)"
+
+dd if=/dev/zero of="$FLOW_HOME/work/grown.log" bs=1m count=1 2>/dev/null
+stop
+expect_eq "small log is tracked" "work/grown.log" "$(git -C "$FLOW_HOME" ls-files work/grown.log)"
+dd if=/dev/zero of="$FLOW_HOME/work/grown.log" bs=1m count=51 2>/dev/null
+stop
+expect_eq "log that grew past the limit leaves the index" "" "$(git -C "$FLOW_HOME" ls-files work/grown.log)"
+expect_eq "file stays on disk" "1" "$([ -f "$FLOW_HOME/work/grown.log" ] && echo 1)"
+
+git -C "$FLOW_HOME" rev-parse HEAD >"$FLOW_HOME/.pushing"
+before=$(count)
+echo h > "$FLOW_HOME/work/h"
+stop
+expect_eq "commit in flight to the remote is never amended" "$((before + 1))" "$(count)"
+rm -f "$FLOW_HOME/.pushing"
+
 git init -q --bare "$scratch/remote.git"
 git -C "$FLOW_HOME" remote add origin "$scratch/remote.git"
 echo d > "$FLOW_HOME/work/d"
 stop
-for _ in $(seq 50); do [ -f "$FLOW_HOME/.last-push" ] && break; sleep 0.1; done
+for _ in $(seq 50); do [ -f "$FLOW_HOME/.last-push" ] && [ ! -f "$FLOW_HOME/.pushing" ] && break; sleep 0.1; done
 expect_eq "push marks the day" "$today" "$(cat "$FLOW_HOME/.last-push")"
 git -C "$FLOW_HOME" fetch -q origin
 expect_eq "pushed head" "$(git -C "$FLOW_HOME" rev-parse HEAD)" "$(git -C "$FLOW_HOME" rev-parse origin/main)"
@@ -60,6 +81,7 @@ stop
 echo f > "$FLOW_HOME/work/f"
 stop
 expect_eq "pushed commit is never amended" "1" "$(count origin/main..HEAD)"
+expect_eq "push marker is gone" "" "$(ls "$FLOW_HOME/.pushing" 2>/dev/null)"
 expect_eq "pushed history intact" "0" "$(count HEAD..origin/main)"
 
 echo "ok: $cases cases"
