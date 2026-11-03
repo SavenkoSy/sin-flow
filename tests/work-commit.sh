@@ -46,6 +46,20 @@ expect_eq "amend keeps the files" "work/a work/b work/c" "$(git -C "$FLOW_HOME" 
 stop
 expect_eq "no change, no commit" "2" "$(count)"
 
+dd if=/dev/zero of="$FLOW_HOME/work/big.log" bs=1m count=51 2>/dev/null
+echo g > "$FLOW_HOME/work/g"
+stop
+expect_eq "big new file stays out" "" "$(git -C "$FLOW_HOME" ls-files work/big.log)"
+expect_eq "small file next to it goes in" "work/g" "$(git -C "$FLOW_HOME" ls-files work/g)"
+
+dd if=/dev/zero of="$FLOW_HOME/work/grown.log" bs=1m count=1 2>/dev/null
+stop
+expect_eq "small log is tracked" "work/grown.log" "$(git -C "$FLOW_HOME" ls-files work/grown.log)"
+dd if=/dev/zero of="$FLOW_HOME/work/grown.log" bs=1m count=51 2>/dev/null
+stop
+expect_eq "log that grew past the limit leaves the index" "" "$(git -C "$FLOW_HOME" ls-files work/grown.log)"
+expect_eq "file stays on disk" "1" "$([ -f "$FLOW_HOME/work/grown.log" ] && echo 1)"
+
 git init -q --bare "$scratch/remote.git"
 git -C "$FLOW_HOME" remote add origin "$scratch/remote.git"
 echo d > "$FLOW_HOME/work/d"

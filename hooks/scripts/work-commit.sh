@@ -8,6 +8,12 @@ cat >/dev/null 2>&1 || true
 [ -d "$root/.git" ] || exit 0
 stamp=$(date '+%F %T')
 today=$(date '+%F')
+big=$(cd "$root" && find work profiles -type f -size +50M 2>/dev/null || true)
+printf '%s\n' "$big" | sed '/^$/d; s|^|/|' >"$root/.git/info/exclude"
+if [ -n "$big" ]; then
+  printf '%s\n' "$big" | tr '\n' '\0' |
+    (cd "$root" && xargs -0 git rm -q -r --cached --ignore-unmatch --) >/dev/null 2>>"$log" || true
+fi
 if ! git -C "$root" add -A >/dev/null 2>>"$log"; then
   printf '%s\tadd failed\n' "$stamp" >>"$log"
   exit 0
