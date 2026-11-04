@@ -41,7 +41,7 @@ Chat with the user in the `chat_language` option (`sin-flow-profile user chat_la
 
    Chat
      1. Chat language: the language that you write in.
-     2. Next stage (hand-off): starts in a new Ghostty tab.
+     2. Next stage (hand-off): <item 2 text>
 
    Pull requests
      3. Merge method for your PRs: squash, one commit.
