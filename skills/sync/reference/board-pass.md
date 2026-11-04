@@ -164,6 +164,25 @@ project`) or the query fails `INSUFFICIENT_SCOPES`. It handles paging and duplic
 
 The board is edited while you work — expect drift, and re-fetch before the final publish.
 
+**Tickets that an open PR holds.** Skip this when `tracker.adapter` is set. Else list the open PRs once, and match
+them to the rows. A PR holds ticket `<n>` when its title carries `<prefix><n>`, its body carries `#<n>`, or its branch
+name carries `<prefix><n>` as a path part. `<prefix>` is `tracker.id_prefix`.
+
+```bash
+gh pr list --repo <repo.slug> --state open --limit 200 --json number,title,body,headRefName,author \
+  > "$SCRATCH/open-prs.json"
+jq -r --arg p "<prefix>" --slurpfile s "$SCRATCH/board-fresh.json" '
+  ($p | ascii_downcase) as $lp
+  | .[] as $pr | $s[0][].n as $n | ($n | tostring) as $ns
+  | select(($pr.title | ascii_downcase | test("(^|[^a-z0-9])" + $lp + $ns + "([^0-9]|$)"))
+      or (($pr.body // "") | test("#" + $ns + "([^0-9]|$)"))
+      or ($pr.headRefName | ascii_downcase | test("(^|/)" + $lp + $ns + "([/-]|$)")))
+  | "\($p)\($n) · PR #\($pr.number) · \($pr.author.login)"' "$SCRATCH/open-prs.json" | sort -u
+```
+
+Each output line goes in the digest's `HELD BY OPEN PR` slot as printed. Do not change the light, status or assignee
+of a held ticket.
+
 ## 3. Diff against the previous snapshot
 
 By issue number, build four lists: **moved** (status changed — anything now out of
@@ -184,7 +203,8 @@ ticket left scope and came back, for example as a reopen after QA, and is free a
 `<board>/tickets.md` carries one block per ticket in scope; create it when missing. Each block
 starts with a stamp line; re-fetch a ticket **only** when the board's `updated` is newer than the
 stamp, or when it has no block yet. Fetch bodies and the last two comments in **one aliased query**
-per batch of tickets, with `<org>` and `<repo>` split out of `repo.slug`:
+per batch of tickets, with `<org>` and `<repo>` split out of `repo.slug`. Change only the blocks of the re-fetched
+tickets, with `Edit`. Do not write the whole file again with `Write`:
 
 ```bash
 gh api graphql -f query='query { repository(owner:"<org>",name:"<repo>"){
@@ -225,9 +245,16 @@ board's `classification.json` uses; read the file, see which shape it already us
 shape. Migrating to another shape breaks the page generator and loses judgment.
 
 A `def` object means the user deferred the ticket. It stays on the page, and you never touch it:
-no reclassification, no light change, no re-argued reason. It goes in the digest's `DEFERRED` line
-by number, and in `DEFERRED WITH MOVEMENT` when the board's `updated` is newer than `def.since`.
-Only the caller removes a `def`, and only when the user says so.
+no reclassification, no light change, no re-argued reason. Only the caller removes a `def`, and only
+when the user says so. The digest's `DEFERRED` line lists every row of `board-fresh.json` with a `def`, new
+or old, from this command. `COUNTS` do not count those tickets:
+
+```bash
+jq -r --slurpfile c <board>/classification.json '.[] | select($c[0][.n | tostring].def) | .n' \
+  "$SCRATCH/board-fresh.json"
+```
+
+A deferred ticket also goes in `DEFERRED WITH MOVEMENT` when the board's `updated` is newer than `def.since`.
 
 Each new ticket needs three values: **batch**, **light**, **resolved priority** (`triage-rules.md`
 gives the resolution order). Apply the table. When it does not decide, park the ticket.
@@ -337,6 +364,11 @@ Check the shape of `<board>/tickets.md`: the line after each `### ` line starts 
 exits 0. A non-zero exit: write the file again in the step 4 shape, one block after the other, and run
 the check again.
 
+Then check the blocks against the board. `grep -c '^### ' <board>/tickets.md` equals
+`jq length "$SCRATCH/board-fresh.json"`. `jq -r '.[] | "Problem: \(.t)"' "$SCRATCH/board-fresh.json" | grep -cxFf -
+<board>/tickets.md` prints 0, so no `Problem:` line is only the ticket title. A failure: re-fetch the tickets
+with a missing block or a title-only `Problem:` line, write those blocks again, and run both checks again.
+
 Update `lastSync` in `state.json` (`at`, `by`, `ticketCount`).
 
 ## 10. Write the digest, log the run, hand back
@@ -436,6 +468,8 @@ RED WAITING ON: <or none>
 DEFERRED: <prefix><n>, … <or none>
 DEFERRED WITH MOVEMENT: <or none>
   <prefix><n> · updated <date> (def.since <date>)
+HELD BY OPEN PR: <or none>
+  <prefix><n> · PR #<number> · <author login>
 SCOPE COLLISIONS: <or none>
   <prefix><n>, <prefix><n> both touch <file>
 NOT CODE IN THIS REPO: <or none>

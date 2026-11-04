@@ -82,9 +82,9 @@ $S/select-runs.sh <key|all> [stage] [n] > <workspace>/dumps/rows.tsv
 - **No stage given: a full run.** One pass covers every stage with undigested rows and also **self**. Each stage goes
   to one consolidator subagent (`general-purpose`, `<strong>`). It runs Setup, Fan-out and Consolidate for that stage
   with at most 3 readers in flight, writes its digest, and returns only the ranked modes and the proposals (≤ 300
-  words). At most 4 consolidators are in flight. A stage with fewer than 3 undigested rows is skipped and named in the
-  ledger entry. The last consolidator runs **self** when 3 or more learning runs are undigested. It reads earlier
-  learning runs only, never this one. Plan the reader counts so that self fits inside the 20-subagent cap.
+  words). At most 4 consolidators are in flight. A stage with fewer than 3 undigested rows, or a stage the user leaves
+  out of the run, is skipped and named in the ledger entry. The last consolidator runs **self** when 3 or more learning
+  runs are undigested. It reads earlier learning runs only, never this one. Plan the reader counts so that self fits inside the 20-subagent cap.
 - **Workspace**: `LD/<YYYY-MM-DD>/flow-<stage>/` with `dumps/` and `readers/`. A second run on the same day uses the
   workspace `flow-<stage>-2/` and writes `flow-<stage>-2.md`. Every file inside the workspace keeps its plain name.
 
@@ -249,7 +249,8 @@ hold.
 - In `inbox.md`, mark each row that this run turned into a proposal: `proposed <digest>`, then `applied <date>`,
   `declined <date>` or `for author <date>`. Append one row for flow `learning`: what in this skill got in the way this
   run, or "nothing". `/sin-flow:learning self` reads that row.
-- The run ends with an empty `inbox.md` table. Closed rows move to `inbox-archive.md`. Each open row goes to the user
+- The run ends with no open `inbox.md` row of a stage it covered. A row of a skipped stage stays open, and the ledger
+  entry names it. Closed rows move to `inbox-archive.md`. Each open row goes to the user
   one at a time, with your pick, until it is closed. A row the user accepts becomes a numbered proposal with its layer
   and goes through the apply scripts like every other. Never edit a live target straight from the walk. A new row takes the next number after the highest in both files.
 - On `CTX GUARD` or `LIMIT GUARD`: let the readers in flight finish, write the digests, the ledger entry and
@@ -263,7 +264,14 @@ hold.
 
 The conclusion and the path, in the `chat_language` option, ≤ 15 lines. The proposals go in three lists: «your
 settings», «only for you», then «the plugin, for everyone». «Only for you» holds a change that acts only in author
-mode, such as the apply scripts or a step that only the plugin author runs. Each proposal gets one line «now → will be». In user mode, one more line names
+mode, such as the apply scripts or a step that only the plugin author runs. It also holds a plugin change that only
+this user's own setup needs, such as their terminal, account or bot. Before the report, read each «for everyone» line
+as a user with another setup. When it changes nothing for that user, move it to «only for you». Inside each list, show
+the proposals as one block «today → after the change». The lists follow the layers of `ARCHITECTURE.md`. A proposal
+goes to the list of the switch that turns its behaviour on, not of the file it edits: a plugin fix that acts only under
+a user option goes to «your settings», and one that acts only where a profile key turns it on goes to that profile. Group them by what the user sees,
+one short bold topic for each group. Each topic gives what happens today and what changes against today, in plain
+words, with no file name. Do not give one line for each proposal or each file. In user mode, one more line names
 `proposals-for-author.md` and the count of blocks added. Counts carry their filter set in the digest.
 
 Copy the `===` final-message block of one covered exec session whole from `<sid8>.long.txt` to
@@ -281,6 +289,4 @@ only as a finding, when it breaks the Final message shape in `${CLAUDE_PLUGIN_RO
 
 ## Known issues (open, inbox #39)
 
-- Item 2: the harness caps one launch at 20 subagents in total, so consolidators can lose their readers.
 - Item 4: `scripts/dump.sh` clips TOOL lines and `exit=` RESULT lines at 140 to 300 characters.
-- Item 8: the auto-mode classifier blocks even a read-only probe run of an apply script.

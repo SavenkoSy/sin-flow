@@ -189,7 +189,7 @@ before the first probe and measure only the ways it prescribes; never print a cr
 connection string or an env file, and never a value the doc marks private. Read
 `reference/probe-traps.md` before writing any probe.
 
-**Preflight: check, never ask.** Run `measure.preflight` (or each source's `preflight`) before
+**Preflight: check.** Run `measure.preflight` (or each source's `preflight`) before
 Step 3. Down and the source has `tunnel` → run the `tunnel` string verbatim as its own Bash call,
 nothing chained to it, then the preflight again. Still down → one status line `<source> down —
 measuring when it is up`, start `until <preflight> >/dev/null 2>&1; do sleep 15; done` with
@@ -299,9 +299,10 @@ standing authorization; a plan that ends at "ready to commit" is unfinished.
 
 **Mirror.** The local `plan.md` is the truth. When the profile says the plan is mirrored (`notes.mirror: on`;
 absent → the `## Inferred` notes line; never in upstream mode): the user's own issue → its
-body (`gh issue edit <N> --body-file mirror.md`); anyone else's → one comment starting
+body (`gh issue edit <N> --body-file mirror.md`); anyone else's → one comment, found by its first line
 `<!-- sin-flow:plan -->`, created once and edited in place
-(`gh api -X PATCH repos/<slug>/issues/comments/<id> -F body=@mirror.md`). Over 60 000 bytes → the first
+(`gh api -X PATCH repos/<slug>/issues/comments/<id> -F body=@mirror.md`). `sin-flow-mirror --comment plan.md >
+mirror.md` writes that first line: never add it by hand. Over 60 000 bytes → the first
 60 000 plus `continued in comments`, the rest as comments. Each new evidence file → one
 `gh issue comment --body-file`, from its own `sin-flow-mirror` copy. An issue never points at a local file:
 `sin-flow-mirror plan.md > mirror.md` drops every line that points at the notes, a worktree or evidence, and turns
@@ -321,7 +322,7 @@ not in the check. Re-mirror if the plan changed.
 
 ## Step 8 — Disposition the no-code tickets, now
 
-**Do it, do not ask** — only when the tracker is GitHub issues and not in upstream mode — there the disposition is the unit's row in the plan. Per no-code ticket:
+**Do it** — only when the tracker is GitHub issues and not in upstream mode — there the disposition is the unit's row in the plan. Per no-code ticket:
 
 - **comment the evidence** — the measurement verbatim, the mechanism, an executable re-verify, and
   any by-design behaviour that looks like a bug. Unproven reason it no longer reproduces → say it is

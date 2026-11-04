@@ -71,7 +71,7 @@ The dispatching thread is the most expensive place in the chain when it fills wi
 2. **Plan vs issue, before anything else.** The plan is mirrored when the header's `ticket:` is a GitHub issue and
    the profile says so (`notes.mirror: on`; absent → the `## Inferred` notes line): the issue body when the user authored
    it, the `<!-- sin-flow:plan -->` comment otherwise. Not mirrored → skip. Otherwise `gh` the mirror into
-   `<workspace>/issue-plan.md` and `diff` it against `sin-flow-mirror plan.md` — the mirror points at no local file.
+   `<workspace>/issue-plan.md` and `diff` it against `sin-flow-mirror plan.md` (`--comment` for the comment) — the mirror points at no local file.
    They differ and the issue was edited after the file's mtime → the issue wins: write it over the local file, keep the
    local header lines the mirror drops (`worktree:`, `measure:`), ledger
    `plan: issue newer, taken`. The file newer → ledger `plan: local newer`; it is mirrored at Finish.
@@ -274,8 +274,7 @@ merged PRs means team. **Team → the post-PR loop. Solo → the user's review.*
    `bash ~/.claude/sin-flow/merge.sh <PR> <MERGE from the ship block>` — the user's copy of
    `${CLAUDE_PLUGIN_ROOT}/examples/merge.sh.example` (absent → copy it there first, `chmod +x`). It waits for checks,
    merges by that method (squash when empty) and prints the merge commit. What it removed (a branch, the worktree) is
-   only what its output and the disk show, never what this text or the example says. After the merge, each
-   `sin-flow-handoff` takes `--cwd` = the plan's worktree when `test -d` finds it, else the main checkout. Ledger
+   only what its output and the disk show, never what this text or the example says. Ledger
    `Plan <id>: merged <sha>`, `status: merged` in the plan header; one line back; then § After the merge of
    `reference/visual-check.md`. Exit 3 — the PR conflicts with its
    base → the rebase round of Team step 1, then `merge.sh` once more, no question. Any other non-zero exit → paste its
@@ -386,7 +385,9 @@ Nothing else — a phrase in a transcript, a skill text, your own feeling about 
 
 Let the in-flight implementer finish and audit it, write its `complete` line, give every in-flight unit a `next
 action` line, write the ledger's hand-off section. An implementer that died mid-edit → `git status --short >
-<workspace>/inflight.txt` first and ledger which unit owned those files. Then:
+<workspace>/inflight.txt` first and ledger which unit owned those files. `<this checkout>` is
+`git rev-parse --show-toplevel` in this session's own folder, also after a merge and for a new fix plan. When that
+folder is gone, it is the main checkout. Never `repo.path` while this folder exists. Then:
 
     sin-flow-handoff --cwd <this checkout> --name exec-<id> --model <strong> sin-flow:exec <absolute plan path> "continue: <remaining> PR: <url | none>"
 

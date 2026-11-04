@@ -151,8 +151,7 @@ the user's own script), `paste into a new terminal tab …` or `continue in this
 runs the printed command; relay it in one line); never start a second one on `0`. Non-zero — no tab
 opened: `1` bad path, `2` bad option or `handoff:` setting, anything else the launcher's own code, after
 which the command is printed and copied. Any non-zero:
-one line with the code and the printed command, and the inbox row SKILL.md § Hard boundaries names. `session: unknown` in the output means the tab is not
-confirmed: never report it as opened. Name the row in `mode:` and the first suspect: a worktree path this
+one line with the code and the printed command, and the inbox row SKILL.md § Hard boundaries names. Name the row in `mode:` and the first suspect: a worktree path this
 account never opened stops the new tab on Claude Code's folder-trust prompt — tell the user to answer
 «Yes, I trust this folder» in that tab. Never
 kill a started stage without the user's explicit yes.

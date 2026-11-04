@@ -122,7 +122,7 @@ rm -f /tmp/flow-l1-$$.hashes
    target in a `Makefile`, an executable `bin/test*`. Nothing found → `STATUS: blocked`.
 3. Write the resolved list to `<work_dir>/gate-<label>.commands`, one entry per line, `gates.prepare` first when
    set. Copy the caller's `commands` text as it came. Then run `sin-flow-gate run <log> <that file>`. The script splits
-   the entries (backticked items, `;`, lines), runs each with `bash -c`, writes `=== <command> ===` and
+   the entries at line ends and at backticked items. A `;` stays inside its command. It runs each with `bash -c`, writes `=== <command> ===` and
    `=== exit <n> · tests <count | none> ===` per entry, stops at the first red, and writes `<log>.tail`. A test runner
    that ran 0 tests is red. Its one line is the result: `green`, or `red: …` → `STATUS: red` with that line in a
    `NOTE`. Never `git checkout` or `git switch` in this mode. Before the script and after it, `git branch
@@ -152,8 +152,10 @@ rm -f /tmp/flow-l1-$$.hashes
    path before the commit. Without `FILES` → the files the paragraph
    describes; unrelated repo tooling (`.claude/`, `CLAUDE.md`) goes in a separate second commit.
    L1 guard on both passes.
-5. `git commit` with the convention subject and the paragraph as the body; upstream mode: the caller's `trailer`,
-   when given, as the last line.
+5. `git commit -F <work_dir>/commit-msg.txt` with the convention subject and the paragraph as the body; upstream mode:
+   the caller's `trailer`, when given, as the last line. Write that file first with a quoted heredoc
+   (`cat > <file> <<'EOF'`), and give the `jq` check its path (`jq … < <file>`). No command reads stdin from
+   you: never `$(cat)`, never `-F -`.
 6. Hook failure. `gates.legacy_lint_bypass: true`, `gates.lint_fix` set and a lint block → run each
    `gates.lint_fix` entry in order on the touched files until the hook passes, re-run their specs; offences
    that survive → run the same linter on `git show HEAD:<file>`; the same set survives → commit with `--no-verify` and record the offences
@@ -186,7 +188,9 @@ a new commit on top — this is the review-fix path.
    `--milestone '<milestone>'` when `tracker.board` is set and the `Ref #<N>` issue has one
    (`gh issue view <N> -R <repo.slug> --json milestone`);
    `--reviewer '<review.request>'` when the profile sets `review.request`;
-   title = the convention subject. `--assignee` fails → `gh pr edit <url> --add-assignee @me`; `--reviewer` fails →
+   title = the convention subject. Then run `git log --format=%s origin/<base>..HEAD | grep -oE '\[[A-Z]+-[0-9]+\]' |
+   sort -u -t- -k2n | tr -d '\n'`. When it prints more than one id, the title starts with that text. The caller's
+   text follows without its own `[<ID>]`. `--assignee` fails → `gh pr edit <url> --add-assignee @me`; `--reviewer` fails →
    `gh pr edit <url> --add-reviewer '<review.request>'`, and a failure there is a `NOTE`, never a block.
 6. Link check, when the profile sets `pr.relink_after_bot: on` and the body has `Ref #<N>`: after 60 s, `gh pr view <url> --json body,closingIssuesReferences`.
    The body now has a `Closes #<N>` line that a bot added and the list is empty → save the same body once more

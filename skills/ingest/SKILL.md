@@ -115,6 +115,9 @@ typed. Name the last message you read, with its date, before the user asks "did 
 all the messages?". A screenshot or quote: name what it shows — page, record, date — before touching a file.
 Rollbar: the item title is a template; the occurrence is the fact, and its version matters (§ 5,
 release gap).
+No tool of the MCP server that the profile names for a source (ToolSearch on the server name finds none): MCP servers
+belong to one config dir, so this account does not have that server. Say so in one line, with the server name and
+`$CLAUDE_CONFIG_DIR`, before any other route to the source.
 
 **Then the repo's own reference for the area, never whole files.** The domain index or architecture
 docs the repo's `CLAUDE.md` names, the backlog `## Tracker` names, and in upstream mode also the files of `reference/upstream.md` § Rules to read — grep for the area's terms, read
@@ -128,6 +131,12 @@ Check memory for anything the user has rejected in this repo.
 the condition, the query, the job, the component — at `file:line`. When the profile lists
 `consumers`, open the consumer's checkout and read how it calls this repo and what it does with the
 response: the consumer side often decides whether the bug is ours at all.
+
+**Read code at a fetched ref, never at the working tree.** The shared checkout stays on its branch (§ Hard
+boundaries), so its files can be weeks old. Run `git fetch origin`, then read with `git show origin/<branch>:<path>`
+and `git grep <pattern> origin/<branch>`. `<branch>` is the branch that runs where the report comes from, as the
+repo's `CLAUDE.md` names it. None named: `repo.base`. Read a consumer checkout the same way. Each analyst brief
+names that ref. A claim read at another ref is not carried forward.
 
 More than two files → fan out `sin-flow:read-only-analyst` agents (`<mid>`), one narrow question each, all in
 one message, `file:line` in a reply of ≤ 40 lines; relay only its conclusion, never paste the report. An agent's report is a

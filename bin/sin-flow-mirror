@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-[ $# -eq 1 ] && [ -f "$1" ] || { echo "usage: sin-flow-mirror <file>" >&2; exit 2; }
+comment=
+[ "${1:-}" = --comment ] && { comment=1; shift; }
+[ $# -eq 1 ] && [ -f "$1" ] || { echo "usage: sin-flow-mirror [--comment] <file>" >&2; exit 2; }
+[ -z "$comment" ] || echo '<!-- sin-flow:plan -->'
 sed -E \
   -e '/^(worktree|measure):/d' \
   -e '\|(^\|[^A-Za-z0-9_:/.-])(~\|/Users/[^/[:space:]]+)/[^[:space:]`)"]*(sin-flow/work/\|/worktrees/\|/evidence/)|d' \
