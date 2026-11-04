@@ -116,5 +116,4 @@ One reader per learning run: its digest, its ledger entry, its session dump.
 3. Skill size — the header's size and delta per stage.
 4. User turns about learning itself — verbatim with HH:MM: corrections, "not that", "simpler", a proposal the
    user asked to change.
-5. Final-message check-in — the user's answer, and whether it became a proposal.
-6. Inbox — rows the run consumed, rows it left open, its `learning` row.
+5. Inbox — rows the run consumed, rows it left open, its `learning` row.

@@ -244,8 +244,9 @@ for 8 tickets. and then for 3."*
 - Rank batches by how much 🟢 unstarted work each holds; **lead with the recommendation**, one line.
 - Name the **clusters inside a batch that share a file** — those must travel in one branch.
 - Flag any ticket in the recommended batch that is **not code in the profile's repo**.
-- Deferred tickets, the `Claimed` group and the tickets of a milestone in `tracker.skip_milestones` are
-  excluded from the proposal.
+- Deferred tickets, the tickets in the digest's `HELD BY OPEN PR` slot, the `Claimed` group and the tickets
+  of a milestone in `tracker.skip_milestones` are excluded from the proposal. Name each held ticket with its PR
+  and author in one line.
 
 Then **stop.** Do not assign, do not move statuses, do not write a plan, do not launch anything,
 do not ask whether to proceed.

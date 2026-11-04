@@ -18,7 +18,7 @@ split_commands() {
     if [[ $line == *'`'* ]]; then
       grep -oE '`[^`]+`' <<<"$line" | sed -E 's/^`//; s/`$//'
     else
-      tr ';' '\n' <<<"$line"
+      printf '%s\n' "$line"
     fi
   done <"$1" | sed -E 's/^[[:space:]]*(-[[:space:]]+)?//; s/[[:space:]]+$//' | sed -E "s/^\"(.*)\"$/\1/; s/^'(.*)'$/\1/" | grep -v '^$'
 }
