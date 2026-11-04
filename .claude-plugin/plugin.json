@@ -120,8 +120,8 @@
     },
     "work_remote": {
       "type": "string",
-      "title": "Work notes remote",
-      "description": "A git remote for ~/.claude/sin-flow (work notes and profiles). Empty: local only."
+      "title": "Private repo for a copy of plans and evidence",
+      "description": "The URL of your private git repository. Setup adds it as origin of ~/.claude/sin-flow, and the flow pushes your plans, evidence and profiles there once a day. Empty: this computer only."
     },
     "opensource_dir": {
       "type": "string",
