@@ -7,7 +7,7 @@ description: 'One idempotent command that installs the flow on this machine, onb
 
 One command, four modes, each idempotent: a second run asks nothing and changes nothing when everything is in place.
 
-Chat with the user in the `chat_language` option (`sin-flow-profile user chat_language`), or in the language the user writes in when it is absent. Fixed phrases defined here (`all good`, the questions, the fixes) are rendered in that language. Every file you write is English.
+Chat with the user in the `chat_language` option (`sin-flow-profile user chat_language`), or in the language the user writes in when it is absent. Fixed phrases defined here (`all good`, the questions, the fixes) are written in ASD-STE100 English and rendered in that language. Every file you write is English. Tell the user what a setting does, never its option key.
 
 ## Hard rules
 
@@ -31,15 +31,60 @@ Chat with the user in the `chat_language` option (`sin-flow-profile user chat_la
 ## Install (first run on a machine — `~/.claude/sin-flow` missing)
 
 1. `mkdir -p ~/.claude/sin-flow/{profiles,work,reviews}`; `.gitignore` = `/*`, `!/.gitignore`, `!/work/`, `!/profiles/`;
-   `git init`. `work/` and `profiles/` are one local repo; a remote is added only when `work_remote` is set — never
-   created here, and nothing is pushed by setup or by the Stop hook.
+   `git init`. `work/` and `profiles/` are one local repo. Setup never creates a remote repository. When `work_remote`
+   is set, setup adds it as `origin`, and the Stop hook `work-commit.sh` pushes to `origin` once a day.
 2. `command -v gh git jq bash`, `gh auth status`. A miss is a row with its fix (`brew install jq`, `gh auth login`).
-3. Show the preferences with defaults — `chat_language`, `merge: squash`, `after_review: new-commit`,
-   `branch_prefix: ""`, `handoff: auto`, `learning_dir: ~/.claude/sin-flow/learning`, `learning_runs: 0`,
-   `learning_cwd:` (empty → `learning_dir`), `work_remote: ""`,
-   `models_strong: opus`, `models_mid: sonnet`, `models_cheap: haiku`,
-   `reviews_dir: ~/.claude/sin-flow/reviews` — ask once "keep the defaults?" — a user whose account has no Opus sets
-   `models_strong: sonnet`. Then ask `context_guard` once, as its own question: "a plan, exec, ingest, sync, review or
+3. Run `sin-flow-handoff --detect` first. Then show all settings in one message, with the current values, in this shape:
+
+   ```
+   These are your settings. Each one has a default value.
+
+   Chat
+     1. Chat language: the language that you write in.
+     2. Next stage (hand-off): <item 2 text>
+
+   Pull requests
+     3. Merge method for your PRs: squash, one commit.
+     4. Review fixes: a new commit on top of the PR.
+     5. Branch name: <type>/<id>/<slug>, with no prefix.
+
+   Models
+     6. Plans, code changes and the last review: opus.
+     7. Agents that read code, write code and run tests: sonnet.
+     8. Work on the board: haiku.
+
+   Your notes
+     9.  Copy of your plans and evidence: on this computer only.
+         The next question is about a copy on GitHub.
+     10. Review files: ~/.claude/sin-flow/reviews
+
+   Learning loop
+     A learning session reads your earlier flow runs. It finds the
+     problems and proposes changes that make your flow better. Each
+     change needs your approval.
+     11. Learning notes: ~/.claude/sin-flow/learning
+     12. Automatic start: off. Give a number, for example 10, to start
+         a session after 10 exec runs.
+     13. Learning session starts in: the learning notes folder.
+
+   Keep these values? To change an item, give its number.
+   ```
+
+   Items and options: 1 `chat_language`, 2 `handoff`, 3 `merge`, 4 `after_review`, 5 `branch_prefix`,
+   6 `models_strong`, 7 `models_mid`, 8 `models_cheap`, 9 `work_remote`, 10 `reviews_dir`, 11 `learning_dir`,
+   12 `learning_runs`, 13 `learning_cwd`. Item 2 by value: a terminal from `--detect` or set earlier → "starts in a new
+   <Terminal> tab."; `none` from `--detect` → "the flow did not find your terminal." and on the next line "It shows the
+   command, and then you start the next stage."; `print` → that second line only; `same-session` → "continues in
+   this session."; a script path → "your script <path> starts it.". Item 9 with a value → "Copy of your plans and
+   evidence: <work_remote>." Item 12 with a number N → "Automatic start: after N exec runs that are not reviewed."
+   A yes keeps the values. Numbers → ask about those items only, one per turn. A user whose account has no Opus sets
+   `models_strong: sonnet`.
+
+   When `work_remote` is empty, ask as its own question: "Your plans and evidence are on this computer only. Do you
+   want a copy in a private GitHub repository? Give the repository URL, or write no." A URL → `work_remote: <url>`, then
+   `git -C ~/.claude/sin-flow remote add origin <url>` (`remote set-url` when `origin` exists). No → keep it empty.
+
+   Then ask `context_guard` once, as its own question: "a plan, exec, ingest, sync, review or
    learning session hands its work to a fresh session when its context reaches N % of the 1M window — keep 40?" →
    set `context_guard: <N>`. Then ask `limit_guard` once, as its own question: "When a usage limit stops a session,
    Claude Code waits and continues the task after the reset. sin-flow can also warn a flow session before the stop, so it
@@ -65,13 +110,10 @@ Chat with the user in the `chat_language` option (`sin-flow-profile user chat_la
    Save the answers as plugin options: `ID` = the first enabled id that starts with `sin-flow@` in
    `claude plugin list --json`. Pipe one JSON object of string values to `claude plugin configure "$ID" --values-stdin`.
    Options left out keep their values. The user may also set them in `/plugin configure` or `/config`.
-4. Hand-off, decided once; when `sin-flow-profile user handoff` already prints a named terminal, keep it and skip this step.
-   `sin-flow-handoff --detect` prints a terminal name or `none — checked: …`.
-   A name → ask "should the flow open new <terminal> tabs for the next stage itself?" — yes → `handoff: auto`,
-   no → `handoff: print`.
-   `none` → quote the printed line as is (never add a reason of your own) and ask "which terminal do you run Claude Code
-   in: tmux, cmux, iTerm, Ghostty, Warp, Orca, or other?". A named one → `sin-flow-handoff --check <name>`: `ok` →
-   `handoff: <name>`; anything else → tell the user the printed reason in one line and set `handoff: print`.
+4. Terminal, only when `--detect` printed `none` and `handoff` is not a terminal name or a script path. Do not quote
+   the `none — checked: …` line. Ask "Which terminal do you use: tmux, cmux, iTerm, Ghostty, Warp, Orca, or other?".
+   A named one → `sin-flow-handoff --check <name>`: `ok` → `handoff: <name>`; anything else → tell the user the printed
+   reason in one line and set `handoff: print`.
    `other` → offer to copy `${CLAUDE_PLUGIN_ROOT}/examples/handoff.sh.example` to `~/.claude/sin-flow/handoff.sh`
    (`chmod +x`; it opens a new macOS Terminal window, the user may adapt it) — yes →
    `handoff: ~/.claude/sin-flow/handoff.sh`, no → `handoff: print`.
@@ -106,7 +148,7 @@ Claude Code keeps the values in `pluginConfigs["<id>"].options` of the user's `s
 | `codex_model_pr` | `""` | a Codex model family `<family>` (the newest listed `gpt-<version>-<family>` in `~/.codex/models_cache.json`), or a full model name → `/sin-flow:review` of a teammate's PR also runs Codex as a finder on that model; empty → pr mode runs no Codex |
 | `codex_watch` | `""` | `orca` → the Orca workspace card shows each step of that Codex run |
 | `workspace` | `""` | `orca` or `git`: where `sin-flow-worktree` makes every stage's worktree; empty → `git`. `orca` also turns on the Stop hook `orca-quiet.sh`: it marks the Orca worktree read while background tasks run |
-| `work_remote` | `""` | a git remote for `~/.claude/sin-flow` (work notes and profiles); empty → local only |
+| `work_remote` | `""` | a private git repository for a copy of `~/.claude/sin-flow` (plans, evidence and profiles). Setup adds it as `origin`, and the Stop hook pushes once a day; empty → this computer only |
 | `notes_globs` | `""` | space-separated globs of agent notes in every repo; the shipper never stages a match. The profile key `notes.paths` adds the globs of one repo |
 
 A repo profile may set `models.strong`, `models.mid`, `models.cheap` and `models.<stage>` (`setup`, `sync`, `ingest`,
@@ -185,7 +227,7 @@ one fix. `✗` = a stage cannot work; `!` = it can, marked "not measured".
 | layer | checks | fix offered |
 |---|---|---|
 | flow | `claude plugin list` shows `sin-flow` enabled; `sin-flow-profile`, `sin-flow-infer`, `sin-flow-handoff` on PATH; the Stop hook `work-commit.sh` in the plugin's `hooks/hooks.json`; `gh auth status`; `git`, `jq`, `bash` | `claude plugin install sin-flow@sin-flow`; `gh auth login`; `brew install …` |
-| user | `~/.claude/sin-flow/{profiles,work,reviews}` exist; `git -C ~/.claude/sin-flow status --porcelain` empty or committable; `~/.claude/sin-flow/user.md` has frontmatter keys → `!` "the preferences are not migrated to the plugin options", fix: `sin-flow-profile migrate-user`; `work_remote` set → `git ls-remote` reachable, unset → `!` "notes are local only"; every value is read with `sin-flow-profile user <key>`; `handoff` is `auto`, `same-session`, `print`, `tmux`, `cmux`, `iterm`, `ghostty`, `warp`, `orca` or an executable path; `claude plugin configure <id> --json` lists `context_guard` as unconfigured → `!` "the context guard uses the default 40", fix: Install step 3's `context_guard` question, then set `context_guard: <N>`; the same list holds `limit_guard` → `!` "the limit guard reads any status line that writes the state file", fix: Install step 3's `limit_guard` question; `limit_guard: on` and `statusLine.command` of `S` contains `sin-flow-statusline` → `cmp` the copy in `~/.claude/sin-flow/bin/` with `${CLAUDE_PLUGIN_ROOT}/bin/sin-flow-statusline`, a difference → `!` "the status line wrapper is out of date", fix: copy it again; same case and the wrapped command names a file that does not exist → `!` "the wrapped status line file does not exist: <path>", fix: restore `statusLine` from the newest `~/.claude/sin-flow/backups/*/settings.json`, or Install step 3's wrapper install again; `limit_guard: on`, no wrapper and no own writer (Install step 3 item 3) → `!` "the limit guard has no writer", fix: Install step 3's wrapper install; under a terminal name `sin-flow-handoff --check <name>` prints `ok` (else `!` with the printed reason, fix: install it or `handoff: print`); under `auto` `sin-flow-handoff --detect` names a terminal (`none` → `!` quoting the `--detect` line, "the hand-off prints the command", fix: Install step 4's terminal question and `--check`); `sin-flow-profile model strong`, `… mid`, `… cheap` each print an alias (exit 2 → `✗`, fix: the value it names); `tail -3 ~/.claude/sin-flow/stop-commit.log` has no `failed`; `tmutil destinationinfo` → warning only | `git init`; `chmod +x <handoff path>`; "set up Time Machine" |
+| user | `~/.claude/sin-flow/{profiles,work,reviews}` exist; `git -C ~/.claude/sin-flow status --porcelain` empty or committable; `~/.claude/sin-flow/user.md` has frontmatter keys → `!` "the preferences are not migrated to the plugin options", fix: `sin-flow-profile migrate-user`; `work_remote` set → `git ls-remote` reachable and `git -C ~/.claude/sin-flow remote get-url origin` prints it (else `!` "Git does not push to the copy on GitHub.", fix: `git remote add origin <work_remote>`), unset → `!` "Your plans and evidence are on this computer only.", fix: the copy question of Install step 3; every value is read with `sin-flow-profile user <key>`; `handoff` is `auto`, `same-session`, `print`, `tmux`, `cmux`, `iterm`, `ghostty`, `warp`, `orca` or an executable path; `claude plugin configure <id> --json` lists `context_guard` as unconfigured → `!` "the context guard uses the default 40", fix: Install step 3's `context_guard` question, then set `context_guard: <N>`; the same list holds `limit_guard` → `!` "the limit guard reads any status line that writes the state file", fix: Install step 3's `limit_guard` question; `limit_guard: on` and `statusLine.command` of `S` contains `sin-flow-statusline` → `cmp` the copy in `~/.claude/sin-flow/bin/` with `${CLAUDE_PLUGIN_ROOT}/bin/sin-flow-statusline`, a difference → `!` "the status line wrapper is out of date", fix: copy it again; same case and the wrapped command names a file that does not exist → `!` "the wrapped status line file does not exist: <path>", fix: restore `statusLine` from the newest `~/.claude/sin-flow/backups/*/settings.json`, or Install step 3's wrapper install again; `limit_guard: on`, no wrapper and no own writer (Install step 3 item 3) → `!` "the limit guard has no writer", fix: Install step 3's wrapper install; under a terminal name `sin-flow-handoff --check <name>` prints `ok` (else `!` with the printed reason, fix: install it or `handoff: print`); under `auto` `sin-flow-handoff --detect` names a terminal (`none` → `!` "The flow did not find your terminal. It shows the command, and then you start the next stage.", fix: Install step 4's terminal question and `--check`); `sin-flow-profile model strong`, `… mid`, `… cheap` each print an alias (exit 2 → `✗`, fix: the value it names); `tail -3 ~/.claude/sin-flow/stop-commit.log` has no `failed` | `git init`; `chmod +x <handoff path>` |
 | project | `sin-flow-profile validate` (required keys, paths, `sources.*` env files: present, `600`, git-ignored, variable present); `gh repo view <slug>`; `git ls-remote --heads origin <base>`; every gate command's binary on PATH; `sin-flow-infer` vs `## Inferred` — base or `gate files:` changed?; the gates named again from those files vs the stored `gates` lines — changed?; each source's preflight/verify | `sin-flow-infer --write <key>`, then name the gates; `chmod 600 <file>`; "add to .gitignore"; "open the tunnel: <tunnel>" |
 
 A source that is unreachable now (tunnel closed, VPN off, SSO expired) is a `!` row with its human step, never a failure.
