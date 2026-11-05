@@ -144,9 +144,10 @@ Claude Code keeps the values in `pluginConfigs["<id>"].options` of the user's `s
 | `models_cheap` | `haiku` | the board agent |
 | `reviews_dir` | `~/.claude/sin-flow/reviews` | where `/sin-flow:review` writes review files |
 | `opensource_dir` | `~/.claude/sin-flow/opensource` | where setup clones a repo that is someone else's, one folder for each repo |
-| `codex_review` | `off` | `on` → the exec review at the end of a unit also runs OpenAI Codex CLI as one more finder, then gives Codex one reply turn on the verdict (`skills/review/reference/pipeline.md` § 3). Needs `codex` installed and `codex login`; without them the review goes on and the last message says so |
+| `extra_reviewers` | `""` | a space-separated list; each entry is `codex` or a path to the user's own script (§ Your own scripts). The exec review at the end of a unit runs each one as one more finder, then gives each one reply turn on the verdict (`skills/review/reference/pipeline.md` § 3). `codex` runs OpenAI Codex CLI and needs `codex` installed and `codex login`. A reviewer that fails is skipped: the review goes on and the last message says so |
+| `codex_review` | `off` | the old name: `on` is `extra_reviewers: codex` while `extra_reviewers` is empty |
 | `codex_model_pr` | `""` | a Codex model family `<family>` (the newest listed `gpt-<version>-<family>` in `~/.codex/models_cache.json`), or a full model name → `/sin-flow:review` of a teammate's PR also runs Codex as a finder on that model; empty → pr mode runs no Codex |
-| `codex_watch` | `""` | `orca` → the Orca workspace card shows each step of that Codex run · a path to the user's own script (§ Your own scripts) |
+| `codex_watch` | `""` | `orca` → the Orca workspace card shows each step of each extra reviewer · a path to the user's own script (§ Your own scripts) |
 | `workspace` | `""` | `orca`, `git` or a path to the user's own script (§ Your own scripts): where `sin-flow-worktree` makes every stage's worktree; empty → `git`. `orca` also turns on the Stop hook `orca-quiet.sh`: it marks the Orca worktree read while background tasks run |
 | `work_remote` | `""` | a private git repository for a copy of `~/.claude/sin-flow` (plans, evidence and profiles). Setup adds it as `origin`, and the Stop hook pushes once a day; empty → this computer only |
 | `notes_globs` | `""` | space-separated globs of agent notes in every repo; the shipper never stages a match. The profile key `notes.paths` adds the globs of one repo |
@@ -165,7 +166,8 @@ built-in. The user keeps the script outside the plugin, for example in `~/.claud
 |---|---|---|---|
 | start the next stage | option `handoff` | `auto` and the terminal names | `examples/handoff.sh.example` |
 | make or remove a worktree | option `workspace` | `git`, `orca` | `examples/workspace.sh.example` |
-| show each Codex step | option `codex_watch` | `orca` | `examples/codex-watch.sh.example` |
+| show each step of an extra reviewer | option `codex_watch` | `orca` | `examples/codex-watch.sh.example` |
+| review the code once more | option `extra_reviewers`, one entry for each script | `codex` | `examples/reviewer.sh.example` |
 | merge the user's own PR | the file `~/.claude/sin-flow/merge.sh` | the copy of `examples/merge.sh.example` | the same file |
 | copy the plan to the ticket | profile key `notes.mirror` | `github` (`on` is `github`) | `examples/mirror.sh.example` |
 | read and write the board | profile key `tracker.adapter` | `tracker.board` (GitHub Projects) | `skills/sync/reference/adapter-contract.md` |
@@ -182,6 +184,22 @@ local branch. A non-zero exit stops `sin-flow-worktree` with that exit.
 
 The Codex watch script gets one argument: the text of the step, for example `codex: finding`. It runs in the review
 tree. The flow ignores its output and its exit code.
+
+Each reviewer script is one more finder in the exec review. Its name is the file name up to the first dot, and it
+must be unique and not a name of the flow (`codex`, `context`, `code`, `fit`, `all`, `verify`, `settle`, `findings`,
+`tree`). The script runs in the review tree and gets `<command> <pkg> <name>`. `<pkg>` is the review package: its
+`manifest.env` gives `TREE`, `SHA` and `BASE`, and its `diff.patch` holds the diff. Its stderr goes to
+`<pkg>/<name>/live.log`.
+
+- `<script> find <pkg> <name>`: print each finding on stdout in the finder format of `agents/reviewer.md` § Finder
+  file, without the `LENS:` line. Exit `0`. The flow writes `<pkg>/findings/<name>.md` and counts the `F` rows.
+- `<script> reply <pkg> <name>`: read `<pkg>/verdict.md`. Your rows have `<name>/F<k>` in their `from:` or claim.
+  For each row you contest, print `<row> | contest | <argument>` and `  evidence: <file:line quote>`. Exit `0`. Each
+  row you do not print is accepted.
+
+A non-zero exit, a run of more than 15 minutes or a name that is taken writes the reason to `failed.txt`. Then the
+review goes on without that reviewer, and the other reviewers still run. `/sin-flow:review` of a PR runs only `codex`.
+`codex-trial.tsv` records only `codex`.
 
 `sin-flow-profile <key> mirror` prints the mirror route of a repo: `off`, `github` or the expanded script path. An
 absent `notes.mirror` follows the `## Inferred` notes line. The mirror script gets one of three commands. `<ticket>`

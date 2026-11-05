@@ -94,10 +94,15 @@
       "description": "Where /sin-flow:review writes review files.",
       "default": "~/.claude/sin-flow/reviews"
     },
+    "extra_reviewers": {
+      "type": "string",
+      "title": "Extra reviewers",
+      "description": "Space-separated list. Each entry is codex (OpenAI Codex CLI, needs codex installed and codex login) or a path to your own reviewer script. The exec review runs each one as one more finder. Empty: none."
+    },
     "codex_review": {
       "type": "string",
-      "title": "Codex review",
-      "description": "on: the exec review also runs OpenAI Codex CLI as one more finder. Needs codex installed and codex login.",
+      "title": "Codex review (old name)",
+      "description": "Old name. on: the same as extra_reviewers codex, when extra_reviewers is empty.",
       "options": ["on", "off"],
       "default": "off"
     },
@@ -109,7 +114,7 @@
     "codex_watch": {
       "type": "string",
       "title": "Codex watch",
-      "description": "orca: the Orca workspace card shows each step of a Codex run. A path to your own script: it gets each step. Empty: off."
+      "description": "orca: the Orca workspace card shows each step of each extra reviewer. A path to your own script: it gets each step. Empty: off."
     },
     "workspace": {
       "type": "string",

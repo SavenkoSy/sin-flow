@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cmd=${1:-} pkg=${2:-} name=${3:-}
+[ -f "$pkg/manifest.env" ] && [ -n "$name" ] || { echo "usage: reviewer.sh find|reply <pkg> <name>" >&2; exit 2; }
+. "$pkg/manifest.env"
+case "$cmd" in
+  find) git -C "$TREE" diff --stat "$BASE" "$SHA" >&2 || true ;;
+  reply) grep -E "^  from: .*$name/F[0-9]+" "$pkg/verdict.md" >&2 || true ;;
+  *) echo "usage: reviewer.sh find|reply <pkg> <name>" >&2; exit 2 ;;
+esac

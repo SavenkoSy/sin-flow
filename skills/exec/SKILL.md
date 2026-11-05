@@ -181,8 +181,8 @@ finding for that unit's fix loop, then the canary again. Do not stop between wav
    Check `grep -c '^diff --git' <pkg>/diff.patch` against the union of all `FILES`, then
    `cat <workspace>/global-constraints.md >> <pkg>/rules.md`.
 4. **Run** `${CLAUDE_PLUGIN_ROOT}/skills/review/reference/pipeline.md` as written, every lens as `subagent_type: sin-flow:reviewer` with the lens table's
-   model. Each reviewer returns one line — ledger it, and each `codex.sh` line too: the `CODEX · found …` stats line
-   is the per-PR Codex record. Read `<pkg>/verdict.md` only; never open `findings/`. Render
+   model. Each reviewer returns one line — ledger it, and each `reviewers.sh` line too: the `<NAME> · found …` stats line
+   is the per-PR record of that extra reviewer. Read `<pkg>/verdict.md` only; never open `findings/`. Render
    the review file into the reviews folder (user preference) as `<key>-<branch>.md` (`-<sha8>` added when that
    file already holds the review of another commit).
 5. **Rows → one fix dispatch.** `reproduces` rows and `possible` rows of every severity go into ONE fix dispatch,
@@ -197,7 +197,7 @@ finding for that unit's fix loop, then the canary again. Do not stop between wav
    commit. **Review until clean** when the profile folder has `review-team.md`: steps 3–5 again on
    the fix commits only (`build-package.sh exec <SHA= of the previous round's manifest.env> …-<round> --depth quick`)
    — every line the fix wrote gets the lenses; code an earlier round passed is not reviewed again. These rounds
-   run without Codex: no `codex.sh` call, no Codex turns. Stop when verify keeps no row step 5 does not
+   run without extra reviewers: no `reviewers.sh` call, no extra reviewer turns. Stop when verify keeps no row step 5 does not
    settle; at most 3 rounds; rows still open → ledger `final-review open: K<n> — <claim>`. No team file → one scoped
    re-review after the fix, no second round.
 7. **Pre-ship reviewer** — when the profile sets `review.preship_agent`. After step 6, dispatch that `subagent_type`
@@ -346,7 +346,7 @@ product does now, not how the run went. Plain words, in the chat language, ≤ 1
   a unit that did not ship, a user's order that reversed the plan, an item left «not checked». Only when there is one.
 - The merge waits for another PR or a deploy (a plan `after:` row, a stacked base, a contract that another repo's PR
   ships) → one line: which one, and whether it merged. Only when there is one.
-- The ledger has `CODEX · skipped · <reason>` → one closing line: Codex did not review this PR, and the reason in
+- The ledger has `<NAME> · skipped · <reason>` → one closing line: that extra reviewer did not review this PR, and the reason in
   plain words. It is the one review fact the message carries.
 - Solo repo only, closing lines: each screenshot (up to 3; more → the folder) as its own absolute file path on its own
   line with what it shows in a few words; then how to try the change after the merge (the page or the command), when
