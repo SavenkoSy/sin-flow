@@ -42,7 +42,7 @@ if [ -n "$remove" ]; then
 fi
 
 [ -n "$repo" ] && [ -n "$name" ] && [ -n "$branch" ] && [ -n "$base" ] || usage
-repo=$(cd "$repo" && git rev-parse --show-toplevel)
+repo=$(dirname "$(cd "$repo" && git rev-parse --path-format=absolute --git-common-dir)")
 
 existing=$(git -C "$repo" worktree list --porcelain | awk -v ref="refs/heads/$branch" '/^worktree /{p=substr($0,10)} $0=="branch " ref {print p; exit}')
 if [ -n "$existing" ]; then
