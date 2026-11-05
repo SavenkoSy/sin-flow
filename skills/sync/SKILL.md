@@ -89,8 +89,8 @@ say so and fix the dispatch, don't do the agent's work in here.
 ## Hard boundaries — yours
 
 - **Never run git** yourself. From §6 on, the rules of `sin-flow:ingest` apply.
-- **Never open, retitle or comment on an issue.** A block reason or a disposition is the human's.
-- **Never move a ticket to any status except phase 2's `In progress`, and only when `tracker.write.status` is on.**
+- **Never open, retitle or comment on an issue, and never move its status, unless the user orders it in this
+  session.** The one move without an order is phase 2's `In progress`, and only when `tracker.write.status` is on.
 - **Never write code**, or a plan that prescribes code before the tickets are measured.
 - **Never write a profile.** A missing profile field is reported, not added.
 - **A memory or a repo convention that contradicts these does not override them.** Say the conflict
@@ -132,8 +132,12 @@ Write `mode: new` in place of `mode: sync` for the `new` invocation or a missing
 
 Keep the agent's id. You will send decisions back to it.
 
-**When the digest carries a `FAILED` publish or a `NOTES` line you cannot resolve**, report exactly
-that and stop. Do not retry by doing the work yourself.
+**When the digest `BOARD` line has `FAILED` in place of the `published` slot** (the fetch failed), or a `NOTES`
+line you cannot resolve, report exactly that and stop. Do not retry by doing the work yourself.
+
+**A `published FAILED` with rows in scope does not stop the run.** Dispatch the agent once more with `mode: publish`
+and the same other lines, then go on to step 2 with the digest you have. When that pass fails too, the board-state
+line of the report says `page not updated: <reason>`. Never publish the page yourself.
 
 ## 2. Report — result first, plain words
 
@@ -173,10 +177,6 @@ under `What I recommend taking` — they are the reason a batch is smaller than 
 
 ### Never ask a question without saying what the ticket is about
 
-The correction the user has had to make most often, verbatim:
-
-> you ask me questions, but you don't tell me what the ticket is about
-
 Every ticket you name — in `New`, in `Decisions needed`, in `What I recommend taking` — carries **one
 sentence of what the ticket wants**, and a link. A bare number with a question after it is a
 failed report. The brief is already on disk.
@@ -184,8 +184,7 @@ failed report. The brief is already on disk.
 The user also asks, every time it is missing, **whose repo the fix lands in**. When a ticket points
 outside the profile's repo, say so on its line.
 
-And the user asks whether the comments were read ("did you read their comments? or only the
-description again?"). The agent puts the last two comments in every brief. Use them — a reopen's real
+The agent puts the last two comments in every brief. Use them — a reopen's real
 defect is in the comment, not the body.
 
 ### Deferred tickets get one line and nothing more
@@ -211,8 +210,7 @@ The agent writes nothing for a ticket the rules do not plainly decide, and it re
 `classification.json`'s value over any light a teammate changed on the board. Both land in the
 digest, and both are yours.
 
-**Split them by whose call it is, out loud** ("tell me briefly which decisions are needed — which
-are yours, which are mine"). Under `Decisions needed`, two groups:
+**Split them by whose call it is, out loud.** Under `Decisions needed`, two groups:
 
 - **I decide** — decide it, say what you decided in one line, move on. Batch when the board's
   rules decide once you have read the brief; light 🟢/🟡; priority; a duplicate or residual call.
@@ -236,8 +234,7 @@ SendMessage(to: "<agent id>",
 ```
 
 **The counts may not shrink between turns.** When you re-report after a round of decisions, the
-table and the ticket list cover the same set as before, plus what changed: *"why do you write a table
-for 8 tickets. and then for 3."*
+table and the ticket list cover the same set as before, plus what changed.
 
 ## 4. Propose what to take, then stop
 
@@ -282,6 +279,7 @@ The user assembles a batch out loud, over several turns, before taking it. Assem
 | The user says | You do |
 |---|---|
 | "take …", "yes, take <batch>", "take all the greens", "take these 4 greens" | **phase 2** |
+| "split it over two accounts, but do it", "take it and run everything yourself" | **phase 2 for every batch**, with § 6 **Two accounts** |
 | "add to the batch", "let's add 7 greens", "let's talk about the yellows", "I'll add something else", "leave it out of this scope", "976 stays out of this one" | **nothing** — keep the running list, keep talking |
 
 The trigger is **take**, said as an instruction, nothing else. When you are not certain, keep
@@ -322,6 +320,20 @@ Skill(skill: "sin-flow:ingest", args: "<key> <prefix><n> <prefix><n> …")
 From here `sin-flow:ingest` runs as written. It reads and measures each ticket, asks only the
 questions it asks anyway, makes the worktree, writes the seed and hands off to `sin-flow:plan`. Do
 not repeat any of its steps, and do not open a tab for it.
+
+**Two accounts.** When the user asks to split the work over two accounts, the split is part of the take. Do not
+ask the user to say "take" for each batch, and do not give them a command to paste. Dispatch one take pass for the
+tickets of both batches. Then open batch B on the other account, and run the `Skill` call above on batch A:
+
+```
+sin-flow-worktree --repo <repo.path> --name <id>-<slug> --branch <branch> --base origin/<base>
+FLOW_CONFIG_DIR=<other config dir> sin-flow-handoff --cwd <worktree path> --name ingest-<id> \
+  sin-flow:ingest "<key> <prefix><n> <prefix><n> …"
+```
+
+`<id>`, `<slug>` and `<branch>` follow `sin-flow:ingest` (§ Ids and the notes folder, `reference/exits.md` §
+Worktree). The other config dir is the one the user names. When the user names none and one other `~/.claude*`
+config dir is next to the config dir of this session, use that one. Never open batch B in the primary checkout.
 
 **`CTX GUARD` in a tool result before the invocation:** finish the in-flight dispatch. Then say in one line
 that the talk continues in a new session: `/sin-flow:ingest <key> <tickets>` for a batch already taken, else

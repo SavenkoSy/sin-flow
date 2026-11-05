@@ -98,7 +98,9 @@ enable it; then the nearest enabled one is used. How each source is read: `refer
 
 Every run owns `~/.claude/sin-flow/work/<key>/<id>/` (`mkdir -p`). `<id>` is `gh-<N>` when issues are
 the tracker, `<N-M>` or `epic-<N>` when `tracker.id: N-M`, `<slug>` when `tracker.kind: local` and
-no id applies. With several units, each unit keeps its own folder, named by its own id. The first unit's id names only the spec and the run. Before the issue exists, `ingest-<slug>` stands in and is renamed once it does. The
+no id applies. When issues are the tracker, a unit that holds two or more issues is `batch-<M>`: `<M>` is one above the highest number in the
+names of `work/<key>/batch-*` (`batch-1` when there is none). Its notes folder, branch and worktree take that id from
+the start, and each ticket keeps its own id in `## Tickets`. With several units, each unit keeps its own folder, named by its own id. The first unit's id names only the spec and the run. Before the issue exists, `ingest-<slug>` stands in and is renamed to `gh-<N>` once it does. The
 folder holds `plan.md`, `evidence/`, `reply.md`, `investigation.md` — nothing of it is ever
 `git add`ed. Status of a unit without a remote tracker lives in `status:` at the head of its
 `plan.md`, nowhere else.
@@ -149,7 +151,7 @@ History while you are there: `gh pr list --repo <slug> --state merged --search "
 gap; both change the verdict.
 
 Who already works on each ticket source: `gh pr list --repo <slug> --state all --search "<n>"` and
-`git ls-remote --heads origin | grep -iE '(^|/)<id>([/-]|$)'`, with `<id>` from § Ids. A merged PR
+`git ls-remote --heads origin | grep -iE '(^|/)<id>([/-]|$)'`, with the ticket's own `<id>` from § Ids, never `batch-<M>`. A merged PR
 means the work is done, unless a newer comment reopens it. Another person's open PR or branch means
 the ticket is theirs. Say who, and drop it from the units.
 

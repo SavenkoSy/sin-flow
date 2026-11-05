@@ -28,7 +28,7 @@ it waits, and its tab in the same turn as the others. Never leave a unit of the 
   `ticket:` line. English. The body names the
   source, states the problem and the measured cause in a paragraph each, carries the evidence inline;
   it does not restate the ticket you read. Someone else's ticket is never closed or retitled, and a board
-  status moves only as § Hand-off says. Rename `ingest-<slug>` → `gh-<N>`.
+  status moves only as § Hand-off says.
 - **`tracker.kind: local`:** no remote unit. The id is `<N-M>` (next free in the owning epic — one
   above the highest id in the backlog and in `work/<key>/*/plan.md`, compared numerically per
   segment so `1-1` never reads as `1-10`) or `<slug>`; `status: ready-for-dev` in the plan header.
@@ -49,7 +49,7 @@ rev-parse --git-dir` equals `git rev-parse --git-common-dir`; otherwise the cwd 
 
 **A linked worktree is reused** only when the cwd's main checkout is `<repo>`. With the `workspace` option `orca` any linked worktree is the workspace the
 user made for this work, whatever its name; elsewhere only one whose basename is the unit's id (`gh-<N>`,
-`<N-M>`, `epic-<N>`). It must be clean (`git status --porcelain` prints nothing). Then `git fetch origin <base>`
+`batch-<M>`, `<N-M>`, `epic-<N>`). It must be clean (`git status --porcelain` prints nothing). Then `git fetch origin <base>`
 and, in the cwd:
 - `git rev-list --count origin/<base>..HEAD` is 0: `git merge --ff-only origin/<base>`, `git branch -m <branch>`.
 - the count is not 0, but the PR of the current branch is merged: `git switch -c <branch> origin/<base>`, and the old

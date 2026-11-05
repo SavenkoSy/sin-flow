@@ -71,7 +71,7 @@ The dispatching thread is the most expensive place in the chain when it fills wi
 2. **Plan vs issue, before anything else.** The plan is mirrored when the header's `ticket:` is a GitHub issue and
    the profile says so (`notes.mirror: on`; absent → the `## Inferred` notes line): the issue body when the user authored
    it, the `<!-- sin-flow:plan -->` comment otherwise. Not mirrored → skip. Otherwise `gh` the mirror into
-   `<workspace>/issue-plan.md` and `diff` it against `sin-flow-mirror plan.md` (`--comment` for the comment) — the mirror points at no local file.
+   `<workspace>/issue-plan.md` and `diff` it against `sin-flow-mirror plan.md` (`--comment` for the comment; over 60 000 bytes, part 1 of `sin-flow-mirror [--comment] plan.md <dir>`) — the mirror points at no local file.
    They differ and the issue was edited after the file's mtime → the issue wins: write it over the local file, keep the
    local header lines the mirror drops (`worktree:`, `measure:`), ledger
    `plan: issue newer, taken`. The file newer → ledger `plan: local newer`; it is mirrored at Finish.
@@ -161,7 +161,7 @@ one paragraph on what changed and why. No such key → nothing is committed unti
 
 **Canary** — when the profile sets `gates.spec_cmd`. When every implementer of the wave has returned, and before the
 next wave's dispatch, one `sin-flow:shipper` `gate` with `label: canary-<k>`, `commands: true` and `canary:` one line per
-unit (its id, then its `FILES`). The shipper reverts each unit's code, runs only its spec files, and restores the code.
+unit (its id, then its `FILES`).
 `CANARY reverted: green` → the unit's specs pass without its code: a finding for that unit's fix loop.
 
 Then `sin-flow-gate verdict <workspace> <u> <sha | uncommitted> <clean | skipped>` per unit, and append its line to
@@ -227,8 +227,8 @@ FAIL / SHOTS`; ledger it, and act on it as § After of that file says.
    The notification of the finished background Bash wakes the session. Then dispatch one `sin-flow:implementer` on `<mid>`, effort low, to run `git rebase <base>` in the worktree, as
    the rebase round does. Then run `ship`. If the remote base is still absent after the loop, do not ship. Write one line to
    the user. The plan stays `status: verified`.
-3. **Mirror**. Set `status: shipped` in the plan header. Mirror on (Setup 2) → write `sin-flow-mirror plan.md` back to
-   the issue copy it came from; over 60 000 bytes → the first 60 000 plus «continued in comments», the rest as comments. Append `Plan <id>: shipped <URL>` to the ledger.
+3. **Mirror**. Set `status: shipped` in the plan header. Mirror on (Setup 2) → write `sin-flow-mirror plan.md` (`--comment` for a comment) back to
+   the issue copy it came from; over 60 000 bytes → `sin-flow-mirror [--comment] plan.md <dir>`, each part back to its own copy. Append `Plan <id>: shipped <URL>` to the ledger.
 4. **The final message** (below), then the post-PR phase that fits the repo — same turn, no pause.
 
 **Never ask before pushing or opening the PR** — except § Upstream mode's first public write — and blocked units do not hold it: a plan where 8 of 9 units are

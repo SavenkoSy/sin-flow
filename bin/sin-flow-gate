@@ -50,6 +50,7 @@ count_tests() {
 cmd_run() {
   local log=$1 commands=$2 section status tests
   [ -f "$commands" ] || usage
+  rm -f "$log.tail"
   section=$(mktemp)
   { echo "commands:"; split_commands "$commands" | sed 's/^/  /'; } >"$log"
   while IFS= read -r cmd; do
@@ -73,6 +74,7 @@ cmd_run() {
     fi
   done < <(split_commands "$commands")
   rm -f "$section"
+  tail -40 "$log" >"$log.tail"
   echo "green"
 }
 
@@ -88,6 +90,7 @@ cmd_canary() {
     echo "CANARY none: no spec file or no code file in the unit" | tee "$log"
     return 0
   fi
+  base=$(git merge-base HEAD "origin/$base" 2>/dev/null || git rev-parse --verify -q "$base^{commit}") || { echo "CANARY blocked: base not found" | tee "$log"; return 3; }
   git diff "$base" -- "${code[@]}" >"$patch"
   while IFS= read -r f; do untracked+=("$f"); done < <(git ls-files --others --exclude-standard -- "${code[@]}")
   restore() {
@@ -99,6 +102,7 @@ cmd_canary() {
   for f in "${untracked[@]+"${untracked[@]}"}"; do mkdir -p "$aside/$(dirname "$f")"; mv "$f" "$aside/$f"; done
   { echo "=== reverted: $spec_cmd ${tests[*]} ==="; bash -c "$spec_cmd $(printf '%q ' "${tests[@]}")" 2>&1; } >"$log"
   status=$?
+  echo "CANARY base: ${base:0:12} · reverted: ${code[*]}" >>"$log"
   restore
   trap - INT TERM
   if ! git diff "$base" -- "${code[@]}" | cmp -s - "$patch"; then
