@@ -43,18 +43,21 @@ added to the prompt biases the lens and is paid for twice.
 1. `context` — pr mode only, alone; the finders wait for its return. Exec mode skips it: finders and
    `verify` find the entry points themselves.
 2. The finders for the depth — **one message, all in parallel**, one `sin-flow:reviewer` each. Unless
-   the caller's skill says this round runs without Codex, the same message also runs `bash $LENSES/../codex.sh find "$PKG"` as a background Bash call. The
-   script reads the `codex_review` option and prints `CODEX · off` when Codex is not on. In pr mode it runs only when
+   the caller's skill says this round runs without extra reviewers, the same message also runs
+   `bash $LENSES/../reviewers.sh find "$PKG"` as a background Bash call. The script reads the `extra_reviewers` option,
+   runs every listed reviewer in parallel and prints one line for each. It prints
+   `REVIEWERS · off` when the list is empty. A reviewer is `codex` or the user's own script (setup § Your own scripts),
+   and its name is the name of its findings file. In pr mode only `codex` runs, and only when
    `codex_model_pr` names a model family or a model, and runs on the newest model of that family.
-3. `verify` — alone, after every finder and the Codex run are back or recorded as failed. It is a fresh agent
+3. `verify` — alone, after every finder and the extra reviewers are back or recorded as failed. It is a fresh agent
    and sees only the package, never your summary.
-4. **Codex turns** — exec mode, only when `findings/codex.md` exists. Run each step once, in this order:
-   1. `bash $LENSES/../codex.sh reply "$PKG"` (foreground, up to 15 min). Codex reads `verdict.md` and contests
-      rows with quoted code.
-   2. `settle` — one `sin-flow:reviewer`, only when the reply line shows more than 0 contested. It gives the final
+4. **Extra reviewer turns** — exec mode, only when `find` printed a `LENS` line. Run each step once, in this order:
+   1. `bash $LENSES/../reviewers.sh reply "$PKG"` (foreground, up to 15 min). Each extra reviewer reads `verdict.md`
+      and contests rows with quoted code. One line for each reviewer.
+   2. `settle` — one `sin-flow:reviewer`, only when a reply line shows more than 0 contested. It gives the final
       status of each contested row and rewrites `verdict.md`. Nobody replies to it.
-   3. `bash $LENSES/../codex.sh stats "$PKG"` — prints the trial line and appends it to
-      `~/.claude/sin-flow/codex-trial.tsv`.
+   3. `bash $LENSES/../reviewers.sh stats "$PKG"` — prints one stats line for each reviewer. The `codex` line also
+      goes to `~/.claude/sin-flow/codex-trial.tsv`.
 
 ## 4. Check every return
 
@@ -69,16 +72,16 @@ finder   ^LENS <lens> · [0-9]+ findings · <PKG>/findings/<lens>\.md$
          first line: LENS: <lens> · <n> findings  (same <n>)
 verify   ^VERIFY · [0-9]+ in · [0-9]+ kept · [0-9]+ rejected · blocking (yes|no) · <PKG>/verdict\.md$
          first line: VERIFY · …  (same numbers)
-codex    ^LENS codex · [0-9]+ findings · <PKG>/findings/codex\.md$   (a finder line)
-         or ^CODEX · (off|skipped · .+)$ — no file, nothing to re-run
-reply    ^CODEX REPLY · ([0-9]+ contested · [0-9]+ accepted · <PKG>/codex/reply\.md|none · .+|skipped · .+)$
+extra    one line for each reviewer: ^LENS <name> · [0-9]+ findings · <PKG>/findings/<name>\.md$   (a finder line)
+         or ^<NAME> · (off|skipped) · .+$, or ^REVIEWERS · off$ — no file, nothing to re-run
+reply    ^<NAME> REPLY · ([0-9]+ contested · [0-9]+ accepted · <PKG>/<name>/reply\.md|none · .+|skipped · .+)$
 settle   ^SETTLE · [0-9]+ contested · [0-9]+ changed · <PKG>/verdict\.md$
-         first line of <PKG>/codex/settle.md: SETTLE · …  (same numbers)
-stats    ^CODEX · found [0-9]+ · kept [0-9]+ · unique [0-9]+ · contested [0-9]+ · changed [0-9]+$
+         first line of <PKG>/settle.md: SETTLE · …  (same numbers)
+stats    ^<NAME> · found [0-9]+ · kept [0-9]+ · unique [0-9]+ · contested [0-9]+ · changed [0-9]+$
 ```
 
-The Codex script is never re-run: `skipped` already wrote its reason to `failed.txt`, and the review goes on
-without Codex. A failed `settle` → re-dispatch once; still bad → `echo "lens settle failed: …" >> "$PKG/failed.txt"`,
+`reviewers.sh` is never re-run: `skipped` already wrote its reason to `failed.txt`, and the review goes on
+without that reviewer. One reviewer that fails never stops the others. A failed `settle` → re-dispatch once; still bad → `echo "lens settle failed: …" >> "$PKG/failed.txt"`,
 and `verdict.md` from `verify` stands.
 
 A malformed return, an `ERROR · …` return or a missing file → re-dispatch that lens once with the
@@ -129,11 +132,15 @@ mkdir -p "$(dirname "$OUT")"
   printf '\nPackage: %s\n' "$PKG"
 } > "$OUT"
 mkdir -p "${OUT%.md}.findings" && cp "$PKG"/findings/*.md "$V" "${OUT%.md}.findings/" 2>/dev/null
-[ -d "$PKG/codex" ] && cp "$PKG"/codex/*.md "$PKG/codex/live.log" "${OUT%.md}.findings/" 2>/dev/null
+[ -s "$PKG/settle.md" ] && cp "$PKG/settle.md" "${OUT%.md}.findings/"
+for f in "$PKG"/findings/*.md; do
+  n=$(basename "$f" .md)
+  [ -d "$PKG/$n" ] && mkdir -p "${OUT%.md}.findings/$n" && cp "$PKG/$n"/*.md "$PKG/$n/live.log" "${OUT%.md}.findings/$n/" 2>/dev/null
+done
 echo "$OUT"
 ```
 
-The finder outputs, and the Codex reply, settle log and live log, are copied beside the review file into `<review>.findings/`: the package lives in a
+The finder outputs, the settle log, and each extra reviewer's reply and live log, are copied beside the review file into `<review>.findings/`: the package lives in a
 scratchpad and disappears, and a later `/learning` needs them to tell «the lens never saw it» from «saw
 it and did not raise it».
 

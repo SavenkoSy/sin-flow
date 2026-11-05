@@ -12,10 +12,11 @@ usage: sin-flow-profile key [DIR]
        sin-flow-profile model strong|mid|cheap|<stage> [DIR]
        sin-flow-profile resolve [KEY]
        sin-flow-profile list
-       sin-flow-profile <key> dir|file|get FIELD|section HEADING
+       sin-flow-profile <key> dir|file|get FIELD|section HEADING|mirror
        sin-flow-profile validate [--all | KEY...]
        sin-flow-profile user KEY
        sin-flow-profile migrate-user
+       sin-flow-profile migrate-options
 EOF
   exit 2
 }
@@ -112,7 +113,10 @@ migrate_user() {
       if (v ~ /^".*"$/) v = substr(v, 2, length(v) - 2)
       gsub(/\./, "_", k); print k "\t" v }' \
     | jq -Rn --argjson keys "$(user_keys | jq -R . | jq -s .)" '
-      [inputs | split("\t") | {key: .[0], value: .[1]}]
+      [inputs | split("\t") | {key: .[0], value: .[1]}
+        | if .key == "codex_watch" then .key = "reviewer_watch"
+          elif .key == "codex_review" then (if .value == "on" or .value == "codex" then {key: "extra_reviewers", value: "codex"} else empty end)
+          else . end]
       | {set: (map(select(.key as $k | $keys | index($k))) | from_entries),
          skipped: (map(select(.key as $k | $keys | index($k) | not)) | map(.key))}')
   skipped=$(jq -r '.skipped | join(" ")' <<<"$json")
@@ -126,6 +130,28 @@ migrate_user() {
   printf 'migrated to %s: %s\n' "$id" "$(jq -r '.set | keys | join(" ")' <<<"$json")"
   [ -z "$skipped" ] || printf 'not migrated (not a user key): %s\n' "$skipped"
   printf 'backup: %s/user.md\n' "$backup"
+}
+
+migrate_options() {
+  local marker="$FLOW_HOME/backups/options-migrated" stored='{}' set id
+  [ ! -f "$marker" ] || return 0
+  [ ! -f "$SETTINGS" ] ||
+    stored=$(jq -c '[(.pluginConfigs // {}) | to_entries[] | select(.key | startswith("sin-flow@"))][0].value.options // {}' "$SETTINGS")
+  set=$(jq -c '{}
+    + (if (.codex_review == "on" or .codex_review == "codex") and ((.extra_reviewers // "") == "")
+       then {extra_reviewers: "codex"} else {} end)
+    + (if ((.codex_watch // "") != "") and ((.reviewer_watch // "") == "")
+       then {reviewer_watch: .codex_watch} else {} end)' <<<"$stored")
+  if [ "$set" != '{}' ]; then
+    id=$(claude plugin list --json | jq -r '[.[] | select((.id | startswith("sin-flow@")) and .enabled)][0].id // empty')
+    [ -n "$id" ] || { echo "no enabled sin-flow plugin in claude plugin list" >&2; return 1; }
+    claude plugin configure "$id" --values-stdin <<<"$set" >/dev/null
+  fi
+  mkdir -p "$(dirname "$marker")"
+  date +%F > "$marker"
+  jq -r --argjson old "$stored" '
+    (if has("extra_reviewers") then "codex_review \($old.codex_review) -> extra_reviewers codex" else empty end),
+    (if has("reviewer_watch") then "codex_watch \($old.codex_watch) -> reviewer_watch \(.reviewer_watch)" else empty end)' <<<"$set"
 }
 
 model_field() {
@@ -173,6 +199,20 @@ section_of() {
     inside { print }' "$1"
 }
 
+mirror_route() {
+  local v
+  v=$(get_field "$1" notes.mirror || true)
+  if [ -z "$v" ]; then
+    section_of "$PROFILES/$1/profile.md" Inferred 2>/dev/null | grep -q 'plan mirrored to the issue' && v=github || v=off
+  fi
+  case "$v" in
+    on|github) echo github ;;
+    off) echo off ;;
+    /*|"~"/*) v=$(expand_home "$v"); [ -f "$v" ] && [ -x "$v" ] || { echo "notes.mirror $v is not an executable file" >&2; return 2; }; echo "$v" ;;
+    *) echo "notes.mirror '$v' is not off, github or a path" >&2; return 2 ;;
+  esac
+}
+
 validate_key() {
   local key="$1" here="${2:-}" f="$PROFILES/$1/profile.md" errs=() notes=() slug doc src env_file main var
   if [ ! -f "$f" ]; then
@@ -206,6 +246,8 @@ validate_key() {
   v=$(field_in "$f" tracker.adapter) || true
   case "$v" in ""|/*|"~"/*) ;; *) errs+=("tracker.adapter $v is not an absolute or ~ path") ;; esac
   if [ -n "$v" ] && { [ ! -f "$(expand_home "$v")" ] || [ ! -x "$(expand_home "$v")" ]; }; then errs+=("tracker.adapter $v is not an executable file"); fi
+  v=$(field_in "$f" notes.mirror) || true
+  [ -z "$v" ] || v=$(mirror_route "$key" 2>&1) || errs+=("$v")
   for src in $(frontmatter "$f" | sed -n 's/^sources\.\([A-Za-z0-9_-]*\)\.env_file:.*/\1/p' | sort -u); do
     env_file=$(field_in "$f" "sources.$src.env_file")
     var=$(field_in "$f" "sources.$src.var") || true
@@ -292,6 +334,7 @@ case "$1" in
     jq -e --arg k "$2" '.userConfig | has($k)' "$PLUGIN_JSON" >/dev/null || { echo "not a user key: $2 (keys: $(user_keys | tr '\n' ' '))" >&2; exit 2; }
     user_field "$2" ;;
   migrate-user) migrate_user ;;
+  migrate-options) migrate_options ;;
   -h|--help) usage ;;
   *)
     key="$1"
@@ -301,6 +344,7 @@ case "$1" in
       file) printf '%s\n' "$PROFILES/$key/profile.md" ;;
       get) [ $# -ge 3 ] || usage; get_field "$key" "$3" ;;
       section) [ $# -ge 3 ] || usage; section_of "$PROFILES/$key/profile.md" "$3" ;;
+      mirror) mirror_route "$key" ;;
       *) usage ;;
     esac ;;
 esac

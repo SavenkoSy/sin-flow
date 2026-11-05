@@ -8,7 +8,7 @@ A Claude Code plugin: the ticket-to-PR flow as skills, agents, hooks and CLIs.
 - `skills/<stage>/`: one skill per stage (setup, sync, ingest, plan, exec, review, learning), invoked as `/sin-flow:<stage>`.
 - `agents/`: subagents, dispatched as `sin-flow:<agent>`.
 - `hooks/hooks.json` + `hooks/scripts/`: hooks, referenced through `${CLAUDE_PLUGIN_ROOT}`.
-- `bin/`: CLIs on the Bash PATH while the plugin is enabled (`sin-flow-profile`, `sin-flow-infer`, `sin-flow-handoff`, `sin-flow-worktree`, `sin-flow-rerequest`); `bin/handoff/`: terminal adapters.
+- `bin/`: CLIs on the Bash PATH while the plugin is enabled (`sin-flow-gate`, `sin-flow-handoff`, `sin-flow-infer`, `sin-flow-mirror`, `sin-flow-profile`, `sin-flow-rerequest`, `sin-flow-statusline`, `sin-flow-unanswered`, `sin-flow-watch`, `sin-flow-worktree`); `bin/handoff/`: terminal adapters.
 
 ## Rules
 

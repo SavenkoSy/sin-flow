@@ -94,28 +94,25 @@
       "description": "Where /sin-flow:review writes review files.",
       "default": "~/.claude/sin-flow/reviews"
     },
-    "codex_review": {
+    "extra_reviewers": {
       "type": "string",
-      "title": "Codex review",
-      "description": "on: the exec review also runs OpenAI Codex CLI as one more finder. Needs codex installed and codex login.",
-      "options": ["on", "off"],
-      "default": "off"
+      "title": "Extra reviewers",
+      "description": "Space-separated list. Each entry is codex (OpenAI Codex CLI, needs codex installed and codex login) or a path to your own reviewer script. The exec review runs each one as one more finder. Empty: none."
     },
     "codex_model_pr": {
       "type": "string",
       "title": "Codex model for PR review",
       "description": "A Codex model family or a full model name. /sin-flow:review of a teammate's PR then also runs Codex on it. Empty: no Codex in pr mode."
     },
-    "codex_watch": {
+    "reviewer_watch": {
       "type": "string",
-      "title": "Codex watch",
-      "description": "orca: the Orca workspace card shows each step of a Codex run. Empty: off."
+      "title": "Reviewer watch",
+      "description": "orca: the Orca workspace card shows each step of each extra reviewer. A path to your own script: it gets each step. Empty: off."
     },
     "workspace": {
       "type": "string",
       "title": "Workspace",
-      "description": "Where sin-flow-worktree makes the worktree of each stage. orca also turns on the Stop hook that marks the Orca worktree read.",
-      "options": ["git", "orca"],
+      "description": "Where sin-flow-worktree makes the worktree of each stage: git, orca, or a path to your own script. orca also turns on the Stop hook that marks the Orca worktree read.",
       "default": "git"
     },
     "work_remote": {

@@ -23,7 +23,7 @@ return one line.
 | `context` | `pr.md`, `rules.md`, `files.txt`, `diff.patch` |
 | finder (`code fit all`) | `context.md` (pr mode), `rules.md`, `files.txt`, the `diff.patch` hunks of the files you examine; `pr.md` when a checklist names it |
 | `verify` | every `findings/*.md`, `context.md`, `rules.md`, `files.txt`, `diff.patch`; `pr.md` when a finding rests on what the ticket asked |
-| `settle` | `verdict.md`, `codex/reply.md`, `findings/codex.md`, `rules.md`; `lenses/verify.md` for the rules it applies |
+| `settle` | `verdict.md`, every `<name>/reply.md`, the `findings/<name>.md` of each extra reviewer, `rules.md`; `lenses/verify.md` for the rules it applies |
 
 4. The code itself, under TREE only.
 
@@ -40,7 +40,7 @@ return one line.
 
 - Exactly one file: `context` → `<pkg>/context.md`; a finder → `<pkg>/findings/<lens>.md`;
   `verify` → `<pkg>/verdict.md`. The Write tool is for that path only. `settle` is the one exception: it
-  rewrites `<pkg>/verdict.md` and writes `<pkg>/codex/settle.md`.
+  rewrites `<pkg>/verdict.md` and writes `<pkg>/settle.md`.
 - Nothing under TREE, nothing in the repo, no other file in `<pkg>/`. You never post to GitHub,
   never comment, never dispatch an agent.
 

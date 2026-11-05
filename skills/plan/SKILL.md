@@ -297,8 +297,10 @@ taken. Exec never halts on either.
 **Finish line** — copy the section from the template verbatim, filling branch and base. It is
 standing authorization; a plan that ends at "ready to commit" is unfinished.
 
-**Mirror.** The local `plan.md` is the truth. When the profile says the plan is mirrored (`notes.mirror: on`;
-absent → the `## Inferred` notes line; never in upstream mode): the user's own issue → its
+**Mirror.** The local `plan.md` is the truth. `sin-flow-profile <key> mirror` prints the route; never mirror in upstream
+mode. `off` → no mirror. A script path and a `ticket:` other than `none` → `sin-flow-mirror plan.md > mirror.md`, then `<script> put <ticket> mirror.md`,
+and `<script> add <ticket> <file>` for each new evidence file from its own `sin-flow-mirror` copy, never split
+(`skills/setup/SKILL.md` § Your own scripts). `github`: the user's own issue → its
 body (`gh issue edit <N> --body-file mirror.md`); anyone else's → one comment, found by its first line
 `<!-- sin-flow:plan -->`, created once and edited in place
 (`gh api -X PATCH repos/<slug>/issues/comments/<id> -F body=@mirror.md`). `sin-flow-mirror --comment plan.md >
