@@ -25,7 +25,7 @@ Then, inside your repo:
 ```
 
 Ingest reads the source in full, checks the claim against the code, measures it read-only, and tells you
-what happened, the evidence, and what it would do. You answer its questions, one per turn.
+what happened, the evidence, and what it would do. It asks only what changes the plan, one question per turn. With nothing to ask, it goes straight on.
 
 Then it lets go. Plan opens in a new tab, reads every ticket, measures, writes the plan and never asks.
 Exec opens in the next tab, writes the code with subagents in waves, runs your CI gates and a review,
@@ -80,7 +80,6 @@ only the issue and the PR. The plan and the measurements stay with you.
 
 - **Start from a blank repo.** It reads your history, CI and tracker to decide how to work. No history, nothing to read.
 - **Work outside GitHub.** PRs and reviews go through `gh`. Issues and Projects boards do too, unless the plan copy and the board use your own script (`notes.mirror`, `tracker.adapter`, § Your data). Connected sources, for example a chat thread or an error tracker, are read only. A board write (light, assignee, status) occurs only if its profile switch is on. A new profile has all three off.
-- **Ask what it can find out.** Ingest asks only a question whose answer changes the plan. When no such question is open, it starts plan or exec at once. Plan and exec never ask.
 - **Post to a connected source.** It reads a link that a connected source can read (for example a chat thread); replies are drafts you post.
 - **Put its notes in your repo.** Seeds, plans and evidence stay in `~/.claude/sin-flow/`, never in a commit.
 - **Change itself on its own.** Learning proposes; nothing is edited before your yes.
