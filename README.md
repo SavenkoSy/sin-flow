@@ -79,7 +79,7 @@ only the issue and the PR. The plan and the measurements stay with you.
 ## What it won't do
 
 - **Start from a blank repo.** It reads your history, CI and tracker to decide how to work. No history, nothing to read.
-- **Work outside GitHub.** PRs and reviews go through `gh`. Issues and Projects boards do too, unless the plan copy and the board use your own script (`notes.mirror`, `tracker.adapter`, § Your data). Connected sources, for example a chat thread or an error tracker, are read only. A board write (light, assignee, status) occurs only if its profile switch is on. A new profile has all three off.
+- **Open PRs outside GitHub.** PRs and reviews go through `gh`.
 - **Post to a connected source.** It reads a link that a connected source can read (for example a chat thread); replies are drafts you post.
 - **Put its notes in your repo.** Seeds, plans and evidence stay in `~/.claude/sin-flow/`, never in a commit.
 - **Change itself on its own.** Learning proposes; nothing is edited before your yes.
@@ -105,16 +105,11 @@ undigested exec runs in the log, a SessionEnd hook opens `/sin-flow:learning all
 ## Your data
 
 Your preferences are the plugin options. Set them in `/plugin configure`, in `/config`, or with
-`claude plugin configure <id> --values-stdin`. `sin-flow-profile user <key>` prints the value the flow uses. An older
-`~/.claude/sin-flow/user.md` with frontmatter keys moves there at the next session start. The free notes stay in
-`user.md`, and a backup goes to `~/.claude/sin-flow/backups/<date>/`. `sin-flow-profile migrate-user` does the same by hand.
+`claude plugin configure <id> --values-stdin`. `sin-flow-profile user <key>` prints the value the flow uses.
 
 Everything else of yours lives in `~/.claude/sin-flow/`:
 
-- `profiles/<key>/`: one per repo (base branch, CI gates, merge methods, tracker)
-  - `tracker.adapter`: a local adapter for a tracker other than GitHub Projects. The contract is in `skills/sync/reference/adapter-contract.md`.
-  - `tracker.write.light`, `tracker.write.assign`, `tracker.write.status`: switches for board writes. Each is `off` when absent.
-  - `group_by`: `epic`, `milestone`, `priority`, `label` or `rules`. It sets how sync groups tickets.
+- `profiles/<key>/`: one per repo (base branch, CI gates, merge methods, tracker). Setup writes it.
 - `work/<key>/<id>/`: seeds, plans, evidence, ledgers
 - `reviews/`: PR reviews
 - `runs.tsv`: one row per finished session
@@ -126,7 +121,7 @@ plugin, and updates never touch this folder.
 ## Reference
 
 <details>
-<summary>First run, updates, hand-off, requirements</summary>
+<summary>First run, updates, hand-off, your own scripts, guards, models, extra reviewers, requirements</summary>
 
 ### First run
 
@@ -146,10 +141,10 @@ Ingest, sync, plan and exec start the next stage in a new terminal tab. The `han
 - `auto` (default): a tab through the adapter for the terminal you run in, or `print` when there is no adapter.
 - `same-session`: continue in the current session.
 - `tmux`, `cmux`, `iterm`, `ghostty`, `warp` or `orca`: that terminal's adapter, for when `auto` cannot tell where you run; setup asks and checks it with `sin-flow-handoff --check` (the command is on PATH; `tmux` and `cmux` also need a session inside them; the app is installed for `iterm`, `ghostty`, `warp`).
-
-In Claude Desktop the setting is ignored: ingest and sync start the next stage as a Desktop session, and every later stage continues in that session. Add `"mcp__ccd_session__start_session"` to `permissions.allow`, and keep the ingest conversation on screen so Desktop can ask you to trust the new worktree.
 - `print`: print the ready command and copy it to the clipboard.
 - a path to your own script.
+
+In Claude Desktop the setting is ignored: ingest and sync start the next stage as a Desktop session, and every later stage continues in that session. Add `"mcp__ccd_session__start_session"` to `permissions.allow`, and keep the ingest conversation on screen so Desktop can ask you to trust the new worktree.
 
 Any other work hands off the same way: `sin-flow-handoff --cwd <dir> --name <tab> --prompt "<text>"` opens a tab in `<dir>`, or in its repo root when `<dir>` is inside a git repo, that starts `claude` with that prompt.
 
@@ -159,20 +154,20 @@ the command instead. With `--probe` it prints what it would run and opens nothin
 `examples/handoff.sh.example` opens a macOS Terminal window; setup offers to copy it to
 `~/.claude/sin-flow/handoff.sh`.
 
-Shipped adapters, in `bin/handoff/`: `tmux`, `cmux`, `iterm`, `ghostty`, `warp`, `orca`. Adding a terminal is
-one script there, its name in `terminals`, one line in `detect()` and one in `--check` in `bin/sin-flow-handoff`. `sin-flow-handoff --detect` names the
-adapter it would use.
+### Your own scripts
 
-The same holds for each step that acts outside the flow: a path to your own script replaces the built-in. The
+A step that acts outside the flow can run your own script instead of the built-in. The
 options `workspace` (worktrees), `extra_reviewers` (more reviewers) and `reviewer_watch` (reviewer steps), and the profile keys `notes.mirror` (the plan copy on
 the ticket) and `tracker.adapter` (the board), take a path. `examples/` holds one script for each, and setup's
 § Your own scripts gives each contract.
+
+### Guards
 
 The `context_guard` option (default 40) is the percent of the 1M-token context window at which a stage hands off to a fresh session; setup never stops on it.
 
 The `limit_guard` option picks what a session does near a usage limit. `off` (the setup choice when you keep the built-in) leaves it to Claude Code, which waits and continues after the reset. `on` (the plugin default) adds the sin-flow LIMIT GUARD. Setup asks before it puts a small status line wrapper in your settings, and your own status line keeps working.
 
-#### Models
+### Models
 
 The flow uses three tiers. The plugin ships the defaults; set any of them as a plugin option:
 
@@ -188,24 +183,19 @@ repo, which helps when it runs under another Claude account. The profile also se
 hand-off opens for that stage. Plan on Fable, exec on Opus: `models.plan: fable` in the profile.
 `sin-flow-profile model strong` (or `model plan`) prints what the flow will use here.
 
-#### Extra reviewers
+### Extra reviewers
 
 The `extra_reviewers` option is a space-separated list of more reviewers for the exec review: `codex`, your
 own scripts, or both. Each one runs in parallel as one more finder, and one that fails never stops the others.
 
-With `codex` in the list, the exec review also runs [Codex CLI](https://github.com/openai/codex) as one
-more finder, read-only and without `AGENTS.md`. The verify pass judges its findings like every other finding. Then
-Codex gets one turn to contest the verdict with quoted code, and a `settle` pass gives the final status. Each run
-appends a row to `~/.claude/sin-flow/codex-trial.tsv`: Codex findings kept, and how many only Codex found. Without
-`codex` installed and logged in, the review goes on without it. `examples/reviewer.sh.example` shows the contract of a
+With `codex` in the list, the exec review also runs [Codex CLI](https://github.com/openai/codex), read-only, and the
+verify pass judges its findings like every other finding. Without `codex` installed and logged in, the review goes on
+without it. `examples/reviewer.sh.example` shows the contract of a
 script. `reviewer_watch: orca` shows each step of each extra reviewer on the Orca workspace card.
 
 ### What's inside
 
-Seven skills, six agents (`board`, `implementer`, `read-only-analyst`, `reviewer`, `review-poster`,
-`shipper`), hooks, and ten CLIs on your PATH while the plugin is enabled: `sin-flow-profile`,
-`sin-flow-infer`, `sin-flow-handoff`, `sin-flow-worktree`, `sin-flow-rerequest`, `sin-flow-gate`, `sin-flow-mirror`,
-`sin-flow-statusline`, `sin-flow-unanswered`, `sin-flow-watch`.
+Skills in `skills/`, agents in `agents/`, hooks in `hooks/`, and CLIs in `bin/`, on your PATH while the plugin is enabled.
 
 ### Requirements
 
