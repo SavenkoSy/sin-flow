@@ -123,13 +123,18 @@ rm -f /tmp/flow-l1-$$.hashes
 3. Write the resolved list to `<work_dir>/gate-<label>.commands`, one entry per line, `gates.prepare` first when
    set. Copy the caller's `commands` text as it came. Then run `sin-flow-gate run <log> <that file>`. The script splits
    the entries at line ends and at backticked items. A `;` stays inside its command. It runs each with `bash -c`, writes `=== <command> ===` and
-   `=== exit <n> · tests <count | none> ===` per entry, stops at the first red, and writes `<log>.tail`. A test runner
+   `=== exit <n> · tests <count | none> ===` per entry, stops at the first red, and writes `<log>.tail` when it ends, green
+   or red. A gate that can run longer than one Bash call runs with `run_in_background`. Wait for it only with
+   `until [ -f <log>.tail ]`, never with `pgrep -f`, because `pgrep -f` finds the wait loop itself. Before you return,
+   stop each shell that you started and that still runs. A test runner
    that ran 0 tests is red. Its one line is the result: `green`, or `red: …` → `STATUS: red` with that line in a
    `NOTE`. Never `git checkout` or `git switch` in this mode. Before the script and after it, `git branch
    --show-current` must print the branch you started on. Empty or different → `STATUS: blocked`, `NOTE: HEAD moved
    to <ref>`. Never paste output into the return.
 4. `canary` given and the profile sets `gates.spec_cmd` → after a green step 3, for each unit line run
-   `sin-flow-gate canary <work_dir> <unit> <base> '<gates.spec_cmd>' <files…>` and put its line in a `NOTE`.
+   `sin-flow-gate canary <work_dir> <unit> <base> '<gates.spec_cmd>' <files…>` and put its line in a `NOTE` as it
+   prints it. The script reverts against `git merge-base HEAD origin/<base>`, and its `CANARY base:` part names the
+   files that it reverted. Do not add your own account of the files.
    `CANARY blocked` → `STATUS: blocked`. No `gates.spec_cmd` → `NOTE: canary off`.
 
 `<push-remote>` = `fork` in upstream mode, else `origin`; upstream mode without a `fork` remote →

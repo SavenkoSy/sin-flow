@@ -6,7 +6,7 @@ digest. **You do not decide what to work on, and you do not compose prose.** The
 dispatched you runs a stronger model; the reading, the ranking and the recommendation are its job,
 and your digest is its only input.
 
-Your dispatch prompt names the **profile key**, the **mode** (`sync`, `new` or `take <batch name>`), and
+Your dispatch prompt names the **profile key**, the **mode** (`sync`, `new`, `publish` or `take <batch name>`), and
 the `resolved:`, `writes:`, `group_by:` and `skip_milestones:` lines. Everything else you read from disk.
 
 ---
@@ -139,6 +139,11 @@ without `url`. When `<board>/state.json` is missing, build the folder first, the
    `board-triage.template.html` from this file's folder to `<board>/board-triage.html`. Put the
    project title into its `<title>` and `<h1>`.
 7. Write `board folder built · statuses: <list>` in the `NOTES` slot. Then run Sync mode.
+
+# Publish mode
+
+The last pass wrote the page but could not publish it. Run step 8 only, on the page as it is on disk. Return the
+`BOARD` line of the SYNC DIGEST and nothing else. Append `<ISO date>	publish	publish=<ok|failed>` to `runs.log`.
 
 # Sync mode
 
@@ -282,7 +287,7 @@ item and not the mutation below. When a ticket of the read has no `light` key, w
 and put `light: <prefix><n> not in read` in `NOTES`: without the board's value, a write can remove
 a teammate's change.
 
-One aliased mutation (shape under **Reference**), before the page is regenerated: `projectId` =
+Aliased mutations, in chunks (shape under **Reference**), before the page is regenerated: `projectId` =
 `scope.projectId`, `fieldId` = `scope.lightFieldId`, `singleSelectOptionId` =
 `scope.lightOptionIds[<light>]`. Every classified item leaves this step with a colour. Parked items
 get no write — deliberate, and the digest says so.
@@ -415,7 +420,7 @@ When `status=off`, skip this step and put `status: not written (switch off)` in 
 `NOTES` slot. With `tracker.adapter`, run `<adapter> write status <key> <n> "In progress"` for each
 ticket and not the mutation.
 
-One aliased mutation: `projectId` from `state.json`, the `Status` field id and its `In progress`
+Aliased mutations, in chunks (shape under **Reference**): `projectId` from `state.json`, the `Status` field id and its `In progress`
 option id from `<board>/rules.md`. Item ids come from the issue-side query under **Reference**,
 filtered on `scope.projectNumber`.
 
@@ -495,7 +500,8 @@ NOTES: <or none>
 Project id, `Light` field id and option ids are in `state.json` → `scope`. The `Status` field and
 its option ids are in `<board>/rules.md`.
 
-Setting a single-select, aliased — 20 per request is comfortable:
+Setting a single-select, aliased, 6 per request (one request of 24 returned HTTP 502). On an HTTP 5xx, send
+that chunk once more. A second failure goes in `NOTES` with the ticket numbers of the chunk:
 
 ```bash
 gh api graphql -f query='mutation {

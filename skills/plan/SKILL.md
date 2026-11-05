@@ -302,8 +302,9 @@ absent → the `## Inferred` notes line; never in upstream mode): the user's own
 body (`gh issue edit <N> --body-file mirror.md`); anyone else's → one comment, found by its first line
 `<!-- sin-flow:plan -->`, created once and edited in place
 (`gh api -X PATCH repos/<slug>/issues/comments/<id> -F body=@mirror.md`). `sin-flow-mirror --comment plan.md >
-mirror.md` writes that first line: never add it by hand. Over 60 000 bytes → the first
-60 000 plus `continued in comments`, the rest as comments. Each new evidence file → one
+mirror.md` writes that first line: never add it by hand. Over 60 000 bytes → `sin-flow-mirror [--comment] plan.md
+<dir>` writes and prints `<dir>/mirror-<n>.md`: part 1 goes where `mirror.md` goes, each next part is one comment
+that starts `<!-- sin-flow:plan part <n> -->`, edited in place the same way. Never split by hand. Each new evidence file → one
 `gh issue comment --body-file`, from its own `sin-flow-mirror` copy. An issue never points at a local file:
 `sin-flow-mirror plan.md > mirror.md` drops every line that points at the notes, a worktree or evidence, and turns
 any other path into its file name; the local file keeps everything.
@@ -363,16 +364,14 @@ sin-flow-handoff --cwd <worktree> --name exec-<id> --model <strong> \
   sin-flow:exec <absolute plan path>
 ```
 
-Tell exec: work in that worktree; the plan's Finish line is standing authorization; plan, evidence
-and harness stay in `work/` — never committed. Relay the `opened:` or printed line.
+Relay the `opened:` or printed line.
 
 **Read the output and the exit code.** `opened: …` — exec runs in a new tab; never start a second one.
 `paste into a new terminal tab …` — no tab: relay the printed command in one line.
 `continue in this session: …` — the user chose one session: invoke `sin-flow:exec` with that path here.
 Non-zero — nothing started: `1` bad path, `2` bad option or `handoff:` setting, any other code is the
 launcher's own (the command is printed after it) → give the user the exact command in one line; never
-run `sin-flow:exec` in this session. Never diagnose a subprocess from an empty log: check `git status`, `git branch` and the child transcript first. A
-silent mechanism is never grounds for a blocking question.
+run `sin-flow:exec` in this session. Never diagnose a subprocess from an empty log: check `git status`, `git branch` and the child transcript first.
 
 **`CTX GUARD` in a tool result** hands this plan to a fresh `sin-flow:plan`: let the in-flight dispatch finish, put every measured number in `evidence/<unit>.md` with its query, run `sin-flow-handoff --cwd <worktree> --name plan-<id> --model <strong> sin-flow:plan <absolute plan path> "continue: from Step <n>"`, read its output as above and end the turn. Never hand a half-measured plan to `sin-flow:exec`.
 
