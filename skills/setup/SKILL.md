@@ -151,6 +151,9 @@ Claude Code keeps the values in `pluginConfigs["<id>"].options` of the user's `s
 | `work_remote` | `""` | a private git repository for a copy of `~/.claude/sin-flow` (plans, evidence and profiles). Setup adds it as `origin`, and the Stop hook pushes once a day; empty → this computer only |
 | `notes_globs` | `""` | space-separated globs of agent notes in every repo; the shipper never stages a match. The profile key `notes.paths` adds the globs of one repo |
 
+The SessionStart hook moves two old option names once (the marker `backups/options-migrated`), with `sin-flow-profile migrate-options`: `codex_review: on`
+becomes `extra_reviewers: codex`, and `codex_watch` becomes `reviewer_watch`. A new name that is already set stays.
+
 A repo profile may set `models.strong`, `models.mid`, `models.cheap` and `models.<stage>` (`setup`, `sync`, `ingest`,
 `plan`, `exec`, `review`, `learning`: the session a hand-off opens for that stage); it wins over the options for that repo. `sin-flow-profile model <tier|stage>`
 prints what a stage will use.

@@ -79,7 +79,7 @@ only the issue and the PR. The plan and the measurements stay with you.
 ## What it won't do
 
 - **Start from a blank repo.** It reads your history, CI and tracker to decide how to work. No history, nothing to read.
-- **Work outside GitHub.** Issues, Projects boards, PRs and reviews all go through `gh`. Connected sources, for example a chat thread or an error tracker, are read only. A board write (light, assignee, status) occurs only if its profile switch is on. A new profile has all three off.
+- **Work outside GitHub.** PRs and reviews go through `gh`. Issues and Projects boards do too, unless the plan copy and the board use your own script (`notes.mirror`, `tracker.adapter`, § Your data). Connected sources, for example a chat thread or an error tracker, are read only. A board write (light, assignee, status) occurs only if its profile switch is on. A new profile has all three off.
 - **Run without you at the start.** Ingest asks. Plan and exec don't.
 - **Post to a connected source.** It reads a link that a connected source can read (for example a chat thread); replies are drafts you post.
 - **Put its notes in your repo.** Seeds, plans and evidence stay in `~/.claude/sin-flow/`, never in a commit.
@@ -204,8 +204,9 @@ script. `reviewer_watch: orca` shows each step of each extra reviewer on the Orc
 ### What's inside
 
 Seven skills, six agents (`board`, `implementer`, `read-only-analyst`, `reviewer`, `review-poster`,
-`shipper`), hooks, and five CLIs on your PATH while the plugin is enabled: `sin-flow-profile`,
-`sin-flow-infer`, `sin-flow-handoff`, `sin-flow-worktree`, `sin-flow-rerequest`.
+`shipper`), hooks, and ten CLIs on your PATH while the plugin is enabled: `sin-flow-profile`,
+`sin-flow-infer`, `sin-flow-handoff`, `sin-flow-worktree`, `sin-flow-rerequest`, `sin-flow-gate`, `sin-flow-mirror`,
+`sin-flow-statusline`, `sin-flow-unanswered`, `sin-flow-watch`.
 
 ### Requirements
 
