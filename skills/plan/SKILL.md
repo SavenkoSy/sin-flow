@@ -298,7 +298,7 @@ taken. Exec never halts on either.
 standing authorization; a plan that ends at "ready to commit" is unfinished.
 
 **Mirror.** The local `plan.md` is the truth. `sin-flow-profile <key> mirror` prints the route; never mirror in upstream
-mode. `off` → no mirror. A script path → `sin-flow-mirror plan.md > mirror.md`, then `<script> put <ticket> mirror.md`,
+mode. `off` → no mirror. A script path and a `ticket:` other than `none` → `sin-flow-mirror plan.md > mirror.md`, then `<script> put <ticket> mirror.md`,
 and `<script> add <ticket> <file>` for each new evidence file from its own `sin-flow-mirror` copy, never split
 (`skills/setup/SKILL.md` § Your own scripts). `github`: the user's own issue → its
 body (`gh issue edit <N> --body-file mirror.md`); anyone else's → one comment, found by its first line

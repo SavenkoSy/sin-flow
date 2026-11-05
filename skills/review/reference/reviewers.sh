@@ -24,6 +24,7 @@ upper() { printf '%s' "$1" | tr '[:lower:]' '[:upper:]'; }
 entries() {
   local list items entry name problem seen=" "
   list=$(pref extra_reviewers)
+  [ "$list" != off ] || list=
   read -r -a items <<< "$list"
   for entry in ${items[@]+"${items[@]}"}; do
     case "$entry" in "~"/*) entry="$HOME/${entry#\~/}" ;; esac
@@ -69,7 +70,9 @@ status_line() {
   local watch
   watch=$(pref reviewer_watch)
   case "$watch" in
-    orca) orca_worktree_set --comment "$1" ;;
+    orca)
+      printf '%s\n' "$1" > "$D/watch"
+      orca_worktree_set --comment "$(cat "$PKG"/*/watch 2>/dev/null | paste -sd ';' -)" ;;
     /*|"~"/*) watch="${watch/#\~/$HOME}"; [ -x "$watch" ] && (cd "$TREE" && "$watch" "$1") >/dev/null 2>&1 || true ;;
   esac
 }
@@ -100,11 +103,11 @@ run_codex() {
   rm -f "$out"
   if [ -n "$resume" ]; then
     (cd "$TREE" && perl -e 'alarm shift; exec @ARGV' "$TIMEOUT_SECONDS" \
-      codex exec -s read-only -c project_doc_max_bytes=0 resume -c project_doc_max_bytes=0 \
+      codex exec --skip-git-repo-check -s read-only -c project_doc_max_bytes=0 resume -c project_doc_max_bytes=0 \
       --output-schema "$schema" -o "$out" "$resume" "$prompt" < /dev/null > /dev/null 2>> "$LOG") 2> /dev/null
   else
     (cd "$TREE" && perl -e 'alarm shift; exec @ARGV' "$TIMEOUT_SECONDS" \
-      codex exec -s read-only -c project_doc_max_bytes=0 ${MODEL:+-m "$MODEL"} -C "$TREE" \
+      codex exec --skip-git-repo-check -s read-only -c project_doc_max_bytes=0 ${MODEL:+-m "$MODEL"} -C "$TREE" \
       --output-schema "$schema" -o "$out" "$prompt" < /dev/null > /dev/null 2>> "$LOG") 2> /dev/null
   fi
   rc=$?
@@ -166,6 +169,8 @@ find_script() {
   status_line "$NAME: finding"
   log "=== $NAME find · $(date '+%H:%M:%S') · ${SHA:0:8} against ${BASE:0:8} ==="
   run_script find > "$D/find.body" || skip "$REASON" "$UPPER"
+  ! grep -qvE '^(F[0-9]+ [|] .+[|] |  (trigger|evidence|breaks): |DECLINED: |[[:space:]]*$)' "$D/find.body" ||
+    skip "output not in finder format: $(grep -vE '^(F[0-9]+ [|] .+[|] |  (trigger|evidence|breaks): |DECLINED: |[[:space:]]*$)' "$D/find.body" | head -1 | cut -c1-80)" "$UPPER"
   {
     printf 'LENS: %s · %s findings\n' "$NAME" "$(grep -cE '^F[0-9]+ [|] ' "$D/find.body")"
     cat "$D/find.body"
@@ -199,9 +204,8 @@ find_one() {
 reply_codex() {
   run_codex "$HERE/codex/reply.schema.json" "$D/reply.json" "$(cat "$HERE/codex/reply.md" "$PKG/verdict.md")" "$(cat "$D/session")" ||
     skip "$REASON" "CODEX REPLY"
-  local ids contested accepted
-  ids=$(grep -oE '^(K|R)[0-9]+' "$PKG/verdict.md" | paste -sd' ' -)
-  jq -r --arg ids " $ids " '.replies[]
+  local contested accepted
+  jq -r --arg ids " $IDS " '.replies[]
     | .row as $row
     | select(.stance == "contest" and ($ids | contains(" " + $row + " ")) and (.evidence | test(":[0-9]+")))
     | "\(.row) | contest | \(.argument | gsub("\\s+"; " "))", "  evidence: \(.evidence | gsub("\\s+"; " "))"' \
@@ -213,7 +217,12 @@ reply_codex() {
 }
 
 reply_script() {
-  run_script reply > "$D/reply.body" || skip "$REASON" "$UPPER REPLY"
+  run_script reply > "$D/reply.out" || skip "$REASON" "$UPPER REPLY"
+  awk -v ids=" $IDS " '
+    /^(K|R)[0-9]+ [|] contest [|] / { row = $0; id = $1; next }
+    row != "" && /^  evidence: .*:[0-9]+/ && index(ids, " " id " ") { print row; print }
+    { row = "" }' "$D/reply.out" > "$D/reply.body"
+  rm -f "$D/reply.out"
   local contested
   contested=$(grep -cE '^(K|R)[0-9]+ [|] contest' "$D/reply.body")
   { printf '%s REPLY · %s contested · %s accepted\n' "$UPPER" "$contested" "$((ROWS > contested ? ROWS - contested : 0))"
@@ -226,6 +235,7 @@ reply_one() {
   [ -s "$PKG/findings/$NAME.md" ] || exit 0
   [ "$NAME" != codex ] || [ -s "$D/session" ] || { echo "CODEX REPLY · none · no codex session"; exit 0; }
   [ -s "$PKG/verdict.md" ] || { echo "$UPPER REPLY · none · no verdict"; exit 0; }
+  IDS=$(grep -oE '^(K|R)[0-9]+' "$PKG/verdict.md" | paste -sd' ' -)
   ROWS=$(grep -cE "^K[0-9]+ [|] |^R[0-9]+ [|] [a-z-]+ [|] [^|]* [|] $NAME/" "$PKG/verdict.md")
   log "" "=== judge verdict ===" "$(grep -E '^(VERIFY|K[0-9]+|R[0-9]+|BLOCKING|  from:)' "$PKG/verdict.md")"
   if [ "$ROWS" -eq 0 ]; then

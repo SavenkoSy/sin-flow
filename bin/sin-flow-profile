@@ -113,7 +113,10 @@ migrate_user() {
       if (v ~ /^".*"$/) v = substr(v, 2, length(v) - 2)
       gsub(/\./, "_", k); print k "\t" v }' \
     | jq -Rn --argjson keys "$(user_keys | jq -R . | jq -s .)" '
-      [inputs | split("\t") | {key: .[0], value: .[1]}]
+      [inputs | split("\t") | {key: .[0], value: .[1]}
+        | if .key == "codex_watch" then .key = "reviewer_watch"
+          elif .key == "codex_review" then (if .value == "on" or .value == "codex" then {key: "extra_reviewers", value: "codex"} else empty end)
+          else . end]
       | {set: (map(select(.key as $k | $keys | index($k))) | from_entries),
          skipped: (map(select(.key as $k | $keys | index($k) | not)) | map(.key))}')
   skipped=$(jq -r '.skipped | join(" ")' <<<"$json")

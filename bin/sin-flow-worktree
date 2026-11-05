@@ -65,6 +65,7 @@ fi
 
 if [ "$mode" = custom ]; then
   path=$("$workspace" create "$repo" "$name" "$branch" "$base" | tail -1)
+  case "$path" in /*) ;; *) echo "$workspace create printed no absolute path: '$path'" >&2; exit 1 ;; esac
   [ "$(git -C "$path" branch --show-current 2>/dev/null)" = "$branch" ] || { echo "$workspace create made no worktree on $branch: '$path'" >&2; exit 1; }
   printf 'mode: custom\npath: %s\nstate: new\n' "$path"
   exit 0

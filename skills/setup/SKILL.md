@@ -161,7 +161,8 @@ prints what a stage will use.
 ### Your own scripts
 
 Each step that acts on a system outside the flow reads one key. The value is `off`, a built-in name, or an absolute
-or `~` path to an executable file of the user. A path replaces the built-in for that step. An unset key keeps the
+or `~` path to an executable file of the user. `workspace` has no `off`, because each stage needs a worktree. A path
+replaces the built-in for that step. An unset key keeps the
 built-in. The user keeps the script outside the plugin, for example in `~/.claude/sin-flow/`.
 
 | step | key | built-in | example |

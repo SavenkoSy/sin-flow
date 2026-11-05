@@ -147,6 +147,8 @@ cat > "$scratch/user/second.sh" <<'EOF'
 case "${FAKE:-}:$3" in
   fail:second) echo "boom" >&2; exit 3 ;;
   silent:*) exit 0 ;;
+  prose:*) echo "Looks fine to me."; exit 0 ;;
+  loose:*) [ "$1" = reply ] && { printf 'K1 | contest | Quoted.\n  evidence: app/a.rb:1 x\nK1 | contest | No quote.\n  evidence: trust me\nK9 | contest | Unknown.\n  evidence: app/b.rb:2 y\n'; exit 0; } ;;
 esac
 case "$1" in
   find) printf 'F1 | app/a.rb:12 | [paths] Own %s.\n  trigger: x\n  evidence: y\n  breaks: z\n' "$3" ;;
@@ -176,6 +178,32 @@ p=$(pkg silent)
 bash "$script" find "$p" > /dev/null
 printf 'VERIFY · 1 in · 1 kept · 0 rejected · blocking no\nK1 | med | reproduces | app/a.rb:12 | Own.\n  from: second/F1\nBLOCKING: no\n' > "$p/verdict.md"
 expect_eq "silent reply accepts" "SECOND REPLY · 0 contested · 1 accepted · $p/second/reply.md" "$(FAKE=silent bash "$script" reply "$p" | head -1)"
+
+p=$(pkg loose)
+bash "$script" find "$p" > /dev/null
+printf 'VERIFY · 1 in · 1 kept · 0 rejected · blocking no\nK1 | med | reproduces | app/a.rb:12 | Own.\n  from: second/F1\nBLOCKING: no\n' > "$p/verdict.md"
+expect_eq "script contests filtered" "SECOND REPLY · 1 contested · 0 accepted · $p/second/reply.md" "$(FAKE=loose bash "$script" reply "$p" | head -1)"
+expect_eq "script contest kept" "K1 | contest | Quoted." "$(sed -n 2p "$p/second/reply.md")"
+p=$(pkg prose)
+expect_eq "prose is skipped" "SECOND · skipped · output not in finder format: Looks fine to me." "$(FAKE=prose bash "$script" find "$p" | head -1)"
+expect_eq "prose recorded" "lens second skipped: output not in finder format: Looks fine to me." "$(head -1 "$p/failed.txt")"
+
+user extra_reviewers off
+expect_eq "off is empty" "REVIEWERS · off" "$(bash "$script" find "$(pkg offword)")"
+
+cat > "$scratch/bin/orca" <<'EOF'
+#!/usr/bin/env bash
+[ "$1" = status ] && { echo '{"result":{"runtime":{"reachable":true}}}'; exit 0; }
+prev=
+for a in "$@"; do [ "$prev" = --comment ] && printf '%s\n' "$a" > "$ORCA_LOG"; prev=$a; done
+EOF
+chmod +x "$scratch/bin/orca"
+user extra_reviewers "$scratch/user/second.sh $scratch/user/third.sh" reviewer_watch orca
+p=$(pkg orca)
+ORCA_LOG="$scratch/orca.log" bash "$script" find "$p" > /dev/null
+expect_has "orca card keeps second" "second: 1 findings" "$(cat "$scratch/orca.log")"
+expect_has "orca card keeps third" "third: 1 findings" "$(cat "$scratch/orca.log")"
+rm -f "$scratch/bin/orca"
 
 user extra_reviewers "codex $scratch/user/second.sh"
 p=$(pkg mixed)

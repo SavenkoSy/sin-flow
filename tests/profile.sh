@@ -231,5 +231,12 @@ expect_has "migrate skips stage model" "not migrated (not a user key): models_pl
 expect_eq "migrate payload" '{"chat_language":"uk","models_strong":"fable","work_remote":"git@example.com:a/b.git"}' "$(jq -cS . "$CLAUDE_CONFIG_DIR/configured.json")"
 expect_eq "migrate keeps notes" "Free notes." "$(cat "$FLOW_HOME/user.md")"
 expect_has "migrate backup" "models.plan: opus" "$(cat "$FLOW_HOME"/backups/*/user.md)"
+printf -- '---\ncodex_review: on\ncodex_watch: orca\n---\n' > "$FLOW_HOME/user.md"
+run env PATH="$scratch/bin:$PATH" sin-flow-profile migrate-user
+expect_eq "migrate old reviewer keys" '{"extra_reviewers":"codex","reviewer_watch":"orca"}' "$(jq -cS . "$CLAUDE_CONFIG_DIR/configured.json")"
+printf -- '---\ncodex_review: off\nhandoff: tmux\n---\n' > "$FLOW_HOME/user.md"
+run env PATH="$scratch/bin:$PATH" sin-flow-profile migrate-user
+expect_eq "migrate codex_review off" '{"handoff":"tmux"}' "$(jq -cS . "$CLAUDE_CONFIG_DIR/configured.json")"
+expect_eq "migrate codex_review off is not skipped" "" "$(grep 'not migrated' <<<"$out" || true)"
 
 echo "ok: $cases cases"
