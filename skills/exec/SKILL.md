@@ -86,9 +86,14 @@ The dispatching thread is the most expensive place in the chain when it fills wi
 4. **Base and branch.** Base = the plan header's `base:`, else the profile's base (`repo.base` or `## Inferred`).
    A base that is not ready never stops you: when the plan depends on an unmerged branch or PR, start from that
    branch, otherwise from a freshly fetched `origin/<base>`. That branch stays the header `base:`, and the PR is a
-   draft against it. After the first unit merges, the target is the profile base (`repo.base` or `## Inferred`). The header's `worktree:` exists → work there
-   (`EnterWorktree`). Otherwise, when this checkout is busy — a dirty tree, another branch, another session in it →
-   `sin-flow-worktree --repo <this checkout> --name <id> --branch <header's branch:> --base <base>`, `EnterWorktree` on its `path:`, everything there. No
+   draft against it. After the first unit merges, the target is the profile base (`repo.base` or `## Inferred`). This session already runs in a clean checkout on the
+   header's `branch:` → work in place, no `EnterWorktree`. A clean checkout whose branch is already merged into the
+   base (a stage-verify fix plan) → `git switch -c <header's branch:> origin/<base>` there, in place: no new
+   worktree, no `EnterWorktree`. The header's `worktree:` exists and this session is not in it → the § Hand-off
+   command with `--cwd <that path>`, then end the turn. Otherwise, when this checkout is busy — a dirty tree, another
+   branch, another session in it → `sin-flow-worktree --repo <this checkout> --name <id> --branch <header's branch:> --base <base>`,
+   then the § Hand-off command with `--cwd <its path:>`, then end the turn. Never `EnterWorktree`: an Orca workspace
+   lies outside `.claude/worktrees/`, so the call stops on a permission prompt (owner, 2026-11-05). No
    `branch:` line → `sin-flow:shipper` names it by convention on its first `local` / `commit`. Never work on the base branch.
    Then each name in the profile's `repo.local_files` that this checkout lacks and `repo.path` has → `cp -p
    <repo.path>/<name> <name>`; never a link, never print one. Ledger `Base: <ref> (<why>)` and `Copied: <names>`.
