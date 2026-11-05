@@ -165,7 +165,7 @@ one script there, its name in `terminals`, one line in `detect()` and one in `--
 adapter it would use.
 
 The same holds for each step that acts outside the flow: a path to your own script replaces the built-in. The
-options `workspace` (worktrees), `extra_reviewers` (more reviewers) and `codex_watch` (reviewer steps), and the profile keys `notes.mirror` (the plan copy on
+options `workspace` (worktrees), `extra_reviewers` (more reviewers) and `reviewer_watch` (reviewer steps), and the profile keys `notes.mirror` (the plan copy on
 the ticket) and `tracker.adapter` (the board), take a path. `examples/` holds one script for each, and setup's
 § Your own scripts gives each contract.
 
@@ -193,14 +193,13 @@ hand-off opens for that stage. Plan on Fable, exec on Opus: `models.plan: fable`
 
 The `extra_reviewers` option is a space-separated list of more reviewers for the exec review: `codex`, your
 own scripts, or both. Each one runs in parallel as one more finder, and one that fails never stops the others.
-The old option `codex_review: on` still means `codex`.
 
 With `codex` in the list, the exec review also runs [Codex CLI](https://github.com/openai/codex) as one
 more finder, read-only and without `AGENTS.md`. The verify pass judges its findings like every other finding. Then
 Codex gets one turn to contest the verdict with quoted code, and a `settle` pass gives the final status. Each run
 appends a row to `~/.claude/sin-flow/codex-trial.tsv`: Codex findings kept, and how many only Codex found. Without
 `codex` installed and logged in, the review goes on without it. `examples/reviewer.sh.example` shows the contract of a
-script. `codex_watch: orca` shows each Codex step on the Orca workspace card.
+script. `reviewer_watch: orca` shows each step of each extra reviewer on the Orca workspace card.
 
 ### What's inside
 

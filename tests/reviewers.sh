@@ -79,7 +79,7 @@ user reviews_dir x
 p=$(pkg off)
 expect_eq "off by default" "REVIEWERS · off" "$(bash "$script" find "$p")"
 
-user codex_review on
+user extra_reviewers codex
 p=$(pkg pr pr)
 expect_eq "pr mode without a model" "CODEX · off · pr mode, no model for codex_model_pr" "$(bash "$script" find "$p")"
 
@@ -133,16 +133,12 @@ bash "$script" find "$p" > /dev/null
 printf 'VERIFY · 2 in · 0 kept · 1 rejected · blocking no\nR1 | invented | app/e.rb:3 | all/F2 x — y\nBLOCKING: no\n' > "$p/verdict.md"
 expect_eq "nothing to reply" "CODEX REPLY · 0 contested · 0 accepted · $p/codex/reply.md" "$(bash "$script" reply "$p")"
 
-user codex_review off
-expect_eq "old off" "REVIEWERS · off" "$(bash "$script" find "$(pkg off2)")"
+user extra_reviewers ""
+expect_eq "empty list" "REVIEWERS · off" "$(bash "$script" find "$(pkg off2)")"
 
 user extra_reviewers codex
 p=$(pkg named)
 expect_eq "extra codex" "LENS codex · 2 findings · $p/findings/codex.md" "$(bash "$script" find "$p")"
-
-user codex_review on extra_reviewers ""
-p=$(pkg oldon)
-expect_eq "old on" "LENS codex · 2 findings · $p/findings/codex.md" "$(bash "$script" find "$p")"
 
 mkdir -p "$scratch/user" "$scratch/other"
 cat > "$scratch/user/second.sh" <<'EOF'
@@ -161,10 +157,6 @@ chmod +x "$scratch/user/second.sh"
 cp "$scratch/user/second.sh" "$scratch/user/third.sh"
 cp "$scratch/user/second.sh" "$scratch/other/second.sh"
 cp "$root/examples/reviewer.sh.example" "$scratch/user/example.sh"
-
-user codex_review on extra_reviewers "$scratch/user/second.sh"
-p=$(pkg wins)
-expect_eq "extra wins over old name" "LENS second · 1 findings · $p/findings/second.md" "$(bash "$script" find "$p")"
 
 user extra_reviewers "$scratch/user/second.sh $scratch/user/third.sh"
 p=$(pkg two)

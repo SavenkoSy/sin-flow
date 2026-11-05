@@ -99,21 +99,14 @@
       "title": "Extra reviewers",
       "description": "Space-separated list. Each entry is codex (OpenAI Codex CLI, needs codex installed and codex login) or a path to your own reviewer script. The exec review runs each one as one more finder. Empty: none."
     },
-    "codex_review": {
-      "type": "string",
-      "title": "Codex review (old name)",
-      "description": "Old name. on: the same as extra_reviewers codex, when extra_reviewers is empty.",
-      "options": ["on", "off"],
-      "default": "off"
-    },
     "codex_model_pr": {
       "type": "string",
       "title": "Codex model for PR review",
       "description": "A Codex model family or a full model name. /sin-flow:review of a teammate's PR then also runs Codex on it. Empty: no Codex in pr mode."
     },
-    "codex_watch": {
+    "reviewer_watch": {
       "type": "string",
-      "title": "Codex watch",
+      "title": "Reviewer watch",
       "description": "orca: the Orca workspace card shows each step of each extra reviewer. A path to your own script: it gets each step. Empty: off."
     },
     "workspace": {

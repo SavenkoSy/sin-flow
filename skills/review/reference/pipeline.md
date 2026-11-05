@@ -44,8 +44,8 @@ added to the prompt biases the lens and is paid for twice.
    `verify` find the entry points themselves.
 2. The finders for the depth — **one message, all in parallel**, one `sin-flow:reviewer` each. Unless
    the caller's skill says this round runs without extra reviewers, the same message also runs
-   `bash $LENSES/../reviewers.sh find "$PKG"` as a background Bash call. The script reads the `extra_reviewers` option
-   (or its old name `codex_review`), runs every listed reviewer in parallel and prints one line for each. It prints
+   `bash $LENSES/../reviewers.sh find "$PKG"` as a background Bash call. The script reads the `extra_reviewers` option,
+   runs every listed reviewer in parallel and prints one line for each. It prints
    `REVIEWERS · off` when the list is empty. A reviewer is `codex` or the user's own script (setup § Your own scripts),
    and its name is the name of its findings file. In pr mode only `codex` runs, and only when
    `codex_model_pr` names a model family or a model, and runs on the newest model of that family.

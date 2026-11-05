@@ -24,7 +24,6 @@ upper() { printf '%s' "$1" | tr '[:lower:]' '[:upper:]'; }
 entries() {
   local list items entry name problem seen=" "
   list=$(pref extra_reviewers)
-  [ -n "$list" ] || case "$(pref codex_review)" in on|codex) list=codex ;; esac
   read -r -a items <<< "$list"
   for entry in ${items[@]+"${items[@]}"}; do
     case "$entry" in "~"/*) entry="$HOME/${entry#\~/}" ;; esac
@@ -55,7 +54,7 @@ select_reviewer() {
 log() { printf '%s\n' "$@" >> "$LOG"; }
 
 orca_on() {
-  [ "$(pref codex_watch)" = orca ] && command -v orca >/dev/null 2>&1 &&
+  [ "$(pref reviewer_watch)" = orca ] && command -v orca >/dev/null 2>&1 &&
     orca status --json 2>/dev/null | jq -e '.result.runtime.reachable == true' > /dev/null
 }
 
@@ -68,7 +67,7 @@ orca_worktree_set() {
 
 status_line() {
   local watch
-  watch=$(pref codex_watch)
+  watch=$(pref reviewer_watch)
   case "$watch" in
     orca) orca_worktree_set --comment "$1" ;;
     /*|"~"/*) watch="${watch/#\~/$HOME}"; [ -x "$watch" ] && (cd "$TREE" && "$watch" "$1") >/dev/null 2>&1 || true ;;
