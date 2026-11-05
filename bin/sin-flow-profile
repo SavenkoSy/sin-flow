@@ -12,7 +12,7 @@ usage: sin-flow-profile key [DIR]
        sin-flow-profile model strong|mid|cheap|<stage> [DIR]
        sin-flow-profile resolve [KEY]
        sin-flow-profile list
-       sin-flow-profile <key> dir|file|get FIELD|section HEADING
+       sin-flow-profile <key> dir|file|get FIELD|section HEADING|mirror
        sin-flow-profile validate [--all | KEY...]
        sin-flow-profile user KEY
        sin-flow-profile migrate-user
@@ -173,6 +173,20 @@ section_of() {
     inside { print }' "$1"
 }
 
+mirror_route() {
+  local v
+  v=$(get_field "$1" notes.mirror || true)
+  if [ -z "$v" ]; then
+    section_of "$PROFILES/$1/profile.md" Inferred 2>/dev/null | grep -q 'plan mirrored to the issue' && v=github || v=off
+  fi
+  case "$v" in
+    on|github) echo github ;;
+    off) echo off ;;
+    /*|"~"/*) v=$(expand_home "$v"); [ -f "$v" ] && [ -x "$v" ] || { echo "notes.mirror $v is not an executable file" >&2; return 2; }; echo "$v" ;;
+    *) echo "notes.mirror '$v' is not off, github or a path" >&2; return 2 ;;
+  esac
+}
+
 validate_key() {
   local key="$1" here="${2:-}" f="$PROFILES/$1/profile.md" errs=() notes=() slug doc src env_file main var
   if [ ! -f "$f" ]; then
@@ -206,6 +220,8 @@ validate_key() {
   v=$(field_in "$f" tracker.adapter) || true
   case "$v" in ""|/*|"~"/*) ;; *) errs+=("tracker.adapter $v is not an absolute or ~ path") ;; esac
   if [ -n "$v" ] && { [ ! -f "$(expand_home "$v")" ] || [ ! -x "$(expand_home "$v")" ]; }; then errs+=("tracker.adapter $v is not an executable file"); fi
+  v=$(field_in "$f" notes.mirror) || true
+  [ -z "$v" ] || v=$(mirror_route "$key" 2>&1) || errs+=("$v")
   for src in $(frontmatter "$f" | sed -n 's/^sources\.\([A-Za-z0-9_-]*\)\.env_file:.*/\1/p' | sort -u); do
     env_file=$(field_in "$f" "sources.$src.env_file")
     var=$(field_in "$f" "sources.$src.var") || true
@@ -301,6 +317,7 @@ case "$1" in
       file) printf '%s\n' "$PROFILES/$key/profile.md" ;;
       get) [ $# -ge 3 ] || usage; get_field "$key" "$3" ;;
       section) [ $# -ge 3 ] || usage; section_of "$PROFILES/$key/profile.md" "$3" ;;
+      mirror) mirror_route "$key" ;;
       *) usage ;;
     esac ;;
 esac

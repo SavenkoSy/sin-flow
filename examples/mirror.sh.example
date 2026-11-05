@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+dir="${SIN_FLOW_MIRROR_DIR:-$HOME/.claude/sin-flow/mirror}/${2:?usage: mirror.sh put|add|get <ticket> [file]}"
+mkdir -p "$dir"
+case "$1" in
+  put) cp "${3:?put needs a file}" "$dir/plan.md"; echo "file://$dir/plan.md" ;;
+  add) n=$(find "$dir" -name 'note-*.md' | wc -l | tr -d ' '); cp "${3:?add needs a file}" "$dir/note-$((n + 1)).md"; echo "file://$dir/note-$((n + 1)).md" ;;
+  get) [ -f "$dir/plan.md" ] || exit 1; date -u -r "$dir/plan.md" +%Y-%m-%dT%H:%M:%SZ; cat "$dir/plan.md" ;;
+  *) echo "unknown command: $1" >&2; exit 2 ;;
+esac

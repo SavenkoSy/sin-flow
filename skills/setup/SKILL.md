@@ -146,8 +146,8 @@ Claude Code keeps the values in `pluginConfigs["<id>"].options` of the user's `s
 | `opensource_dir` | `~/.claude/sin-flow/opensource` | where setup clones a repo that is someone else's, one folder for each repo |
 | `codex_review` | `off` | `on` → the exec review at the end of a unit also runs OpenAI Codex CLI as one more finder, then gives Codex one reply turn on the verdict (`skills/review/reference/pipeline.md` § 3). Needs `codex` installed and `codex login`; without them the review goes on and the last message says so |
 | `codex_model_pr` | `""` | a Codex model family `<family>` (the newest listed `gpt-<version>-<family>` in `~/.codex/models_cache.json`), or a full model name → `/sin-flow:review` of a teammate's PR also runs Codex as a finder on that model; empty → pr mode runs no Codex |
-| `codex_watch` | `""` | `orca` → the Orca workspace card shows each step of that Codex run |
-| `workspace` | `""` | `orca` or `git`: where `sin-flow-worktree` makes every stage's worktree; empty → `git`. `orca` also turns on the Stop hook `orca-quiet.sh`: it marks the Orca worktree read while background tasks run |
+| `codex_watch` | `""` | `orca` → the Orca workspace card shows each step of that Codex run · a path to the user's own script (§ Your own scripts) |
+| `workspace` | `""` | `orca`, `git` or a path to the user's own script (§ Your own scripts): where `sin-flow-worktree` makes every stage's worktree; empty → `git`. `orca` also turns on the Stop hook `orca-quiet.sh`: it marks the Orca worktree read while background tasks run |
 | `work_remote` | `""` | a private git repository for a copy of `~/.claude/sin-flow` (plans, evidence and profiles). Setup adds it as `origin`, and the Stop hook pushes once a day; empty → this computer only |
 | `notes_globs` | `""` | space-separated globs of agent notes in every repo; the shipper never stages a match. The profile key `notes.paths` adds the globs of one repo |
 
@@ -155,10 +155,46 @@ A repo profile may set `models.strong`, `models.mid`, `models.cheap` and `models
 `plan`, `exec`, `review`, `learning`: the session a hand-off opens for that stage); it wins over the options for that repo. `sin-flow-profile model <tier|stage>`
 prints what a stage will use.
 
+### Your own scripts
+
+Each step that acts on a system outside the flow reads one key. The value is `off`, a built-in name, or an absolute
+or `~` path to an executable file of the user. A path replaces the built-in for that step. An unset key keeps the
+built-in. The user keeps the script outside the plugin, for example in `~/.claude/sin-flow/`.
+
+| step | key | built-in | example |
+|---|---|---|---|
+| start the next stage | option `handoff` | `auto` and the terminal names | `examples/handoff.sh.example` |
+| make or remove a worktree | option `workspace` | `git`, `orca` | `examples/workspace.sh.example` |
+| show each Codex step | option `codex_watch` | `orca` | `examples/codex-watch.sh.example` |
+| merge the user's own PR | the file `~/.claude/sin-flow/merge.sh` | the copy of `examples/merge.sh.example` | the same file |
+| copy the plan to the ticket | profile key `notes.mirror` | `github` (`on` is `github`) | `examples/mirror.sh.example` |
+| read and write the board | profile key `tracker.adapter` | `tracker.board` (GitHub Projects) | `skills/sync/reference/adapter-contract.md` |
+
 The user's own hand-off script gets `FLOW_CWD`, `FLOW_NAME`, `FLOW_MODEL` and `FLOW_PROMPT` (the full shell line to run)
 in its environment, exits `0` only when the tab opened, and with `--probe` prints the command it would run and opens
 nothing; a non-zero exit makes `sin-flow-handoff` print the command instead. Its arguments are the hand-off options, then
 `<stage> <target> [extra]` — or nothing more when the options carry `--prompt <text>`; the target is an absolute path, or a PR number or URL for `sin-flow:review`.
+
+The workspace script gets one of two commands. `<script> create <repo> <name> <branch> <base>` makes a worktree of
+the checkout `<repo>` on the new branch `<branch>` from `<base>`. It prints the absolute worktree path as the last
+line and exits `0`. `<script> remove <path>` removes that worktree and exits `0`. Then `sin-flow-worktree` deletes the
+local branch. A non-zero exit stops `sin-flow-worktree` with that exit.
+
+The Codex watch script gets one argument: the text of the step, for example `codex: finding`. It runs in the review
+tree. The flow ignores its output and its exit code.
+
+`sin-flow-profile <key> mirror` prints the mirror route of a repo: `off`, `github` or the expanded script path. An
+absent `notes.mirror` follows the `## Inferred` notes line. The mirror script gets one of three commands. `<ticket>`
+is the id on the plan's `ticket:` line, and `<file>` is a `sin-flow-mirror` copy, never split.
+
+- `<script> put <ticket> <file>`: keep one copy of the plan on the ticket. Make it the first time, then replace it.
+  Print its URL and exit `0`.
+- `<script> add <ticket> <file>`: add one evidence file to the ticket as a new note. Print its URL and exit `0`.
+- `<script> get <ticket>`: print the time of the last change of the copy (ISO 8601, UTC) on the first line, then the
+  copy. Exit `1` when the ticket has no copy.
+
+Any other exit: the stage writes the first stderr line to its ledger or report and continues. The local `plan.md`
+stays the truth.
 
 ## Onboard (first run in a repo — no profile)
 
@@ -185,8 +221,8 @@ nothing; a non-zero exit makes `sin-flow-handoff` print the command instead. Its
 4. Write `~/.claude/sin-flow/profiles/<key>/profile.md`: frontmatter with `key`, `repo.slug`, `repo.path` (the main
    checkout, `dirname "$(git rev-parse --path-format=absolute --git-common-dir)"`, `$HOME` written as `~`), `repo.fork` (the slug of remote `fork`, only when it exists), `repo.local_files` (the step 2 secret files, repo-relative; exec copies them into every worktree), `measure.doc`
    and only the deviations the user gave; then `sin-flow-infer --write <key>` fills `## Inferred` and you name the gates into it
-   (below); add `## Measure` in one or two lines. Write `notes.mirror: on` into the frontmatter when the Inferred notes line
-   says mirrored and the team has more than one author, else `notes.mirror: off` — a default the user flips.
+   (below); add `## Measure` in one or two lines. Write `notes.mirror: github` into the frontmatter when the Inferred notes line
+   says mirrored and the team has more than one author, else `notes.mirror: off` — a default the user changes, also to a script path (§ Your own scripts).
    `notes.paths` (absent by default): space-separated globs of the repo's own agent notes; the shipper never stages them.
    If the profile gets a board, also write `tracker.write.light: off`, `tracker.write.assign: off`,
    `tracker.write.status: off` and `group_by: milestone`. These are defaults that the user changes. The sync
@@ -217,7 +253,7 @@ The lines to write:
   `commit-msg` and `pre-push` command or job with a `run:`.
 
 Profile format: flat `group.key: value` lines (lists as `["a","b"]`), prose sections `## Inferred`, `## Measure`, `## Run`,
-`## Ship`, `## Tracker`, `## Never`. Optional keys the stages read when set: `tracker.skip_milestones` (a comma list of milestones that a sync batch proposal skips), `review.request` (logins exec asks for review and asks again after each reply batch), `review.deploy_bots` (logins of deploy bots that the base watcher skips), `review.ignored_approvers` (logins whose approval `sin-flow-rerequest` does not count, and with no key every approval counts), `gates.lint_fix` (the lint autocorrect commands), `pr.relink_after_bot: on` (shipper saves the PR body once more when a bot added a `Closes` line that GitHub did not link), `tracker.held_statuses` (Status options that a new board leaves out of scope), `gates.spec_cmd` (a test command that takes spec file paths; exec runs the canary with it, and no key means no canary), `review.preship_agent` (a `subagent_type` that exec runs on the final diff before the PR), `notes.paths` (extra globs the shipper treats as agent notes). Keys that setup may write: `tracker.adapter`, `tracker.write.light`, `tracker.write.assign`, `tracker.write.status`, `group_by`. Required: `key`, `repo.slug`, `measure.doc`. Never a secret — pointers only.
+`## Ship`, `## Tracker`, `## Never`. Optional keys the stages read when set: `tracker.skip_milestones` (a comma list of milestones that a sync batch proposal skips), `review.request` (logins exec asks for review and asks again after each reply batch), `review.deploy_bots` (logins of deploy bots that the base watcher skips), `review.ignored_approvers` (logins whose approval `sin-flow-rerequest` does not count, and with no key every approval counts), `gates.lint_fix` (the lint autocorrect commands), `pr.relink_after_bot: on` (shipper saves the PR body once more when a bot added a `Closes` line that GitHub did not link), `tracker.held_statuses` (Status options that a new board leaves out of scope), `gates.spec_cmd` (a test command that takes spec file paths; exec runs the canary with it, and no key means no canary), `review.preship_agent` (a `subagent_type` that exec runs on the final diff before the PR), `notes.paths` (extra globs the shipper treats as agent notes), `notes.mirror` (`off`, `github` or a script path, § Your own scripts). Keys that setup may write: `tracker.adapter`, `tracker.write.light`, `tracker.write.assign`, `tracker.write.status`, `group_by`. Required: `key`, `repo.slug`, `measure.doc`. Never a secret — pointers only.
 
 ## Check (every later run)
 
@@ -227,8 +263,8 @@ one fix. `✗` = a stage cannot work; `!` = it can, marked "not measured".
 | layer | checks | fix offered |
 |---|---|---|
 | flow | `claude plugin list` shows `sin-flow` enabled; `sin-flow-profile`, `sin-flow-infer`, `sin-flow-handoff` on PATH; the Stop hook `work-commit.sh` in the plugin's `hooks/hooks.json`; `gh auth status`; `git`, `jq`, `bash` | `claude plugin install sin-flow@sin-flow`; `gh auth login`; `brew install …` |
-| user | `~/.claude/sin-flow/{profiles,work,reviews}` exist; `git -C ~/.claude/sin-flow status --porcelain` empty or committable; `~/.claude/sin-flow/user.md` has frontmatter keys → `!` "the preferences are not migrated to the plugin options", fix: `sin-flow-profile migrate-user`; `work_remote` set → `git ls-remote` reachable and `git -C ~/.claude/sin-flow remote get-url origin` prints it (else `!` "Git does not push to the copy on GitHub.", fix: `git remote add origin <work_remote>`), unset → `!` "Your plans and evidence are on this computer only.", fix: the copy question of Install step 3; every value is read with `sin-flow-profile user <key>`; `handoff` is `auto`, `same-session`, `print`, `tmux`, `cmux`, `iterm`, `ghostty`, `warp`, `orca` or an executable path; `claude plugin configure <id> --json` lists `context_guard` as unconfigured → `!` "the context guard uses the default 40", fix: Install step 3's `context_guard` question, then set `context_guard: <N>`; the same list holds `limit_guard` → `!` "the limit guard reads any status line that writes the state file", fix: Install step 3's `limit_guard` question; `limit_guard: on` and `statusLine.command` of `S` contains `sin-flow-statusline` → `cmp` the copy in `~/.claude/sin-flow/bin/` with `${CLAUDE_PLUGIN_ROOT}/bin/sin-flow-statusline`, a difference → `!` "the status line wrapper is out of date", fix: copy it again; same case and the wrapped command names a file that does not exist → `!` "the wrapped status line file does not exist: <path>", fix: restore `statusLine` from the newest `~/.claude/sin-flow/backups/*/settings.json`, or Install step 3's wrapper install again; `limit_guard: on`, no wrapper and no own writer (Install step 3 item 3) → `!` "the limit guard has no writer", fix: Install step 3's wrapper install; under a terminal name `sin-flow-handoff --check <name>` prints `ok` (else `!` with the printed reason, fix: install it or `handoff: print`); under `auto` `sin-flow-handoff --detect` names a terminal (`none` → `!` "The flow did not find your terminal. It shows the command, and then you start the next stage.", fix: Install step 4's terminal question and `--check`); `sin-flow-profile model strong`, `… mid`, `… cheap` each print an alias (exit 2 → `✗`, fix: the value it names); `tail -3 ~/.claude/sin-flow/stop-commit.log` has no `failed` | `git init`; `chmod +x <handoff path>` |
-| project | `sin-flow-profile validate` (required keys, paths, `sources.*` env files: present, `600`, git-ignored, variable present); `gh repo view <slug>`; `git ls-remote --heads origin <base>`; every gate command's binary on PATH; `sin-flow-infer` vs `## Inferred` — base or `gate files:` changed?; the gates named again from those files vs the stored `gates` lines — changed?; each source's preflight/verify | `sin-flow-infer --write <key>`, then name the gates; `chmod 600 <file>`; "add to .gitignore"; "open the tunnel: <tunnel>" |
+| user | `~/.claude/sin-flow/{profiles,work,reviews}` exist; `git -C ~/.claude/sin-flow status --porcelain` empty or committable; `~/.claude/sin-flow/user.md` has frontmatter keys → `!` "the preferences are not migrated to the plugin options", fix: `sin-flow-profile migrate-user`; `work_remote` set → `git ls-remote` reachable and `git -C ~/.claude/sin-flow remote get-url origin` prints it (else `!` "Git does not push to the copy on GitHub.", fix: `git remote add origin <work_remote>`), unset → `!` "Your plans and evidence are on this computer only.", fix: the copy question of Install step 3; every value is read with `sin-flow-profile user <key>`; `handoff` is `auto`, `same-session`, `print`, `tmux`, `cmux`, `iterm`, `ghostty`, `warp`, `orca` or an executable path; `workspace` is empty, `git`, `orca` or an executable path; `codex_watch` is empty, `orca` or an executable path; `claude plugin configure <id> --json` lists `context_guard` as unconfigured → `!` "the context guard uses the default 40", fix: Install step 3's `context_guard` question, then set `context_guard: <N>`; the same list holds `limit_guard` → `!` "the limit guard reads any status line that writes the state file", fix: Install step 3's `limit_guard` question; `limit_guard: on` and `statusLine.command` of `S` contains `sin-flow-statusline` → `cmp` the copy in `~/.claude/sin-flow/bin/` with `${CLAUDE_PLUGIN_ROOT}/bin/sin-flow-statusline`, a difference → `!` "the status line wrapper is out of date", fix: copy it again; same case and the wrapped command names a file that does not exist → `!` "the wrapped status line file does not exist: <path>", fix: restore `statusLine` from the newest `~/.claude/sin-flow/backups/*/settings.json`, or Install step 3's wrapper install again; `limit_guard: on`, no wrapper and no own writer (Install step 3 item 3) → `!` "the limit guard has no writer", fix: Install step 3's wrapper install; under a terminal name `sin-flow-handoff --check <name>` prints `ok` (else `!` with the printed reason, fix: install it or `handoff: print`); under `auto` `sin-flow-handoff --detect` names a terminal (`none` → `!` "The flow did not find your terminal. It shows the command, and then you start the next stage.", fix: Install step 4's terminal question and `--check`); `sin-flow-profile model strong`, `… mid`, `… cheap` each print an alias (exit 2 → `✗`, fix: the value it names); `tail -3 ~/.claude/sin-flow/stop-commit.log` has no `failed` | `git init`; `chmod +x <handoff path>` |
+| project | `sin-flow-profile validate` (required keys, paths, `notes.mirror` and `tracker.adapter` scripts executable, `sources.*` env files: present, `600`, git-ignored, variable present); `gh repo view <slug>`; `git ls-remote --heads origin <base>`; every gate command's binary on PATH; `sin-flow-infer` vs `## Inferred` — base or `gate files:` changed?; the gates named again from those files vs the stored `gates` lines — changed?; each source's preflight/verify | `sin-flow-infer --write <key>`, then name the gates; `chmod 600 <file>`; "add to .gitignore"; "open the tunnel: <tunnel>" |
 
 A source that is unreachable now (tunnel closed, VPN off, SSO expired) is a `!` row with its human step, never a failure.
 

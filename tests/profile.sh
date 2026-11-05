@@ -64,7 +64,7 @@ expect_eq "switches off" "OK p" "$out"
 mk p 'group_by: team'
 run sin-flow-profile validate p
 expect_eq "bad group_by rc" 1 "$rc"
-expect_eq "bad group_by" "FAIL p: group_by 'team' is not one of epic, milestone, priority, label, rules" "$out"
+expect_eq "bad group_by" "FAIL p: group_by 'team' is not one of epic, milestone, priority, label, rules, field:<name>" "$out"
 
 for g in epic milestone priority label rules; do
   mk p "group_by: $g"
@@ -108,6 +108,37 @@ expect_has "tilde adapter missing" "tracker.adapter ~/adapter.sh is not an execu
 mk p
 run sin-flow-profile validate p
 expect_eq "no new keys" "OK p" "$out"
+
+run sin-flow-profile p mirror
+expect_eq "mirror absent, no inferred line" off "$out"
+mk p
+printf '## Inferred 2026-11-05\nnotes: work/<key>/<id>/; plan mirrored to the issue (issues enabled).\n' >> "$FLOW_HOME/profiles/p/profile.md"
+run sin-flow-profile p mirror
+expect_eq "mirror absent, inferred mirrored" github "$out"
+for value in on github; do
+  mk p "notes.mirror: $value"
+  run sin-flow-profile p mirror
+  expect_eq "mirror $value" github "$out"
+done
+mk p 'notes.mirror: off'
+run sin-flow-profile p mirror
+expect_eq "mirror off" off "$out"
+mk p "notes.mirror: $adapter"
+run sin-flow-profile p mirror
+expect_eq "mirror script" "$adapter" "$out"
+run sin-flow-profile validate p
+expect_eq "mirror script valid" "OK p" "$out"
+mk p 'notes.mirror: ~/adapter.sh'
+run env HOME="$home_dir" sin-flow-profile p mirror
+expect_eq "mirror tilde script" "$home_dir/adapter.sh" "$out"
+mk p 'notes.mirror: yes'
+run sin-flow-profile validate p
+expect_eq "mirror bad value rc" 1 "$rc"
+expect_has "mirror bad value" "notes.mirror 'yes' is not off, github or a path" "$out"
+mk p 'notes.mirror: /nonexistent'
+run sin-flow-profile p mirror
+expect_eq "mirror missing script rc" 2 "$rc"
+expect_has "mirror missing script" "notes.mirror /nonexistent is not an executable file" "$out"
 
 mk q 'tracker.board: acme#1'
 cd "$nongit"

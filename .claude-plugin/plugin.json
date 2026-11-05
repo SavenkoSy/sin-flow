@@ -109,13 +109,12 @@
     "codex_watch": {
       "type": "string",
       "title": "Codex watch",
-      "description": "orca: the Orca workspace card shows each step of a Codex run. Empty: off."
+      "description": "orca: the Orca workspace card shows each step of a Codex run. A path to your own script: it gets each step. Empty: off."
     },
     "workspace": {
       "type": "string",
       "title": "Workspace",
-      "description": "Where sin-flow-worktree makes the worktree of each stage. orca also turns on the Stop hook that marks the Orca worktree read.",
-      "options": ["git", "orca"],
+      "description": "Where sin-flow-worktree makes the worktree of each stage: git, orca, or a path to your own script. orca also turns on the Stop hook that marks the Orca worktree read.",
       "default": "git"
     },
     "work_remote": {

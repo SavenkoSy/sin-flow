@@ -123,8 +123,10 @@ issue on GitHub.
 
 ## Mirror to the issue
 
-Only when the unit is an issue and the profile says `notes.mirror: on` (absent → the `## Inferred` notes
-line); never in upstream mode. Nothing from `work/` is ever `git add`ed.
+`sin-flow-profile <key> mirror` prints the route; never mirror in upstream mode. `off` → no mirror. A script path
+and a unit with a ticket → `<script> put <ticket> <file>` with the `sin-flow-mirror plan.md` copy, and `<script> add
+<ticket> <file>` for each evidence file from its own copy (`skills/setup/SKILL.md` § Your own scripts). `github` →
+the rest of this section, only when the unit is an issue. Nothing from `work/` is ever `git add`ed.
 Every issue body, mirror and comment is self-contained: no local path (`~/`, `/Users/`, a scratchpad),
 code cited as a permalink at the base SHA, a local source or evidence file summarized in the text.
 

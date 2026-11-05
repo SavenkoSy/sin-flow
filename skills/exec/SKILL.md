@@ -68,10 +68,12 @@ The dispatching thread is the most expensive place in the chain when it fills wi
    every `Unit <u>: complete` line is done — never re-dispatch it. Args with `continue:` → read that text,
    `git status --short` and the ledger's hand-off section before anything else; a named PR URL means this session
    owns the post-PR phase and nothing is re-implemented.
-2. **Plan vs issue, before anything else.** The plan is mirrored when the header's `ticket:` is a GitHub issue and
-   the profile says so (`notes.mirror: on`; absent → the `## Inferred` notes line): the issue body when the user authored
+2. **Plan vs issue, before anything else.** `sin-flow-profile <key> mirror` prints the route. `off` → skip. `github`: the
+   plan is mirrored when the header's `ticket:` is a GitHub issue: the issue body when the user authored
    it, the `<!-- sin-flow:plan -->` comment otherwise. Not mirrored → skip. Otherwise `gh` the mirror into
    `<workspace>/issue-plan.md` and `diff` it against `sin-flow-mirror plan.md` (`--comment` for the comment; over 60 000 bytes, part 1 of `sin-flow-mirror [--comment] plan.md <dir>`) — the mirror points at no local file.
+   A script path → `<script> get <ticket>`: exit `1` → skip; else its first line is the edit time and the rest goes to
+   `<workspace>/issue-plan.md`, diffed against `sin-flow-mirror plan.md` (`skills/setup/SKILL.md` § Your own scripts).
    They differ and the issue was edited after the file's mtime → the issue wins: write it over the local file, keep the
    local header lines the mirror drops (`worktree:`, `measure:`), ledger
    `plan: issue newer, taken`. The file newer → ledger `plan: local newer`; it is mirrored at Finish.
@@ -227,8 +229,9 @@ FAIL / SHOTS`; ledger it, and act on it as § After of that file says.
    The notification of the finished background Bash wakes the session. Then dispatch one `sin-flow:implementer` on `<mid>`, effort low, to run `git rebase <base>` in the worktree, as
    the rebase round does. Then run `ship`. If the remote base is still absent after the loop, do not ship. Write one line to
    the user. The plan stays `status: verified`.
-3. **Mirror**. Set `status: shipped` in the plan header. Mirror on (Setup 2) → write `sin-flow-mirror plan.md` (`--comment` for a comment) back to
-   the issue copy it came from; over 60 000 bytes → `sin-flow-mirror [--comment] plan.md <dir>`, each part back to its own copy. Append `Plan <id>: shipped <URL>` to the ledger.
+3. **Mirror**. Set `status: shipped` in the plan header. Route `github` and mirrored (Setup 2) → write `sin-flow-mirror plan.md` (`--comment` for a comment) back to
+   the issue copy it came from; over 60 000 bytes → `sin-flow-mirror [--comment] plan.md <dir>`, each part back to its own copy.
+   A script path → `<script> put <ticket> <file>` with the `sin-flow-mirror plan.md` copy. Append `Plan <id>: shipped <URL>` to the ledger.
 4. **The final message** (below), then the post-PR phase that fits the repo — same turn, no pause.
 
 **Never ask before pushing or opening the PR** — except § Upstream mode's first public write — and blocked units do not hold it: a plan where 8 of 9 units are

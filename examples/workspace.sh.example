@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+case "${1:-}" in
+  create)
+    repo=$2 name=$3 branch=$4 base=$5
+    path="$(dirname "$repo")/$(basename "$repo")-worktrees/$name"
+    git -C "$repo" worktree add -q "$path" -b "$branch" "$base"
+    echo "$path" ;;
+  remove) git -C "$(git -C "$2" worktree list --porcelain | awk 'NR == 1 {print substr($0, 10)}')" worktree remove "$2" ;;
+  *) echo "usage: workspace.sh create <repo> <name> <branch> <base> | remove <path>" >&2; exit 2 ;;
+esac

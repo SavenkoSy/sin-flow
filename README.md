@@ -164,6 +164,11 @@ Shipped adapters, in `bin/handoff/`: `tmux`, `cmux`, `iterm`, `ghostty`, `warp`,
 one script there, its name in `terminals`, one line in `detect()` and one in `--check` in `bin/sin-flow-handoff`. `sin-flow-handoff --detect` names the
 adapter it would use.
 
+The same holds for each step that acts outside the flow: a path to your own script replaces the built-in. The
+options `workspace` (worktrees) and `codex_watch` (Codex steps), and the profile keys `notes.mirror` (the plan copy on
+the ticket) and `tracker.adapter` (the board), take a path. `examples/` holds one script for each, and setup's
+§ Your own scripts gives each contract.
+
 The `context_guard` option (default 40) is the percent of the 1M-token context window at which a stage hands off to a fresh session; setup never stops on it.
 
 The `limit_guard` option picks what a session does near a usage limit. `off` (the setup choice when you keep the built-in) leaves it to Claude Code, which waits and continues after the reset. `on` (the plugin default) adds the sin-flow LIMIT GUARD. Setup asks before it puts a small status line wrapper in your settings, and your own status line keeps working.

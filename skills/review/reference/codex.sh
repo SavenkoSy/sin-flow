@@ -34,7 +34,14 @@ orca_worktree_set() {
     true
 }
 
-status_line() { orca_worktree_set --comment "$1"; }
+status_line() {
+  local watch
+  watch=$(pref codex_watch)
+  case "$watch" in
+    orca) orca_worktree_set --comment "$1" ;;
+    /*|"~"/*) watch="${watch/#\~/$HOME}"; [ -x "$watch" ] && (cd "$TREE" && "$watch" "$1") >/dev/null 2>&1 || true ;;
+  esac
+}
 
 skip() {
   echo "lens codex skipped: $1" >> "$PKG/failed.txt"
