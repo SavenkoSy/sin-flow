@@ -74,8 +74,9 @@ How deep, by what the diff changed — the deepest kind present wins:
   phone). Drive the simulator through the `mobile` MCP tools when the profile's `## Run` names them; screenshots go to
   the same folder.
 - Who: one `sin-flow:implementer` (`<mid>`, effort medium) writes and runs the script and returns
-  `VISUAL: green | red`, the `RESULT` lines, one `FAIL:` line per failure and the `SHOTS` path. The orchestrator
-  reads that block only.
+  `VISUAL: green | red`, the `RESULT` lines, one `FAIL:` line per failure and the `SHOTS` path. Before it returns, it
+  opens each screenshot with Read and gives one `SHOT: <path> · <what the image shows>` line for it. When something
+  covers or crops the checked element, it takes that shot again first. The orchestrator reads that block only.
 
 ## After
 
@@ -91,12 +92,12 @@ How deep, by what the diff changed — the deepest kind present wins:
 
 ## After the merge
 
-The ledger says `blocked`, `red` or has a `SKIP`, and the merged diff changed a rendered surface → once the deploy of
-the merge commit is live on `ui.server`, the same check there, through the profile's sign-in route. A `FAIL` → a fix
+The merged diff changed a rendered surface, and the profile sets `ui.after_merge: <url>` or the ledger says `blocked`,
+`red` or has a `SKIP` → once the deploy of the merge commit is live on `ui.after_merge` (absent → `ui.server`), the
+same check there, through the profile's sign-in route. A `FAIL` → a fix
 PR at once, from a one-block plan, in this same workspace in a new tab: the § Hand-off command of the exec skill
-with `--cwd <this checkout>`. The new exec switches to the plan's branch in place (Setup 4). It never makes a new
-worktree and never calls `EnterWorktree`: a worktree outside `.claude/worktrees/` stops on a permission prompt
-(owner, 2026-11-05). Then one line to the user. Green → one line to the user.
+with `--cwd <this checkout>`. The new exec switches to the plan's branch in place (Setup 4). Then one line to the
+user. Green → one line to the user.
 
 Then the user's close word («close», «done»): when the worktree is still there, `sin-flow-worktree --remove <its path>`
 removes it as the `workspace` option made it and deletes the local branch. Drop the worktree DB only when the profile
@@ -111,4 +112,8 @@ names one. One line back.
 - Sound: the user hears every ▶ a check taps. The harness mutes it — Chromium
   launches with `--mute-audio`, and an init script forces every media element in every frame to muted / volume 0.
   Always open pages through `t.newPage()`; a script that launches its own browser or context bypasses the mute.
+  Mute the track, never the computer: no check touches the system output volume (`osascript … set volume`), because
+  the user may be on a call. A check outside the harness (the iOS Simulator, `safaridriver`, a one-off script) mutes
+  the track itself: Chromium gets `--mute-audio`, page media gets muted / volume 0. When the track cannot be muted
+  there, the check does not play it. Playback is measured by the player state and the embed messages, never by ear.
 - Never print an env file or grep for a key. Load it into the process; a key on screen is in the transcript for good.

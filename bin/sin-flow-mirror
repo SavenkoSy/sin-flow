@@ -5,8 +5,11 @@ comment=
 [ "${1:-}" = --comment ] && { comment=1; shift; }
 { [ $# -eq 1 ] || [ $# -eq 2 ]; } && [ -f "$1" ] || { echo "usage: sin-flow-mirror [--comment] <file> [<dir>]" >&2; exit 2; }
 
+id=$(basename "$(cd "$(dirname "$1")" && pwd)")
+stem=$(basename "${1%.*}")
+
 mirror() {
-  [ -z "$comment" ] || echo '<!-- sin-flow:plan -->'
+  [ -z "$comment" ] || echo "<!-- sin-flow:plan $id -->"
   sed -E \
     -e '/^(worktree|measure):/d' \
     -e '\|(^\|[^A-Za-z0-9_:/.-])(~\|/Users/[^/[:space:]]+)/[^[:space:]`)"]*(sin-flow/work/\|/worktrees/\|/evidence/)|d' \
@@ -17,7 +20,7 @@ mirror() {
 
 [ $# -eq 2 ] || { mirror "$1"; exit 0; }
 mkdir -p "$2"
-mirror "$1" | LC_ALL=C awk -v dir="$2" -v max=60000 '
+mirror "$1" | LC_ALL=C awk -v dir="$2" -v max=60000 -v id="$id" -v stem="$stem" '
   { line[NR] = $0 }
   END {
     part = 1; start = 1
@@ -29,8 +32,8 @@ mirror "$1" | LC_ALL=C awk -v dir="$2" -v max=60000 '
         if (i > start && line[i] ~ /^## /) heading = i
       }
       cut = i > NR ? NR + 1 : (heading ? heading : (i > start ? i : start + 1))
-      file = dir "/mirror-" part ".md"
-      if (part > 1) print "<!-- sin-flow:plan part " part " -->" > file
+      file = dir "/" stem "-mirror-" part ".md"
+      if (part > 1) print "<!-- sin-flow:plan " id " part " part " -->" > file
       for (j = start; j < cut; j++) print line[j] > file
       if (cut <= NR) print "\ncontinued in comments" > file
       close(file)

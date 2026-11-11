@@ -69,9 +69,9 @@ The dispatching thread is the most expensive place in the chain when it fills wi
    `git status --short` and the ledger's hand-off section before anything else; a named PR URL means this session
    owns the post-PR phase and nothing is re-implemented.
 2. **Plan vs issue, before anything else.** `sin-flow-profile <key> mirror` prints the route. `off` → skip. `github`: the
-   plan is mirrored when the header's `ticket:` is a GitHub issue: the issue body when the user authored
-   it, the `<!-- sin-flow:plan -->` comment otherwise. Not mirrored → skip. Otherwise `gh` the mirror into
-   `<workspace>/issue-plan.md` and `diff` it against `sin-flow-mirror plan.md` (`--comment` for the comment; over 60 000 bytes, part 1 of `sin-flow-mirror [--comment] plan.md <dir>`) — the mirror points at no local file.
+   plan is mirrored when the header's `ticket:` is a GitHub issue: the comment that `skills/plan/SKILL.md` Step 6 § Mirror
+   edits, never the issue body and never a comment of another plan. Not mirrored → skip. Otherwise `gh` the mirror into
+   `<workspace>/issue-plan.md` and `diff` it against `sin-flow-mirror --comment plan.md` (over 60 000 bytes, part 1 of `sin-flow-mirror --comment plan.md <dir>`) — the mirror points at no local file.
    A script path and a `ticket:` other than `none` → `<script> get <ticket>`: exit `1` → skip, no copy; another
    non-zero exit → skip the compare and ledger `plan: mirror get failed — <first stderr line>`; exit `0` → its first
    line is the edit time and the rest goes to `<workspace>/issue-plan.md`, diffed against `sin-flow-mirror plan.md` (`skills/setup/SKILL.md` § Your own scripts).
@@ -169,7 +169,8 @@ one paragraph on what changed and why. No such key → nothing is committed unti
 
 **Canary** — when the profile sets `gates.spec_cmd`. When every implementer of the wave has returned, and before the
 next wave's dispatch, one `sin-flow:shipper` `gate` with `label: canary-<k>`, `commands: true` and `canary:` one line per
-unit (its id, then its `FILES`).
+unit (its id, then its `FILES`). `commands: true` is the shell command `true`: the shipper runs no other gate before the
+canary. The unit id on the line is the same `<u>` that the `verdict` call below takes, because the log is `canary-<u>.log`.
 `CANARY reverted: green` → the unit's specs pass without its code: a finding for that unit's fix loop.
 
 Then `sin-flow-gate verdict <workspace> <u> <sha | uncommitted> <clean | skipped>` per unit, and append its line to
@@ -235,8 +236,8 @@ FAIL / SHOTS`; ledger it, and act on it as § After of that file says.
    The notification of the finished background Bash wakes the session. Then dispatch one `sin-flow:implementer` on `<mid>`, effort low, to run `git rebase <base>` in the worktree, as
    the rebase round does. Then run `ship`. If the remote base is still absent after the loop, do not ship. Write one line to
    the user. The plan stays `status: verified`.
-3. **Mirror**. Set `status: shipped` in the plan header. Route `github` and mirrored (Setup 2) → write `sin-flow-mirror plan.md` (`--comment` for a comment) back to
-   the issue copy it came from; over 60 000 bytes → `sin-flow-mirror [--comment] plan.md <dir>`, each part back to its own copy.
+3. **Mirror**. Set `status: shipped` in the plan header. Route `github` and mirrored (Setup 2) → write `sin-flow-mirror --comment plan.md` back to
+   the comment it came from; over 60 000 bytes → `sin-flow-mirror --comment plan.md <dir>`, each part back to its own comment.
    A script path and a `ticket:` other than `none` → `<script> put <ticket> <file>` with the `sin-flow-mirror plan.md` copy. Append `Plan <id>: shipped <URL>` to the ledger.
 4. **The final message** (below), then the post-PR phase that fits the repo — same turn, no pause.
 
@@ -273,8 +274,8 @@ merged PRs means team. **Team → the post-PR loop. Solo → the user's review.*
    **collected, not one at a time**: one implementer on the touched unit's `builder:` (mid when they span units,
    strong only when the forcing list is hit), the visual check again when a rendered surface changed, then one
    `sin-flow:shipper` gate + `commit` for the batch (a new commit); ledger `Round <k>: complete (<sha>)`.
-4. **Merge on the user's go-ahead.** A message that asks to merge or approves the merge → `ExitWorktree` with `action: keep` if you are in
-   one, then run `gh pr view <PR> --json isDraft,baseRefName`. For a plan with `after:`, also run
+4. **Merge on the user's go-ahead.** A message that asks to merge or approves the merge → run
+   `gh pr view <PR> --json isDraft,baseRefName`. For a plan with `after:`, also run
    `gh pr list -R <first repo> --head <first branch> --state merged --json url -q '.[0].url'`. Find the first repo
    and branch as in `sin-flow:plan` Step 1. If the output is empty, stop and write one line: the first unit merges first.
    If the first PR is merged, the repo is the same, and `baseRefName` is still the first branch, run
@@ -285,7 +286,9 @@ merged PRs means team. **Team → the post-PR loop. Solo → the user's review.*
    merges by that method (squash when empty) and prints the merge commit. What it removed (a branch, the worktree) is
    only what its output and the disk show, never what this text or the example says. Ledger
    `Plan <id>: merged <sha>`, `status: merged` in the plan header; one line back; then § After the merge of
-   `reference/visual-check.md`. Exit 3 — the PR conflicts with its
+   `reference/visual-check.md`. The profile sets `ci.after_merge: on` → watch each workflow run on the merge commit
+   to its end (`gh run list --commit <sha>`, then `gh run watch <id> --exit-status`). A red run → a fix PR at once,
+   as § After the merge of that file says for a `FAIL`. No key → no watch. Exit 3 — the PR conflicts with its
    base → the rebase round of Team step 1, then `merge.sh` once more, no question. Any other non-zero exit → paste its
    output and stop; never re-run its lines by hand.
 
@@ -355,7 +358,7 @@ product does now, not how the run went. Plain words, in the chat language, ≤ 1
 - The ledger has `<NAME> · skipped · <reason>` → one closing line: that extra reviewer did not review this PR, and the reason in
   plain words. It is the one review fact the message carries.
 - Solo repo only, closing lines: each screenshot (up to 3; more → the folder) as its own absolute file path on its own
-  line with what it shows in a few words; then how to try the change after the merge (the page or the command), when
+  line with what it shows in a few words, from its `SHOT:` line or your own Read of it; then how to try the change after the merge (the page or the command), when
   the result does not say it; then one line: the PR merges by the `merge` option on the user's go-ahead.
 
 Never in it — they live in the PR body, the plan or the ledger, and the user asks for one when needed: code identifiers,

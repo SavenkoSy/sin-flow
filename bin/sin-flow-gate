@@ -2,6 +2,7 @@
 set -uo pipefail
 
 TEST_PATH='(^|/)(spec|specs|test|tests|__tests__)/|_spec\.[a-z]+$|_test\.[a-z]+$|\.test\.[a-z]+$|\.spec\.[a-z]+$|(^|/)test_[^/]*\.py$'
+SPEC_FILE='(^|/)__tests__/|_spec\.[a-z]+$|_test\.[a-z]+$|\.test\.[a-z]+$|\.spec\.[a-z]+$|(^|/)test_[^/]*\.py$'
 
 usage() {
   cat >&2 <<'EOF'
@@ -84,10 +85,16 @@ cmd_canary() {
   local log="$work/canary-$unit.log" patch="$work/canary-$unit.patch" aside="$work/canary-$unit-aside"
   local tests=() code=() untracked=() f status count
   for f in "$@"; do
-    if grep -qE "$TEST_PATH" <<<"$f"; then tests+=("$f"); else code+=("$f"); fi
+    if grep -qE "$SPEC_FILE" <<<"$f"; then [ -e "$f" ] && tests+=("$f")
+    elif ! grep -qE "$TEST_PATH" <<<"$f"; then code+=("$f")
+    fi
   done
-  if [ ${#tests[@]} -eq 0 ] || [ ${#code[@]} -eq 0 ]; then
-    echo "CANARY none: no spec file or no code file in the unit" | tee "$log"
+  if [ ${#code[@]} -eq 0 ]; then
+    echo "CANARY none: no code file in the unit" | tee "$log"
+    return 0
+  fi
+  if [ ${#tests[@]} -eq 0 ]; then
+    echo "CANARY none: no spec file in the unit. When the unit has spec files, add them to its line and run the canary again" | tee "$log"
     return 0
   fi
   base=$(git merge-base HEAD "origin/$base" 2>/dev/null || git rev-parse --verify -q "$base^{commit}") || { echo "CANARY blocked: base not found" | tee "$log"; return 3; }

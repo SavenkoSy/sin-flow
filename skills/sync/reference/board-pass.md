@@ -6,7 +6,7 @@ digest. **You do not decide what to work on, and you do not compose prose.** The
 dispatched you runs a stronger model; the reading, the ranking and the recommendation are its job,
 and your digest is its only input.
 
-Your dispatch prompt names the **profile key**, the **mode** (`sync`, `new`, `publish` or `take <batch name>`), and
+Your dispatch prompt names the **profile key**, the **mode** (`sync`, `new`, `publish`, `release` or `take <batch name>`), and
 the `resolved:`, `writes:`, `group_by:` and `skip_milestones:` lines. Everything else you read from disk.
 
 ---
@@ -170,17 +170,20 @@ project`) or the query fails `INSUFFICIENT_SCOPES`. It handles paging and duplic
 The board is edited while you work — expect drift, and re-fetch before the final publish.
 
 **Tickets that an open PR holds.** Skip this when `tracker.adapter` is set. Else list the open PRs once, and match
-them to the rows. A PR holds ticket `<n>` when its title carries `<prefix><n>`, its body carries `#<n>`, or its branch
-name carries `<prefix><n>` as a path part. `<prefix>` is `tracker.id_prefix`.
+them to the rows. A PR holds ticket `<n>` only when a person authored it (`author.is_bot` is not true) and it claims
+the ticket: its `closingIssuesReferences` names the issue, its title carries `<prefix><n>`, or its branch name carries
+`<prefix><n>` as a path part. A `#<n>` in the PR body holds nothing, because a bot PR body lists numbers of other
+repos. `<prefix>` is `tracker.id_prefix`.
 
 ```bash
-gh pr list --repo <repo.slug> --state open --limit 200 --json number,title,body,headRefName,author \
+gh pr list --repo <repo.slug> --state open --limit 200 --json number,title,headRefName,author,closingIssuesReferences \
   > "$SCRATCH/open-prs.json"
-jq -r --arg p "<prefix>" --slurpfile s "$SCRATCH/board-fresh.json" '
+jq -r --arg p "<prefix>" --arg slug "<repo.slug>" --slurpfile s "$SCRATCH/board-fresh.json" '
   ($p | ascii_downcase) as $lp
-  | .[] as $pr | $s[0][].n as $n | ($n | tostring) as $ns
-  | select(($pr.title | ascii_downcase | test("(^|[^a-z0-9])" + $lp + $ns + "([^0-9]|$)"))
-      or (($pr.body // "") | test("#" + $ns + "([^0-9]|$)"))
+  | .[] | select(.author.is_bot != true) as $pr | $s[0][].n as $n | ($n | tostring) as $ns
+  | select(([$pr.closingIssuesReferences[]?.url | ascii_downcase]
+        | index("https://github.com/" + ($slug | ascii_downcase) + "/issues/" + $ns))
+      or ($pr.title | ascii_downcase | test("(^|[^a-z0-9])" + $lp + $ns + "([^0-9]|$)"))
       or ($pr.headRefName | ascii_downcase | test("(^|/)" + $lp + $ns + "([/-]|$)")))
   | "\($p)\($n) · PR #\($pr.number) · \($pr.author.login)"' "$SCRATCH/open-prs.json" | sort -u
 ```
@@ -202,6 +205,10 @@ added, and remove the entry when the issue is closed or has no item on
 `scope.projectNumber`. With `tracker.adapter`, the read is the only source: remove the entry.
 Also remove the entry when its ticket is in the fresh read but not in the previous snapshot: the
 ticket left scope and came back, for example as a reopen after QA, and is free again.
+
+**Stale claims.** Skip this when `tracker.adapter` is set. For each claim left whose `at` is before today and whose
+ticket matches no PR in `$SCRATCH/open-prs.json` by the tests of step 2, add one line to the `STALE CLAIMS` slot
+of the digest. Change nothing on the board for it.
 
 ## 4. Refresh the ticket briefs
 
@@ -389,20 +396,31 @@ Append one tab-separated line to `<board>/runs.log`; never rewrite it:
 
 ---
 
+# Release mode
+
+Runs only when the dispatch prompt says `mode: release` with ticket numbers. For each ticket with a `claims` entry:
+when `status=on`, move it back to the claim's `from` status (step 12 shape). When `assign=on` or `assign=own`, remove
+the user and add back each login in the claim's `was`. Then delete the claim. Run step 13 and return the `BOARD` and
+`NOTES` lines of the TAKE DIGEST, plus `RELEASED: <prefix><n>, …`. Append `<ISO date>	release	released=<n>` to
+`runs.log`.
+
 # Take mode
 
 Runs only when the dispatch prompt names a batch. The batch is whatever `DATA` currently holds for
 that name — all of it, unless the prompt lists the ticket numbers, then exactly those.
 
-## 11. Record the claim, then assign only when `assign=on`
+## 11. Record the claim, then assign only when `assign=on` or `assign=own`
 
-First, in each mode, write `claims[<n>] = {"batch": "<batch name>", "at": "<today>", "from":
+With `assign=own`, first drop from the take every ticket whose assignees are not empty and not only the user
+(state.json `owner`). Write nothing for it, and put `held: <prefix><n> by <login>` in the TAKE DIGEST `NOTES` slot.
+
+Then, in each mode, write `claims[<n>] = {"batch": "<batch name>", "at": "<today>", "from":
 "<status>", "was": [<assignee logins>]}` into `state.json` for each ticket of the take. `from` and `was`
 are the status and the assignees before the take. `sin-flow:plan` reads them for a no-code ticket.
 Keep every other key of `state.json`. The claim puts the ticket in the `Claimed` group of the page (step 7).
 
 When `assign=off`, assign nobody and put `assign: not written (switch off)` in the TAKE DIGEST
-`NOTES` slot. When `assign=on`, assign every ticket in the batch to the user (state.json `owner`).
+`NOTES` slot. When `assign=on` or `assign=own`, assign every ticket in the batch to the user (state.json `owner`).
 With `tracker.adapter`, run `<adapter> write assign <key> <n> <owner>`: each line it prints is a
 removed assignee. Else:
 
@@ -452,7 +470,7 @@ the caller must never put a ticket number in front of the user without saying wh
 
 ```
 BOARD: <resolved line, verbatim> · <artifactUrl> · published <ok | FAILED: reason> · <n> rows in scope
-WRITES: light=<on|off> assign=<on|off> status=<on|off> · group_by: <mode>
+WRITES: light=<on|off> assign=<on|off|own> status=<on|off> · group_by: <mode>
 COUNTS: <batch> <n> (<g>🟢 <y>🟡 <r>🔴) · <batch> <n> (…) · …
 MOVED: <or none>
   <prefix><n> <old status> → <new status>
@@ -475,6 +493,8 @@ DEFERRED WITH MOVEMENT: <or none>
   <prefix><n> · updated <date> (def.since <date>)
 HELD BY OPEN PR: <or none>
   <prefix><n> · PR #<number> · <author login>
+STALE CLAIMS — taken, no open PR: <or none>
+  <prefix><n> · batch <name> · since <at> · was <from>, <was logins or unassigned>
 SCOPE COLLISIONS: <or none>
   <prefix><n>, <prefix><n> both touch <file>
 NOT CODE IN THIS REPO: <or none>
@@ -487,7 +507,7 @@ BRIEFS: <board>/tickets.md · <n> blocks
 
 ```
 BOARD: <resolved line, verbatim> · batch <name> · <n> tickets taken · published <ok | FAILED: reason>
-WRITES: light=<on|off> assign=<on|off> status=<on|off> · group_by: <mode>
+WRITES: light=<on|off> assign=<on|off|own> status=<on|off> · group_by: <mode>
 TAKEN: <prefix><n>, …
 DISPLACED: <login> off <prefix><n> · … <or none>
 NOTES: <or none>
