@@ -48,7 +48,15 @@ expect_eq "quoted on" "OK p" "$out"
 mk p 'tracker.write.assign: yes'
 run sin-flow-profile validate p
 expect_eq "bad switch rc" 1 "$rc"
-expect_eq "bad switch" "FAIL p: tracker.write.assign 'yes' is not on or off" "$out"
+expect_eq "bad switch" "FAIL p: tracker.write.assign 'yes' is not on, off or own" "$out"
+
+mk p 'tracker.write.assign: own' 'tracker.stale_days: 5'
+run sin-flow-profile validate p
+expect_eq "assign own" "OK p" "$out"
+
+mk p 'tracker.stale_days: 0'
+run sin-flow-profile validate p
+expect_eq "bad stale days" "FAIL p: tracker.stale_days '0' is not a number from 1 to 99" "$out"
 
 for sw in light status; do
   mk p "tracker.write.$sw: maybe"
