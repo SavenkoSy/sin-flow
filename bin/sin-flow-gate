@@ -2,7 +2,7 @@
 set -uo pipefail
 
 TEST_PATH='(^|/)(spec|specs|test|tests|__tests__)/|_spec\.[a-z]+$|_test\.[a-z]+$|\.test\.[a-z]+$|\.spec\.[a-z]+$|(^|/)test_[^/]*\.py$'
-SPEC_FILE='(^|/)__tests__/|_spec\.[a-z]+$|_test\.[a-z]+$|\.test\.[a-z]+$|\.spec\.[a-z]+$|(^|/)test_[^/]*\.py$'
+SUPPORT_PATH='(^|/)(spec|specs|test|tests|__tests__)/(.*/)?(support|fixtures|factories|helpers)/'
 
 usage() {
   cat >&2 <<'EOF'
@@ -85,8 +85,9 @@ cmd_canary() {
   local log="$work/canary-$unit.log" patch="$work/canary-$unit.patch" aside="$work/canary-$unit-aside"
   local tests=() code=() untracked=() f status count
   for f in "$@"; do
-    if grep -qE "$SPEC_FILE" <<<"$f"; then [ -e "$f" ] && tests+=("$f")
-    elif ! grep -qE "$TEST_PATH" <<<"$f"; then code+=("$f")
+    if grep -qE "$SUPPORT_PATH" <<<"$f"; then continue
+    elif grep -qE "$TEST_PATH" <<<"$f"; then [ -e "$f" ] && tests+=("$f")
+    else code+=("$f")
     fi
   done
   if [ ${#code[@]} -eq 0 ]; then

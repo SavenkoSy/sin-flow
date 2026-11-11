@@ -23,6 +23,7 @@ Profile facts come from the profile through the CLI, never from `state.json`:
 | tracker adapter | `sin-flow-profile <key> get tracker.adapter`, `~` expanded. Absent → the built-in GitHub adapter |
 | write switches, `group_by`, `skip_milestones` | the `writes:`, `group_by:` and `skip_milestones:` lines of the dispatch prompt |
 | ticket prefix | `sin-flow-profile <key> get tracker.id_prefix` |
+| stale days | `sin-flow-profile <key> get tracker.stale_days`, else 3 |
 | sensitive areas | the `sensitive:` line of `sin-flow-profile <key> section Inferred` |
 
 `sin-flow-profile` is on PATH from the plugin's `bin/`. Board state lives in `$(sin-flow-profile <key> dir)/board/`
@@ -172,11 +173,11 @@ The board is edited while you work — expect drift, and re-fetch before the fin
 **Tickets that an open PR holds.** Skip this when `tracker.adapter` is set. Else list the open PRs once, and match
 them to the rows. A PR holds ticket `<n>` only when a person authored it (`author.is_bot` is not true) and it claims
 the ticket: its `closingIssuesReferences` names the issue, its title carries `<prefix><n>`, or its branch name carries
-`<prefix><n>` as a path part. A `#<n>` in the PR body holds nothing, because a bot PR body lists numbers of other
-repos. `<prefix>` is `tracker.id_prefix`.
+`<prefix><n>` as a path part, or its body carries `#<n>`. A `#<n>` that follows `/` or a repo name, such as
+`<org>/<repo>#<n>`, holds nothing, because it names an issue of another repo. `<prefix>` is `tracker.id_prefix`.
 
 ```bash
-gh pr list --repo <repo.slug> --state open --limit 200 --json number,title,headRefName,author,closingIssuesReferences \
+gh pr list --repo <repo.slug> --state open --limit 200 --json number,title,headRefName,author,closingIssuesReferences,body \
   > "$SCRATCH/open-prs.json"
 jq -r --arg p "<prefix>" --arg slug "<repo.slug>" --slurpfile s "$SCRATCH/board-fresh.json" '
   ($p | ascii_downcase) as $lp
@@ -184,7 +185,8 @@ jq -r --arg p "<prefix>" --arg slug "<repo.slug>" --slurpfile s "$SCRATCH/board-
   | select(([$pr.closingIssuesReferences[]?.url | ascii_downcase]
         | index("https://github.com/" + ($slug | ascii_downcase) + "/issues/" + $ns))
       or ($pr.title | ascii_downcase | test("(^|[^a-z0-9])" + $lp + $ns + "([^0-9]|$)"))
-      or ($pr.headRefName | ascii_downcase | test("(^|/)" + $lp + $ns + "([/-]|$)")))
+      or ($pr.headRefName | ascii_downcase | test("(^|/)" + $lp + $ns + "([/-]|$)"))
+      or (($pr.body // "") | ascii_downcase | test("(^|[^a-z0-9_./-])#" + $ns + "([^0-9]|$)")))
   | "\($p)\($n) · PR #\($pr.number) · \($pr.author.login)"' "$SCRATCH/open-prs.json" | sort -u
 ```
 
@@ -206,8 +208,8 @@ added, and remove the entry when the issue is closed or has no item on
 Also remove the entry when its ticket is in the fresh read but not in the previous snapshot: the
 ticket left scope and came back, for example as a reopen after QA, and is free again.
 
-**Stale claims.** Skip this when `tracker.adapter` is set. For each claim left whose `at` is before today and whose
-ticket matches no PR in `$SCRATCH/open-prs.json` by the tests of step 2, add one line to the `STALE CLAIMS` slot
+**Stale claims.** Skip this when `tracker.adapter` is set. For each claim left whose `at` is more than `<stale days>` days
+before today, and whose ticket matches no PR in `$SCRATCH/open-prs.json` by the tests of step 2, add one line to the `STALE CLAIMS` slot
 of the digest. Change nothing on the board for it.
 
 ## 4. Refresh the ticket briefs

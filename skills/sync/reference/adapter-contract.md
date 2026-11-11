@@ -80,7 +80,7 @@ Three profile switches control the board writes. Each switch is `on` or `off`. A
 | `tracker.write.assign` | `write assign` |
 | `tracker.write.status` | `write status` |
 
-A write step runs only when its switch is `on` **and** `supports` lists the step. Sync records
+A write step runs only when its switch is `on`, or `own` for `write assign`, **and** `supports` lists the step. Sync records
 claims and shows lights and groups on the page also when each switch is off.
 
 ## Example skeleton
