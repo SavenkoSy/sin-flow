@@ -17,9 +17,6 @@ ${CLAUDE_PLUGIN_ROOT}/skills/plan/
   reference/harness-template.mjs   browser probe harness; every repo value comes from env (Step 4)
 ```
 
-Everything repo-specific — base branch, gates, tracker, measurement route, sources, UI check,
-branch and commit conventions — comes from the profile, never from this file.
-
 Chat with the user in the `chat_language` option (`sin-flow-profile user chat_language`), or in the language the user writes in when it is absent. Headings and fixed phrases defined here are rendered in that language. Files, commits, PRs and issues are always English.
 
 ## Arguments
@@ -300,16 +297,17 @@ standing authorization; a plan that ends at "ready to commit" is unfinished.
 **Mirror.** The local `plan.md` is the truth. `sin-flow-profile <key> mirror` prints the route; never mirror in upstream
 mode. `off` → no mirror. A script path and a `ticket:` other than `none` → `sin-flow-mirror plan.md > mirror.md`, then `<script> put <ticket> mirror.md`,
 and `<script> add <ticket> <file>` for each new evidence file from its own `sin-flow-mirror` copy, never split
-(`skills/setup/SKILL.md` § Your own scripts). `github`: the user's own issue → its
-body (`gh issue edit <N> --body-file mirror.md`); anyone else's → one comment, found by its first line
-`<!-- sin-flow:plan -->`, created once and edited in place
-(`gh api -X PATCH repos/<slug>/issues/comments/<id> -F body=@mirror.md`). `sin-flow-mirror --comment plan.md >
-mirror.md` writes that first line: never add it by hand. Over 60 000 bytes → `sin-flow-mirror [--comment] plan.md
-<dir>` writes and prints `<dir>/mirror-<n>.md`: part 1 goes where `mirror.md` goes, each next part is one comment
-that starts `<!-- sin-flow:plan part <n> -->`, edited in place the same way. Never split by hand. Each new evidence file → one
-`gh issue comment --body-file`, from its own `sin-flow-mirror` copy. An issue never points at a local file:
-`sin-flow-mirror plan.md > mirror.md` drops every line that points at the notes, a worktree or evidence, and turns
-any other path into its file name; the local file keeps everything.
+(`skills/setup/SKILL.md` § Your own scripts). `github`: one comment on the issue, created once and edited in place
+(`gh api -X PATCH repos/<slug>/issues/comments/<id> -F body=@mirror.md`). Never write the plan over an issue body, also
+not on the user's own issue: the body is the ticket text. `sin-flow-mirror --comment plan.md >
+mirror.md` writes its first line `<!-- sin-flow:plan <id> -->`: never add it by hand. The comment to edit has that
+same first line. Else a comment with the first line `<!-- sin-flow:plan -->` and the same second line as `mirror.md`.
+Else create one. Never take a `sin-flow:plan` comment of another plan. Over 60 000 bytes → `sin-flow-mirror --comment plan.md
+<dir>` writes and prints `<dir>/plan-mirror-<n>.md`: part 1 goes where `mirror.md` goes, each next part is the comment
+with its own first line `<!-- sin-flow:plan <id> part <n> -->`, edited in place the same way. Never split by hand. Each new evidence file → one
+`gh issue comment --body-file`, from its own `sin-flow-mirror` copy without `--comment`. The script strips every local path.
+`gh issue comment` fails with a `GraphQL:` error → post the same file once through REST:
+`gh api repos/<slug>/issues/<N>/comments -F body=@<file>`.
 A multi-ticket plan goes to every ticket's issue.
 
 ## Step 7 — Plan audit before hand-off
@@ -358,6 +356,9 @@ line each ("GH-N: BE gate goes too — FE-only measured as a 409"), never a ques
 The coding stage starts **immediately** — no "shall I start?". **The launch is the last write to the
 plan file.** A later change goes into the file, and one line tells the user to pass it to the running exec.
 
+**An old ledger.** `work/<key>/<id>/progress.md` that already holds `Plan <id>: shipped` or `Plan <id>: blocked` is
+the ledger of an earlier plan in this folder. Before the launch, `mv` it to `progress-<YYYYMMDD-HHMM>.md`.
+
 **`sin-flow:exec` always runs on `<strong>`**, never this session's model:
 
 ```
@@ -384,7 +385,6 @@ prints, with the date, `plan`, the exact error text, `file:line` when known and 
 
 ## What this skill never does
 
-- Edit application code or commit anything.
 - File follow-up issues or write a deferred-work file.
 - Put a no-code ticket's id in the PR title, or write a change for a ticket it did not measure.
 - Let an agent's report stand where a probe contradicts it.

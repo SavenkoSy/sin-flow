@@ -79,7 +79,7 @@ while IFS= read -r p; do
   [ -z "$p" ] && continue
   [ ! -e "$p" ] && [ ! -L "$p" ] && git cat-file -e "HEAD:$p" 2>/dev/null && continue
   hit=$(printf '%s\n' "$p" | awk -v globs="$NOTES" 'function g2r(g){gsub(/[.+^$(){}|\\]/,"\\\\&",g);gsub(/\*/,"[^\n]*",g);gsub(/\?/,".",g);return "^" g "$"} {n=split(globs,a," ");for(i=1;i<=n;i++) if($0 ~ g2r(a[i])){print 1;exit}}')
-  [ -n "$hit" ] && { echo "L1 $p"; continue; }
+  [ -n "$hit" ] && ! git cat-file -e "HEAD:$p" 2>/dev/null && { echo "L1 $p"; continue; }
   [ -L "$p" ] && case "$(readlink -f "$p")" in "$WORK"/*) echo "L1 $p"; continue ;; esac
   [ -f "$p" ] && grep -qx "$(git hash-object "$p")" /tmp/flow-l1-$$.hashes && echo "L1 $p"
 done
@@ -90,6 +90,7 @@ rm -f /tmp/flow-l1-$$.hashes
   staged, `STATUS: blocked`, `NOTE: L1 — <path> is agent notes; it lives in ~/.claude/sin-flow/work/`.
 - A hit that is merely present in the tree → leave it unstaged and name it in a `NOTE`.
 - A hit in `git diff --cached` right before the commit → unstage it, `STATUS: blocked`.
+- The globs refuse only a path that `HEAD` does not track. A path that the repo already tracks passes the glob check.
 
 ## Conventions and the profile keys that override them
 
@@ -120,6 +121,8 @@ rm -f /tmp/flow-l1-$$.hashes
    and service-setup steps), or the `run:` steps in `.circleci/config.yml`; `lefthook.yml` pre-commit
    commands; the repo's own scripts — the `lint`, `test`, `build` scripts of `package.json`, a `test`
    target in a `Makefile`, an executable `bin/test*`. Nothing found → `STATUS: blocked`.
+   The prompt's `commands` is shell text. `commands: true` is the shell command `true`: it runs no gate, and the
+   result is green. Then step 4 is the only check.
 3. Write the resolved list to `<work_dir>/gate-<label>.commands`, one entry per line, `gates.prepare` first when
    set. Copy the caller's `commands` text as it came. Then run `sin-flow-gate run <log> <that file>`. The script splits
    the entries at line ends and at backticked items. A `;` stays inside its command. It runs each with `bash -c`, writes `=== <command> ===` and
@@ -133,7 +136,8 @@ rm -f /tmp/flow-l1-$$.hashes
    to <ref>`. Never paste output into the return.
 4. `canary` given and the profile sets `gates.spec_cmd` → after a green step 3, for each unit line run
    `sin-flow-gate canary <work_dir> <unit> <base> '<gates.spec_cmd>' <files…>` and put its line in a `NOTE` as it
-   prints it. The script reverts against `git merge-base HEAD origin/<base>`, and its `CANARY base:` part names the
+   prints it. `<unit>` is the first word of the unit line as the caller wrote it. Do not change it to the ticket id,
+   because the caller's `verdict` reads `canary-<unit>.log`. The script reverts against `git merge-base HEAD origin/<base>`, and its `CANARY base:` part names the
    files that it reverted. Do not add your own account of the files.
    `CANARY blocked` → `STATUS: blocked`. No `gates.spec_cmd` → `NOTE: canary off`.
 

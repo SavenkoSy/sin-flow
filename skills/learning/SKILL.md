@@ -250,9 +250,11 @@ hold.
   `declined <date>` or `for author <date>`. Append one row for flow `learning`: what in this skill got in the way this
   run, or "nothing". `/sin-flow:learning self` reads that row.
 - The run ends with no open `inbox.md` row of a stage it covered. A row of a skipped stage stays open, and the ledger
-  entry names it. Closed rows move to `inbox-archive.md`. Each open row goes to the user
-  one at a time, with your pick, until it is closed. A row the user accepts becomes a numbered proposal with its layer
-  and goes through the apply scripts like every other. Never edit a live target straight from the walk. A new row takes the next number after the highest in both files.
+  entry names it. Closed rows move to `inbox-archive.md`. Never walk the open rows with the user one at a time. Decide
+  each open row yourself: take it into a numbered proposal with its layer, mark it covered by `P<n>`, or decline it
+  with a one-line reason. Show that list in the same chat report as the proposals, and the user approves it once with
+  them. A taken row goes through the apply scripts like every other proposal. Never edit a live target straight from
+  the list. A new row takes the next number after the highest in both files.
 - On `CTX GUARD` or `LIMIT GUARD`: let the readers in flight finish, write the digests, the ledger entry and
   `LD/<date>/continue.md` (the steps left and the inbox verdicts). Hand off with `sin-flow-handoff --cwd <this cwd>
   --name learning sin-flow:learning <anchor> "continue: read <continue.md>"`. After it prints `opened:`, this session
@@ -272,7 +274,8 @@ goes to the list of the switch that turns its behaviour on, not of the file it e
 a user option goes to «your settings», and one that acts only where a profile key turns it on goes to that profile. Group them by what the user sees,
 one short bold topic for each group. Each topic gives what happens today and what changes against today, in plain
 words, with no file name. Do not give one line for each proposal or each file. In user mode, one more line names
-`proposals-for-author.md` and the count of blocks added. Counts carry their filter set in the digest.
+`proposals-for-author.md` and the count of blocks added. After the lists, one inbox block: one line for each `P<n>` with
+the row numbers it takes or covers, then each declined row with its reason. The 15 lines do not count this block. Counts carry their filter set in the digest.
 
 Copy the `===` final-message block of one covered exec session whole from `<sid8>.long.txt` to
 `LD/<date>/flow-<stage>/final-message-<sid8>.md`. Never quote it in chat and ask no question about it. Name it in chat

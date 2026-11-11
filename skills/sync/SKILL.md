@@ -29,7 +29,7 @@ Profile keys that sync reads. The contract for a local adapter is
 | `tracker.adapter` | absent | path of a local tracker adapter. When set, sync reads and writes through it and ignores `tracker.board` |
 | `tracker.board` | absent | `<org>#<project number>` of a GitHub Projects board, the built-in adapter |
 | `tracker.write.light` | `off` | push the light of each classified ticket to the tracker |
-| `tracker.write.assign` | `off` | in take mode, make the user the only assignee |
+| `tracker.write.assign` | `off` | in take mode, make the user the only assignee. `own`: take only tickets with no assignee or the user as assignee, and never remove a teammate |
 | `tracker.write.status` | `off` | in take mode, move the taken tickets to `In progress` |
 | `group_by` | `milestone` | the groups on the page: `epic`, `milestone`, `priority`, `label`, `rules` (the batches of `board/rules.md`), or `field:<name>` (the values of that single-select field of the board) |
 | `tracker.skip_milestones` | absent | a comma list of milestones. The page shows their tickets in a group of their own, and a batch proposal never holds them |
@@ -63,7 +63,7 @@ Read the switches with `sin-flow-profile <key> get <field> || true`: `tracker.wr
 switch is `off`; an absent `group_by` is `milestone`. When `sin-flow-profile <key> get tracker.adapter` prints a path, run
 `<adapter> supports <key>` (`~` expanded). A step it does not list is `off`. A non-zero exit → one
 line with the first line of its stderr, and stop. Give the result in each dispatch prompt as
-`writes: light=<on|off> assign=<on|off> status=<on|off>`, `group_by: <mode>` and `skip_milestones: <list | none>`.
+`writes: light=<on|off> assign=<on|off|own> status=<on|off>`, `group_by: <mode>` and `skip_milestones: <list | none>`.
 
 Resolve `<cheap>` once for the key's checkout (`sin-flow-profile <key> get repo.path`, `~` expanded; missing → the cwd): `sin-flow-profile model cheap <checkout>`.
 
@@ -122,7 +122,7 @@ One call, nothing before it.
 
 ```
 Agent(subagent_type: "sin-flow:board", model: "<cheap>", description: "Sync <key> board",
-      prompt: "key: <key>\nmode: sync\nresolved: <line>\nwrites: light=<on|off> assign=<on|off> status=<on|off>\n
+      prompt: "key: <key>\nmode: sync\nresolved: <line>\nwrites: light=<on|off> assign=<on|off|own> status=<on|off>\n
                group_by: <mode>\nskip_milestones: <list | none>\n\nRun the sync pass in
                ${CLAUDE_PLUGIN_ROOT}/skills/sync/reference/board-pass.md and return the SYNC DIGEST
                template, nothing else.")
@@ -181,8 +181,7 @@ Every ticket you name — in `New`, in `Decisions needed`, in `What I recommend 
 sentence of what the ticket wants**, and a link. A bare number with a question after it is a
 failed report. The brief is already on disk.
 
-The user also asks, every time it is missing, **whose repo the fix lands in**. When a ticket points
-outside the profile's repo, say so on its line.
+When a ticket points outside the profile's repo, say **whose repo the fix lands in** on its line.
 
 The agent puts the last two comments in every brief. Use them — a reopen's real
 defect is in the comment, not the body.
@@ -226,12 +225,19 @@ recorded one. Read the ticket, then **accept** or **confirm the reject**. Report
 reason either way, so a teammate's retriage is never silently undone. A 🔴 set because the symptom
 *looks* like bad data is exactly the mistake the verify-upstream batch exists to catch.
 
+Each `STALE CLAIMS` line is a ticket that was taken and has no open PR. It goes under **Yours**: release it or keep
+it. On "release", dispatch the agent as in step 5 with `mode: release` and the ticket numbers.
+
 Send everything you decided back in one message; the agent writes it and republishes:
 
 ```
 SendMessage(to: "<agent id>",
             message: "decisions:\n  GH-1307 · batch <batch> · light yellow · priority High (inferred)\n  GH-1288 · accept the board's red · waits on <org>/<repo>#884\nApply these, republish, and return the SYNC DIGEST again.")
 ```
+
+**After a take pass, or any other board dispatch since that agent returned, do not resume it.** Its context holds
+the old board, and it republishes the old page over the new one. Dispatch a new `mode: sync` pass (step 1) with the
+decisions in its prompt.
 
 **The counts may not shrink between turns.** When you re-report after a round of decisions, the
 table and the ticket list cover the same set as before, plus what changed.
@@ -244,6 +250,8 @@ table and the ticket list cover the same set as before, plus what changed.
 - Deferred tickets, the tickets in the digest's `HELD BY OPEN PR` slot, the `Claimed` group and the tickets
   of a milestone in `tracker.skip_milestones` are excluded from the proposal. Name each held ticket with its PR
   and author in one line.
+- With `assign=own`, a ticket whose brief names another assignee is excluded too. Name those tickets in one line
+  with their assignee.
 
 Then **stop.** Do not assign, do not move statuses, do not write a plan, do not launch anything,
 do not ask whether to proceed.
@@ -279,7 +287,7 @@ The user assembles a batch out loud, over several turns, before taking it. Assem
 | The user says | You do |
 |---|---|
 | "take …", "yes, take <batch>", "take all the greens", "take these 4 greens" | **phase 2** |
-| "split it over two accounts, but do it", "take it and run everything yourself" | **phase 2 for every batch**, with § 6 **Two accounts** |
+| "split it over two accounts, but do it", "take all four batches", "take it and run everything yourself" | **phase 2 for every batch**, with § 6 **Several batches** |
 | "add to the batch", "let's add 7 greens", "let's talk about the yellows", "I'll add something else", "leave it out of this scope", "976 stays out of this one" | **nothing** — keep the running list, keep talking |
 
 The trigger is **take**, said as an instruction, nothing else. When you are not certain, keep
@@ -294,17 +302,15 @@ assign anything, do not dispatch the agent, do not run `sin-flow:ingest`.
 ```
 Agent(subagent_type: "sin-flow:board", model: "<cheap>", description: "Take <batch> on <key>",
       prompt: "key: <key>\nmode: take <batch name>\ntickets: <numbers, when the user narrowed the batch>\n
-               resolved: <line>\nwrites: light=<on|off> assign=<on|off> status=<on|off>\ngroup_by: <mode>\nskip_milestones: <list | none>\n\n
+               resolved: <line>\nwrites: light=<on|off> assign=<on|off|own> status=<on|off>\ngroup_by: <mode>\nskip_milestones: <list | none>\n\n
                Run the take pass in ${CLAUDE_PLUGIN_ROOT}/skills/sync/reference/board-pass.md and return
                the TAKE DIGEST template, nothing else.")
 ```
 
-The agent records the claim of every ticket in `state.json` `claims`. Then, if
-`tracker.write.assign` is on, it assigns every ticket to the user (state.json `owner`) and removes
-the previous assignee. If `tracker.write.status` is on, it moves them to `In progress`. It republishes the page. It does
-not launch anything.
+The agent runs board-pass steps 11 to 13. It does not launch anything.
 
-Report: tickets taken, and **every teammate displaced by name and ticket**.
+Report: tickets taken, **every teammate displaced by name and ticket**, and with `assign=own` every ticket left out
+because a teammate holds it.
 
 ## 6. Run `sin-flow:ingest` on the batch, in this session
 
@@ -321,9 +327,11 @@ From here `sin-flow:ingest` runs as written. It reads and measures each ticket, 
 questions it asks anyway, makes the worktree, writes the seed and hands off to `sin-flow:plan`. Do
 not repeat any of its steps, and do not open a tab for it.
 
-**Two accounts.** When the user asks to split the work over two accounts, the split is part of the take. Do not
-ask the user to say "take" for each batch, and do not give them a command to paste. Dispatch one take pass for the
-tickets of both batches. Then open batch B on the other account, and run the `Skill` call above on batch A:
+**Several batches.** When the user takes more than one batch at once, or asks to split the work over two accounts,
+the split is part of the take. Do not ask the user to say "take" for each batch, and do not give them a command to
+paste. Dispatch one take pass for the tickets of every batch. Run the `Skill` call above on the first batch only. Open
+each other batch in its own worktree, on the account the user names for it. Never start the analysts of another
+batch in this session:
 
 ```
 sin-flow-worktree --repo <repo.path> --name <id>-<slug> --branch <branch> --base origin/<base>
@@ -333,7 +341,7 @@ FLOW_CONFIG_DIR=<other config dir> sin-flow-handoff --cwd <worktree path> --name
 
 `<id>`, `<slug>` and `<branch>` follow `sin-flow:ingest` (§ Ids and the notes folder, `reference/exits.md` §
 Worktree). The other config dir is the one the user names. When the user names none and one other `~/.claude*`
-config dir is next to the config dir of this session, use that one. Never open batch B in the primary checkout.
+config dir is next to the config dir of this session, use that one. Never open another batch in the primary checkout.
 
 **`CTX GUARD` in a tool result before the invocation:** finish the in-flight dispatch. Then say in one line
 that the talk continues in a new session: `/sin-flow:ingest <key> <tickets>` for a batch already taken, else

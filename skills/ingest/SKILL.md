@@ -101,8 +101,7 @@ the tracker, `<N-M>` or `epic-<N>` when `tracker.id: N-M`, `<slug>` when `tracke
 no id applies. When issues are the tracker, a unit that holds two or more issues is `batch-<M>`: `<M>` is one above the highest number in the
 names of `work/<key>/batch-*` (`batch-1` when there is none). Its notes folder, branch and worktree take that id from
 the start, and each ticket keeps its own id in `## Tickets`. With several units, each unit keeps its own folder, named by its own id. The first unit's id names only the spec and the run. Before the issue exists, `ingest-<slug>` stands in and is renamed to `gh-<N>` once it does. The
-folder holds `plan.md`, `evidence/`, `reply.md`, `investigation.md` — nothing of it is ever
-`git add`ed. Status of a unit without a remote tracker lives in `status:` at the head of its
+folder holds `plan.md`, `evidence/`, `reply.md`, `investigation.md`. Status of a unit without a remote tracker lives in `status:` at the head of its
 `plan.md`, nowhere else.
 
 ---
@@ -178,7 +177,7 @@ Rules that bind every number:
   earlier is a business decision, not a defect.
 - **A failing spec is a task in the plan, never a run here.**
 
-Write `work/<key>/<id>/evidence/YYYY-MM-DD_<slug>.md`: date, environment, base SHA, the source link,
+Write `work/<key>/<id>/evidence/YYYY-MM-DD_ingest-<slug>.md` (a query or raw output beside it: `YYYY-MM-DD_ingest-<slug>.<ext>`): date, environment, base SHA, the source link,
 each query verbatim, each result with its filter set, the repetition table for any rate, one line
 per number saying what it is measured on. `sin-flow:plan` spot-checks this file instead of re-measuring,
 so a number without its query is worthless there. **Skip only when nothing numeric is claimed** —
@@ -229,7 +228,7 @@ State the exit in one line with its reason — «hotfix: one condition in one fi
 locked, no doc says otherwise» — **and run it in the same turn.** The exit, the owning epic and the
 id are yours; the user's word changes a verdict, it does not start one, and it is never a hotfix criterion. The one wait: a question that would
 change the verdict or the seed is still open — ask it, then act. After the tab opens, do not edit the
-seed; send a new fact to the plan tab in one message: `SendMessage` to the tab's name. When `ListAgents` does
+seed or a file already in `evidence/`; write a new fact to a new `evidence/` file and send its path to the plan tab in one message: `SendMessage` to the tab's name. When `ListAgents` does
 not list that name (the tab runs under another account), send it through the terminal the `handoff` option
 names, then read that terminal once to confirm the tab took it.
 

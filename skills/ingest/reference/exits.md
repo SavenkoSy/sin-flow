@@ -14,9 +14,11 @@ under `## Decisions`. Same repo: the unit starts at once on the branch of `<id>`
 once in its own plan tab, with no `after:`. The spec carries the shared contract as far as ingest knows it. The unit that
 fixes the contract first sends the final contract to the other tab (`SKILL.md` § 5, a new fact). `after: <id>` across
 repos only when a unit cannot start at all without the merged code of `<id>`. It waits in `sin-flow:plan` Step 1. Then run everything below once per unit, in map order. A unit in
-another repo takes everything from that repo's profile. A unit in a repo with no profile runs `sin-flow:setup`'s
-onboard for that repo in this session first, then goes on like every other unit: its own seed, `after: <id>` when
-it waits, and its tab in the same turn as the others. Never leave a unit of the map for later.
+another repo takes everything from that repo's profile. A unit in a repo with no profile follows `sin-flow:setup`'s
+Onboard step 0. The user's own repo that is not this checkout's `origin` → one line «run /sin-flow:setup inside
+`<slug>`'s checkout», then stop this ingest with every unit of the map. Never onboard that repo from this checkout.
+Someone else's repo → onboard it in this session first, then it goes on like every other unit: its own seed,
+`after: <id>` when it waits, and its tab in the same turn as the others. Never leave a unit of the map for later.
 
 ## Tracker unit
 
@@ -130,11 +132,16 @@ the rest of this section, only when the unit is an issue. Nothing from `work/` i
 Every issue body, mirror and comment is self-contained: no local path (`~/`, `/Users/`, a scratchpad),
 code cited as a permalink at the base SHA, a local source or evidence file summarized in the text.
 
-- The user authored the issue (one this skill created): `gh issue edit <N> --body-file plan.md`.
-- Anyone else's issue: one comment that starts with `<!-- sin-flow:plan -->`, created once, then edited in
-  place (`gh api -X PATCH repos/<slug>/issues/comments/<id> -F body=@plan.md`) — never their body.
-- Over 60 000 bytes: the first 60 000 plus `continued in comments`, the rest as comments.
-- Each evidence file: one `gh issue comment --body-file` (not in upstream mode).
+- The plan goes to one comment on the issue, never to the issue body. This also applies to an issue that the user
+  authored or that this skill created: the body is the ticket text. `sin-flow-mirror --comment plan.md > mirror.md`
+  writes the first line `<!-- sin-flow:plan <id> -->`. Create the comment once, then edit in place the comment with
+  the same first line (`gh api -X PATCH repos/<slug>/issues/comments/<id> -F body=@mirror.md`).
+- Over 60 000 bytes: `sin-flow-mirror --comment plan.md <dir>` writes `<dir>/plan-mirror-<n>.md`. Part 1 is the
+  plan comment, and each next part is one more comment.
+- Each evidence file: one `gh issue comment --body-file` (not in upstream mode), from its own
+  `sin-flow-mirror <file>` copy without `--comment`. Write each copy to its own path, never over the plan copy.
+- `gh issue comment` fails with a `GraphQL:` error → post the same file once through REST:
+  `gh api repos/<slug>/issues/<N>/comments -F body=@<file>`.
 
 ## Hand-off (plan, epic, hotfix)
 
@@ -215,8 +222,8 @@ A reply draft in `<work>/reply.md`: plain language, **five sentences at most**, 
 the mechanism in one sentence, no identifier before the plain sentence that explains it. Above it in
 chat, two sentences for the user: what the reply tells the reporter, and why that helps them.
 
-- Slack thread: Slack-ready plain text — no headings, no tables — shown in chat and put on the
-  clipboard with `pbcopy` in the same turn, one line "in the clipboard". The user posts it.
+- Slack thread: Slack-ready plain text — no headings, no tables, no blockquote — shown in chat as
+  plain paragraphs. The user copies it from the chat or from `reply.md` and posts it.
 - Issue in our repo: post only on the user's word — `gh issue comment <N> --repo <slug> --body-file <work>/reply.md`.
 - Issue in another repo: show the exact text and wait for a "yes" for that comment — except upstream mode: `upstream.md` § Write policy.
 - If auto mode refuses the post, give the user that one command once, prefixed `!`, flush left in a code

@@ -4,7 +4,7 @@ set -euo pipefail
 FLOW_HOME="${FLOW_HOME:-$HOME/.claude/sin-flow}"
 
 usage() {
-  echo "usage: sin-flow-worktree --repo <checkout> --name <id>-<slug> --branch <branch> --base <origin/base | local branch>" >&2
+  echo "usage: sin-flow-worktree --repo <checkout> --name <id>-<slug> --branch <branch> --base <base branch: origin/<base> after a fetch, else the local branch>" >&2
   echo "       sin-flow-worktree --remove <worktree path>" >&2
   exit 2
 }
@@ -54,7 +54,10 @@ if git -C "$repo" show-ref --verify --quiet "refs/heads/$branch"; then
   exit 1
 fi
 
-case "$base" in origin/*) git -C "$repo" fetch -q origin "${base#origin/}" ;; esac
+case "$base" in
+  origin/*) git -C "$repo" fetch -q origin "${base#origin/}" ;;
+  *) git -C "$repo" fetch -q origin "$base" 2>/dev/null && base="origin/$base" ;;
+esac
 
 if [ "$mode" = git ]; then
   path="$repo/.claude/worktrees/$name"
