@@ -93,8 +93,10 @@ How deep, by what the diff changed — the deepest kind present wins:
 
 The ledger says `blocked`, `red` or has a `SKIP`, and the merged diff changed a rendered surface → once the deploy of
 the merge commit is live on `ui.server`, the same check there, through the profile's sign-in route. A `FAIL` → a fix
-PR at once, from a one-block plan, through the § Hand-off command of the exec skill with `--cwd <this checkout>`,
-and one line to the user. Green → one line to the user.
+PR at once, from a one-block plan, in this same workspace in a new tab: the § Hand-off command of the exec skill
+with `--cwd <this checkout>`. The new exec switches to the plan's branch in place (Setup 4). It never makes a new
+worktree and never calls `EnterWorktree`: a worktree outside `.claude/worktrees/` stops on a permission prompt
+(owner, 2026-11-05). Then one line to the user. Green → one line to the user.
 
 Then the user's close word («close», «done»): when the worktree is still there, `sin-flow-worktree --remove <its path>`
 removes it as the `workspace` option made it and deletes the local branch. Drop the worktree DB only when the profile
