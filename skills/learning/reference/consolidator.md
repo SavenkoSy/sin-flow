@@ -22,7 +22,7 @@ $S/turns.sh D/run <stage> > D/flow-<stage>/turns.txt
 - `dump-session.sh` writes `<sid8>.{txt,ctx,guards,agents.tsv,long.txt,errors,misses,ledger-paths}`, and adds to
   `stats.txt` and `transcripts.tsv`. `.misses` holds every `ingest-miss:` line that the session itself wrote.
 - Files under review: `${CLAUDE_PLUGIN_ROOT}/skills/<stage>/SKILL.md`, the agents and hooks that the stage calls
-  (`agents/{shipper,implementer,reviewer,read-only-analyst}.md`, `hooks/scripts/{stage,work-commit,ctx-guard,exec-guard}.sh`,
+  (`agents/{shipper,implementer,reviewer,read-only-analyst,review-poster,board}.md`, `hooks/scripts/{stage,work-commit,ctx-guard,exec-guard}.sh`,
   the run-log hook that `grep -l 'runs.tsv' ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/*.sh` finds, `sin-flow-handoff` and the
   launcher that the `handoff` option names), and `~/.claude/sin-flow/profiles/<key>/profile.md`. For the stage `review`
   they also hold `skills/review/reference/{pipeline.md,lenses/,sources.lock.tsv}` and

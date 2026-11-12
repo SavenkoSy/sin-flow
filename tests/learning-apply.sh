@@ -116,4 +116,23 @@ printf 'a1\nedited by another session\n' > "$CLAUDE_PLUGIN_ROOT/skills/demo/a.md
 rc=0; bash "$day4/apply/apply-plugin.sh" >/dev/null || rc=$?
 [ "$rc" = 3 ] || fail "case 24: an edit between the copy and the build stops the apply, rc $rc"
 
-echo "ok: 24 cases"
+newbase=$(shasum -a 256 "$CLAUDE_PLUGIN_ROOT/skills/demo/a.md" | cut -d' ' -f1)
+printf 'plugin\tskills/demo/a.md\t%s\n' "$newbase" >> "$day4/flow-exec/proposed/base.tsv"
+"$make" "$day4" >/dev/null || fail "case 25: make-apply fails with two base records"
+[ "$(awk -F'\t' '$3 == "skills/demo/a.md" { print $5 }' "$day4/apply/targets.tsv")" = "$newbase" ] || fail "case 25: the last base record wins"
+bash "$day4/apply/apply-plugin.sh" >/dev/null || fail "case 25: a re-recorded base lets the apply run"
+[ "$(cat "$CLAUDE_PLUGIN_ROOT/skills/demo/a.md")" = a4 ] || fail "case 25: the re-recorded target is applied"
+
+day5="$scratch/learning/2026-01-06"
+mkdir -p "$day5" "$scratch/shim"
+day="$day5"
+printf 'a5\n' | propose flow-exec/proposed/plugin/skills/demo/a.md
+"$make" "$day5" >/dev/null || fail "case 26: make-apply fails on one target"
+printf '#!/usr/bin/env bash\ncase "${*: -1}" in */rollback/*) head -c 1 "$2" > "${*: -1}"; exit 1 ;; esac\nexec /bin/cp "$@"\n' > "$scratch/shim/cp"
+chmod +x "$scratch/shim/cp"
+cp -p "$CLAUDE_PLUGIN_ROOT/skills/demo/a.md" "$scratch/a.before"
+rc=0; PATH="$scratch/shim:$PATH" bash "$day5/apply/apply-plugin.sh" >/dev/null 2>&1 || rc=$?
+[ "$rc" = 4 ] || fail "case 26: a failed rollback copy stops the apply, rc $rc"
+cmp -s "$scratch/a.before" "$CLAUDE_PLUGIN_ROOT/skills/demo/a.md" || fail "case 26: a partial rollback copy reached the live target"
+
+echo "ok: 26 cases"

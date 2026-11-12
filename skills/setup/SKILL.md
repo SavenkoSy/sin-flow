@@ -24,7 +24,7 @@ Chat with the user in the `chat_language` option (`sin-flow-profile user chat_la
 
 ## Mode
 
-Find the mode first. Then read the file of that mode. Do not read the file of another mode.
+Find the mode first. Then read the file of that mode. Do not read the file of another mode, except the one install step that a check fix names.
 All files are in `${CLAUDE_PLUGIN_ROOT}/skills/setup/reference/`.
 
 - Key: `sin-flow-profile key` (cwd → `git remote get-url origin` → profile whose `repo.slug` matches; else `<repo>/.claude/flow.md`).

@@ -33,6 +33,9 @@ A **Rewrite** proposal is due when the stage skill grew in each of the last 3 di
 that stage was carried within those 3 digests. It is the whole skill from scratch, with only what a read
 session followed or a hook enforces. Write it as the proposed copy `D/flow-<stage>/proposed/plugin/skills/<stage>/SKILL.md`,
 then copy it to `D/flow-<stage>-rewrite.md` for the user to read. The user approves it as a whole.
+When a Rewrite is carried, it is the only proposed copy of that skill. The numbered edits of the same skill go into
+the Rewrite copy, and the user approves them with it. When the user declines the Rewrite, the next run proposes those
+edits again as numbered edits of the live file.
 
 A declined proposal stays in the digest marked `declined <date>`. The next run does not propose it again unless new
 rows contradict the decline.

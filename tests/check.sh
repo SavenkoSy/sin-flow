@@ -241,4 +241,29 @@ has "case 17" "is not git-ignored → fix: add to .gitignore"
 has "case 17" "✗ project base           base release is not a branch on origin"
 has "case 17" "? project sources        the session runs the preflight and the verify call of: db"
 
+printf -- '---\nkey: demo\nrepo.slug: %s\nmeasure.doc: none\ngates.commands: no-such-binary-of-the-test run; git status\n---\n' "$HOME/demo-origin" > "$flow/profiles/demo/profile.md"
+run "$repo"
+has "case 18" "! project gate-tools     not on PATH: no-such-binary-of-the-test → fix: install no-such-binary-of-the-test"
+has "case 18" "gates !"
+printf -- '---\nkey: demo\nrepo.slug: %s\nmeasure.doc: none\ngates.commands: git status; git diff\n---\n' "$HOME/demo-origin" > "$flow/profiles/demo/profile.md"
+run "$repo"
+has "case 19" "✓ project gate-tools"
+printf -- '---\nkey: demo\nrepo.slug: %s\nmeasure.doc: none\ngates.commands: ;\n---\n' "$HOME/demo-origin" > "$flow/profiles/demo/profile.md"
+run "$repo"
+has "case 19" "! project gate-tools     unknown: gates.commands holds no command that the check can read"
+has_not "case 19" "✓ project gate-tools"
+
+git -C "$repo" push -q origin main:release/1.2
+printf -- '---\nkey: demo\nrepo.slug: %s\nmeasure.doc: none\n---\n\n## Inferred\nbase: release/1.2 (gh repo view)\n' "$HOME/demo-origin" > "$flow/profiles/demo/profile.md"
+run "$repo"
+has "case 20" "✓ project base           base release/1.2 on origin"
+
+mkdir "$scratch/gitshim"
+real_git=$(command -v git)
+printf '#!/usr/bin/env bash\ncase "$*" in *" status "*) echo "${GIT_OPTIONAL_LOCKS:-unset}" >> "%s/locks" ;; esac\nexec "%s" "$@"\n' "$scratch" "$real_git" > "$scratch/gitshim/git"
+chmod +x "$scratch/gitshim/git"
+PATH="$scratch/gitshim:$PATH" run "$repo"
+cases=$((cases + 1))
+[ "$(sort -u "$scratch/locks")" = 0 ] || fail "case 21: git status runs with optional locks on: $(cat "$scratch/locks" 2>/dev/null)"
+
 echo "ok: $cases cases"

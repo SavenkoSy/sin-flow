@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -uo pipefail
+export GIT_OPTIONAL_LOCKS=0
 
 FLOW_HOME="${FLOW_HOME:-$HOME/.claude/sin-flow}"
 PLUGIN="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -48,7 +49,7 @@ is_script() { local p; p=$(expand_home "$1"); case "$p" in /*) [ -f "$p" ] && [ 
 words_of() { printf '%s\n' "$1" | xargs -n1 printf '%s\n' 2>/dev/null || true; }
 frontmatter() { awk 'NR==1 && $0=="---" {inside=1; next} inside && $0=="---" {exit} inside {print}' "$1"; }
 inferred_of() { awk '/^## / { inside = (index($0, "## Inferred") == 1) } inside { print }' "$1"; }
-base_of() { sed -n 's/^base: \([^ ;.]*\).*/\1/p' | head -1; }
+base_of() { sed -n 's/^base: \([^ ;]*\).*/\1/p' | head -1; }
 gate_files_of() { sed -n 's/^gate files[^:]*: //p' | head -1; }
 
 missing=""
@@ -309,7 +310,15 @@ if top=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null); then
     fi
 
     commands=$(sin-flow-profile "$key" get gates.commands 2>/dev/null) || commands=""
+    own_commands=$commands
     [ -n "$commands" ] || commands=$(grep '^gates' <<<"$stored" || true)
+    if grep -q '`' <<<"$commands"; then
+      binaries=$(grep -oE '`[^`]+`' <<<"$commands" | sed -E 's/^`//; s/`$//' | awk '{print $1}' | sort -u)
+    elif [ -n "$own_commands" ]; then
+      binaries=$(tr ';' '\n' <<<"$own_commands" | awk 'NF { print $1 }' | sort -u)
+    else
+      binaries=""
+    fi
     lost=""
     while IFS= read -r binary; do
       [ -n "$binary" ] || continue
@@ -317,9 +326,11 @@ if top=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null); then
         */*) [ -x "$main/$binary" ] || [ -x "$binary" ] || lost="${lost:+$lost }$binary" ;;
         *) command -v "$binary" >/dev/null 2>&1 || lost="${lost:+$lost }$binary" ;;
       esac
-    done < <(grep -oE '`[^`]+`' <<<"$commands" | sed -E 's/^`//; s/`$//' | awk '{print $1}' | sort -u)
+    done <<<"$binaries"
     gates_state='!'
-    if [ -z "$lost" ]; then
+    if [ -n "$own_commands" ] && [ -z "$binaries" ]; then
+      row '!' project gate-tools "unknown: gates.commands holds no command that the check can read" "write the commands of gates.commands in backticks, or as plain text split by ';'"
+    elif [ -z "$lost" ]; then
       gates_state='✓'
       row '✓' project gate-tools "the binary of each gate command is on PATH"
     else
