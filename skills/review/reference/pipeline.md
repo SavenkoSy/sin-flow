@@ -25,18 +25,13 @@ agent. No lens runs twice.
 
 ## 2. How every lens is dispatched
 
-Agent tool, `subagent_type: "sin-flow:reviewer"`, the tier from this table, passed as its resolved alias, `description: "sin-flow:review <lens>"`,
+Agent tool, `subagent_type: "sin-flow:reviewer"`, the model and the effort of the lens's row in the model grid, `description: "sin-flow:review <lens>"`,
 and the prompt exactly `Package: <PKG>. Lens: <lens>. Lenses: <LENSES>.` — nothing else. The agent reads what it needs from the package; context
 added to the prompt biases the lens and is paid for twice.
 
-| Lens | Tier |
-|---|---|
-| `context` | mid |
-| `code` | strong |
-| `fit` | mid |
-| `all` | strong |
-| `verify` | strong |
-| `settle` | strong |
+`sin-flow-profile model lens-<lens> <checkout>` prints that row, for example `opus high`. The first word is the
+`model` and the second word is the `effort`. An effort of `-` means: pass no effort. The grid roles are `lens-context`, `lens-code`, `lens-fit`, `lens-all`,
+`lens-verify` and `lens-settle`. Each lens has one row with the level `*`. A lens never moves to another row.
 
 ## 3. Order
 
@@ -46,7 +41,7 @@ added to the prompt biases the lens and is paid for twice.
    the caller's skill says this round runs without extra reviewers, the same message also runs
    `bash $LENSES/../reviewers.sh find "$PKG"` as a background Bash call. The script reads the `extra_reviewers` option,
    runs every listed reviewer in parallel and prints one line for each. It prints
-   `REVIEWERS · off` when the list is empty. A reviewer is `codex` or the user's own script (setup § Your own scripts),
+   `REVIEWERS · off` when the list is empty. A reviewer is `codex` or the user's own script (`skills/setup/reference/user-scripts.md`),
    and its name is the name of its findings file. In pr mode only `codex` runs, and only when
    `codex_model_pr` names a model family or a model, and runs on the newest model of that family.
 3. `verify` — alone, after every finder and the extra reviewers are back or recorded as failed. It is a fresh agent

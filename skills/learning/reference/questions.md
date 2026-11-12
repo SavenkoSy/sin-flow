@@ -89,10 +89,6 @@ list is also its digest form: the items are the timeline columns and the stage-s
    reader of its own with this item only.
 5. User quotes — every USER line verbatim with HH:MM, and the row it is about.
 
-Before its proposals, stage review runs `bash <this file's folder>/../../review/reference/check-sources.sh`. Each row it prints is a
-source that moved: fetch its compare diff and propose a numbered diff to the lens whose `## Sources` names
-that row. The compare diff is that proposal's evidence.
-
 The review reader may read the named review file and run read-only `gh api` / `gh pr view` on that PR.
 
 ## setup

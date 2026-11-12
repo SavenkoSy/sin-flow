@@ -1,6 +1,6 @@
 ---
 name: setup
-description: 'One idempotent command that installs the flow on this machine, onboards the current repo, checks all three layers, and adds a new read-only data source. First run on a machine creates ~/.claude/sin-flow/{profiles,work,reviews} and its local git; first run in a repo infers everything the repo and GitHub can answer (sin-flow-infer) and asks at most three questions, one per turn, before writing ~/.claude/sin-flow/profiles/<key>/profile.md; every later run only checks and ends in exactly "all good" or a list where each row carries one fix, applied only after a "yes". `add <source>` registers a credential without ever reading its value, verifies it with one harmless call and records it in the profile. Use when invoked as `/sin-flow:setup` or `/sin-flow:setup add <source>`, when a flow stage reports "no profile", or when the user says "set up the flow", "check the flow", "add access to …".'
+description: 'One idempotent command with four modes. Install: the first run on a machine creates ~/.claude/sin-flow/{profiles,work,reviews} and its local git. Onboard: the first run in a repo infers what the repo and GitHub can answer, asks at most three questions, one per turn, and writes ~/.claude/sin-flow/profiles/<key>/profile.md. Check: every later run only checks all three layers and ends in exactly "all good" or a list where each row carries one fix, applied only after a "yes". `add <source>` registers a read-only credential without ever reading its value. Use when invoked as `/sin-flow:setup` or `/sin-flow:setup add <source>`, when a flow stage reports "no profile", or when the user says "set up the flow", "check the flow", "add access to …".'
 ---
 
 # sin-flow:setup — install → onboard → check → add
@@ -22,311 +22,45 @@ Chat with the user in the `chat_language` option (`sin-flow-profile user chat_la
 - **Nothing changes without a yes** after install — a check only reports.
 - Read-only everywhere in the product repo: setup writes only under `~/.claude/sin-flow/` (and project-local settings after a yes).
 
-## Resolve
+## Mode
+
+Find the mode first. Then read the file of that mode. Do not read the file of another mode, except the one install step that a check fix names.
+All files are in `${CLAUDE_PLUGIN_ROOT}/skills/setup/reference/`.
 
 - Key: `sin-flow-profile key` (cwd → `git remote get-url origin` → profile whose `repo.slug` matches; else `<repo>/.claude/flow.md`).
-- No key and cwd is a repo → **onboard**. Cwd is not a repo → install/check of the flow and user layers only.
-- `add <source>` as the argument → **add**.
 
-## Install (first run on a machine — `~/.claude/sin-flow` missing)
+Use the first row that holds:
 
-1. `mkdir -p ~/.claude/sin-flow/{profiles,work,reviews}`; `.gitignore` = `/*`, `!/.gitignore`, `!/work/`, `!/profiles/`;
-   `git init`. `work/` and `profiles/` are one local repo. Setup never creates a remote repository. When `work_remote`
-   is set, setup adds it as `origin`, and the Stop hook `work-commit.sh` pushes to `origin` once a day.
-2. `command -v gh git jq bash`, `gh auth status`. A miss is a row with its fix (`brew install jq`, `gh auth login`).
-3. Run `sin-flow-handoff --detect` first. Then show all settings in one message, with the current values, in this shape:
-
-   ```
-   These are your settings. Each one has a default value.
-
-   Chat
-     1. Chat language: the language that you write in.
-     2. Next stage (hand-off): <item 2 text>
-
-   Pull requests
-     3. Merge method for your PRs: squash, one commit.
-     4. Review fixes: a new commit on top of the PR.
-     5. Branch name: <type>/<id>/<slug>, with no prefix.
-
-   Models
-     6. Plans, code changes and the last review: opus.
-     7. Agents that read code, write code and run tests: sonnet.
-     8. Work on the board: haiku.
-
-   Your notes
-     9.  Copy of your plans and evidence: on this computer only.
-         The next question is about a copy on GitHub.
-     10. Review files: ~/.claude/sin-flow/reviews
-
-   Learning loop
-     A learning session reads your earlier flow runs. It finds the
-     problems and proposes changes that make your flow better. Each
-     change needs your approval.
-     11. Learning notes: ~/.claude/sin-flow/learning
-     12. Automatic start: off. Give a number, for example 10, to start
-         a session after 10 exec runs.
-     13. Learning session starts in: the learning notes folder.
-
-   Keep these values? To change an item, give its number.
-   ```
-
-   Items and options: 1 `chat_language`, 2 `handoff`, 3 `merge`, 4 `after_review`, 5 `branch_prefix`,
-   6 `models_strong`, 7 `models_mid`, 8 `models_cheap`, 9 `work_remote`, 10 `reviews_dir`, 11 `learning_dir`,
-   12 `learning_runs`, 13 `learning_cwd`. Item 2 by value: a terminal from `--detect` or set earlier → "starts in a new
-   <Terminal> tab."; `none` from `--detect` → "the flow did not find your terminal." and on the next line "It shows the
-   command, and then you start the next stage."; `print` → that second line only; `same-session` → "continues in
-   this session."; a script path → "your script <path> starts it.". Item 9 with a value → "Copy of your plans and
-   evidence: <work_remote>." Item 12 with a number N → "Automatic start: after N exec runs that are not reviewed."
-   A yes keeps the values. Numbers → ask about those items only, one per turn. A user whose account has no Opus sets
-   `models_strong: sonnet`.
-
-   When `work_remote` is empty, ask as its own question: "Your plans and evidence are on this computer only. Do you
-   want a copy in a private GitHub repository? Give the repository URL, or write no." A URL → `work_remote: <url>`, then
-   `git -C ~/.claude/sin-flow remote add origin <url>` (`remote set-url` when `origin` exists). No → keep it empty.
-
-   Then ask `context_guard` once, as its own question: "a plan, exec, ingest, sync, review or
-   learning session hands its work to a fresh session when its context reaches N % of the 1M window — keep 40?" →
-   set `context_guard: <N>`. Then ask `limit_guard` once, as its own question: "When a usage limit stops a session,
-   Claude Code waits and continues the task after the reset. sin-flow can also warn a flow session before the stop, so it
-   writes its ledger first. That needs a small status line wrapper in your settings. Keep the built-in only (default), or
-   add the sin-flow guard?"
-   - Built-in → `limit_guard: off`. No settings change.
-   - sin-flow guard → `limit_guard: on`, then the wrapper install:
-     1. `S=${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json`, `cur=$(jq -r '.statusLine.command // ""' "$S")`.
-     2. When `cur` contains `sin-flow-statusline`, run `mkdir -p ~/.claude/sin-flow/bin`, copy `${CLAUDE_PLUGIN_ROOT}/bin/sin-flow-statusline` there and `chmod +x`. Do not change `S`. Stop.
-     3. Check each word of `cur` that names a file after `~` expansion. When that file contains both `state/sessions`
-        and `limit_5h`, the user's own status line writes the state file. Then leave `S` alone and say so in one line.
-     4. Else show the new command and ask "yes?". When `cur` is empty, the new command is
-        `sh ~/.claude/sin-flow/bin/sin-flow-statusline`. Else it is
-        `sh ~/.claude/sin-flow/bin/sin-flow-statusline '<cur, each ' as '\''>'`.
-     5. On a yes: `mkdir -p ~/.claude/sin-flow/bin`, copy `${CLAUDE_PLUGIN_ROOT}/bin/sin-flow-statusline` there,
-        `chmod +x`. `mkdir -p ~/.claude/sin-flow/backups/<YYYY-MM-DD>`, then copy `S` to
-        `~/.claude/sin-flow/backups/<YYYY-MM-DD>/settings.json`. Set
-        `new` as a shell variable in the same Bash call, then write
-        `jq --arg c "$new" '.statusLine = ((.statusLine // {}) + {type: "command", command: $c})' "$S"` to `S.tmp`,
-        check it with `jq empty`, then `mv` it over `S`.
-     6. On a no: `limit_guard: off`, and one line that the guard needs the wrapper.
-
-   Save the answers as plugin options: `ID` = the first enabled id that starts with `sin-flow@` in
-   `claude plugin list --json`. Pipe one JSON object of string values to `claude plugin configure "$ID" --values-stdin`.
-   Options left out keep their values. The user may also set them in `/plugin configure` or `/config`.
-4. Terminal, only when `--detect` printed `none` and `handoff` is not a terminal name or a script path. Do not quote
-   the `none — checked: …` line. Ask "Which terminal do you use: tmux, cmux, iTerm, Ghostty, Warp, Orca, or other?".
-   A named one → `sin-flow-handoff --check <name>`: `ok` → `handoff: <name>`; anything else → tell the user the printed
-   reason in one line and set `handoff: print`.
-   `other` → offer to copy `${CLAUDE_PLUGIN_ROOT}/examples/handoff.sh.example` to `~/.claude/sin-flow/handoff.sh`
-   (`chmod +x`; it opens a new macOS Terminal window, the user may adapt it) — yes →
-   `handoff: ~/.claude/sin-flow/handoff.sh`, no → `handoff: print`.
-   Copy `${CLAUDE_PLUGIN_ROOT}/examples/merge.sh.example` to `~/.claude/sin-flow/merge.sh` when absent (`chmod +x`): the
-   merge step of sin-flow:exec runs that copy, and the user adapts it — for example to keep the worktree after the merge.
-5. Offer `Read(~/.claude/sin-flow/**)`, `Bash(sin-flow-profile *)`, `Bash(sin-flow-infer *)`, `Bash(sin-flow-handoff *)` in
-   user settings — add only on a yes.
-
-The preferences are the `userConfig` options of the plugin (`${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json`).
-Claude Code keeps the values in `pluginConfigs["<id>"].options` of the user's `settings.json`. Every reader uses
-`sin-flow-profile user <key>`: the hook env `CLAUDE_PLUGIN_OPTION_<KEY>` first, then `settings.json`, then the
-`default` in `plugin.json`. An unset option keeps its default:
-
-| option | default | meaning |
+| condition | mode | read |
 |---|---|---|
-| `chat_language` | absent → the language the user writes in | language of the chat; files, commits, PRs and issues stay English |
-| `handoff` | `auto` | how a stage starts the next one: `auto` — a new tab in the detected terminal, else print · `same-session` · `print` — print the ready command and copy it to the clipboard · `tmux`, `cmux`, `iterm`, `ghostty`, `warp`, `orca` — that terminal's adapter, when detection cannot tell · a path to the user's own script |
-| `learning_dir` | `~/.claude/sin-flow/learning` | where `/sin-flow:learning` keeps digests, inbox and ledger |
-| `learning_runs` | `0` | how many undigested `sin-flow:exec` runs start a learning session when an exec session ends. `0`: never |
-| `learning_cwd` | `learning_dir` | where that learning session starts; its `CLAUDE.md`, else `<learning_dir>/ledger.md`, is the hand-off path |
-| `merge` | `squash` | merge method for the user's own PRs |
-| `after_review` | `new-commit` | how review fixes land on an open PR: a new commit on top |
-| `review_action` | `none` | what `/sin-flow:review` does when a review is done: `none` — show it in the chat only · `post` — post the high and med `reproduces` findings as one review with event COMMENT · `post-approve` — post them, and approve the PR when nothing is left open |
-| `branch_prefix` | `""` | first segment of the convention branch `<prefix>/<type>/<id>/<slug>`; empty → no segment |
-| `context_guard` | `40` | percent of the 1M-token context window at which plan, exec, ingest, sync, review and learning hand off or stop; `CTX_GUARD_THRESHOLD` overrides it for one session |
-| `limit_guard` | `on` | `on`: the LIMIT GUARD warns a session at 90 % of the 5-hour or 98 % of the 7-day limit, from the state file that the status line wrapper writes. `off`: only the Claude Code auto-continue. Setup sets `off` when the user keeps the built-in |
-| `models_strong` | `opus` | plan, exec and learning sessions, every hand-off, the review lenses on the strong tier, exec's fix round 3. One of `opus`, `sonnet`, `haiku`, `fable` |
-| `models_mid` | `sonnet` | read-only analysts, implementers, shipper, review-poster, the review lenses on the mid tier |
-| `models_cheap` | `haiku` | the board agent |
-| `reviews_dir` | `~/.claude/sin-flow/reviews` | where `/sin-flow:review` writes review files |
-| `opensource_dir` | `~/.claude/sin-flow/opensource` | where setup clones a repo that is someone else's, one folder for each repo |
-| `extra_reviewers` | `""` | a space-separated list; each entry is `codex` or a path to the user's own script (§ Your own scripts). The exec review at the end of a unit runs each one as one more finder, then gives each one reply turn on the verdict (`skills/review/reference/pipeline.md` § 3). `codex` runs OpenAI Codex CLI and needs `codex` installed and `codex login`. A reviewer that fails is skipped: the review goes on and the last message says so |
-| `codex_model_pr` | `""` | a Codex model family `<family>` (the newest listed `gpt-<version>-<family>` in `~/.codex/models_cache.json`), or a full model name → `/sin-flow:review` of a teammate's PR also runs Codex as a finder on that model; empty → pr mode runs no Codex |
-| `reviewer_watch` | `""` | `orca` → the Orca workspace card shows each step of each extra reviewer · a path to the user's own script (§ Your own scripts) |
-| `workspace` | `""` | `orca`, `git` or a path to the user's own script (§ Your own scripts): where `sin-flow-worktree` makes every stage's worktree; empty → `git`. `orca` also turns on the Stop hook `orca-quiet.sh`: it marks the Orca worktree read while background tasks run |
-| `work_remote` | `""` | a private git repository for a copy of `~/.claude/sin-flow` (plans, evidence and profiles). Setup adds it as `origin`, and the Stop hook pushes once a day; empty → this computer only |
-| `notes_globs` | `""` | space-separated globs of agent notes in every repo; the shipper never stages a match. The profile key `notes.paths` adds the globs of one repo |
+| `add <source>` as the argument | **add** | `add.md` |
+| `~/.claude/sin-flow` missing | **install** | `install.md` |
+| No key and cwd is a repo, or a stage reported "no profile" | **onboard** | `onboard.md`, and `gates.md` at its step 4 |
+| each later run | **check** | `check.md`, and `gates.md` when the cwd has a profile |
 
-The SessionStart hook moves two old option names once (the marker `backups/options-migrated`), with `sin-flow-profile migrate-options`: `codex_review: on`
-becomes `extra_reviewers: codex`, and `codex_watch` becomes `reviewer_watch`. A new name that is already set stays.
+- An install in a repo with no key continues with onboard.
+- Cwd is not a repo → install/check of the flow and user layers only.
+- Onboard for another stage ends at its step 5: hand back to the stage that called setup, at the step it stopped on.
+- A check ends in exactly `all good`, or in a list where each row carries one fix.
 
-A repo profile may set `models.strong`, `models.mid`, `models.cheap` and `models.<stage>` (`setup`, `sync`, `ingest`,
-`plan`, `exec`, `review`, `learning`: the session a hand-off opens for that stage); it wins over the options for that repo. `sin-flow-profile model <tier|stage>`
-prints what a stage will use.
+## Options
 
-### Your own scripts
-
-Each step that acts on a system outside the flow reads one key. The value is `off`, a built-in name, or an absolute
-or `~` path to an executable file of the user. `workspace` has no `off`, because each stage needs a worktree. A path
-replaces the built-in for that step. An unset key keeps the
-built-in. The user keeps the script outside the plugin, for example in `~/.claude/sin-flow/`.
-
-| step | key | built-in | example |
-|---|---|---|---|
-| start the next stage | option `handoff` | `auto` and the terminal names | `examples/handoff.sh.example` |
-| make or remove a worktree | option `workspace` | `git`, `orca` | `examples/workspace.sh.example` |
-| show each step of an extra reviewer | option `reviewer_watch` | `orca` | `examples/reviewer-watch.sh.example` |
-| review the code once more | option `extra_reviewers`, one entry for each script | `codex` | `examples/reviewer.sh.example` |
-| merge the user's own PR | the file `~/.claude/sin-flow/merge.sh` | the copy of `examples/merge.sh.example` | the same file |
-| copy the plan to the ticket | profile key `notes.mirror` | `github` (`on` is `github`) | `examples/mirror.sh.example` |
-| read and write the board | profile key `tracker.adapter` | `tracker.board` (GitHub Projects) | `skills/sync/reference/adapter-contract.md` |
-
-The user's own hand-off script gets `FLOW_CWD`, `FLOW_NAME`, `FLOW_MODEL` and `FLOW_PROMPT` (the full shell line to run)
-in its environment, exits `0` only when the tab opened, and with `--probe` prints the command it would run and opens
-nothing; a non-zero exit makes `sin-flow-handoff` print the command instead. Its arguments are the hand-off options, then
-`<stage> <target> [extra]` — or nothing more when the options carry `--prompt <text>`; the target is an absolute path, or a PR number or URL for `sin-flow:review`.
-
-The workspace script gets one of two commands. `<script> create <repo> <name> <branch> <base>` makes a worktree of
-the checkout `<repo>` on the new branch `<branch>` from `<base>`. It prints the absolute worktree path as the last
-line and exits `0`. `<script> remove <path>` removes that worktree and exits `0`. Then `sin-flow-worktree` deletes the
-local branch. A non-zero exit stops `sin-flow-worktree` with that exit.
-
-The reviewer watch script gets one argument: the text of the step, for example `codex: finding`. It runs in the review
-tree. The flow ignores its output and its exit code.
-
-Each reviewer script is one more finder in the exec review. Its name is the file name up to the first dot, and it
-must be unique and not a name of the flow (`codex`, `context`, `code`, `fit`, `all`, `verify`, `settle`, `findings`,
-`tree`). The script runs in the review tree and gets `<command> <pkg> <name>`. `<pkg>` is the review package: its
-`manifest.env` gives `TREE`, `SHA` and `BASE`, and its `diff.patch` holds the diff. Its stderr goes to
-`<pkg>/<name>/live.log`.
-
-- `<script> find <pkg> <name>`: print each finding on stdout in the finder format of `agents/reviewer.md` § Finder
-  file, without the `LENS:` line. Exit `0`. The flow writes `<pkg>/findings/<name>.md` and counts the `F` rows.
-- `<script> reply <pkg> <name>`: read `<pkg>/verdict.md`. Your rows have `<name>/F<k>` in their `from:` or claim.
-  For each row you contest, print `<row> | contest | <argument>` and `  evidence: <file:line quote>`. Exit `0`. Each
-  row you do not print is accepted.
-
-A non-zero exit, a run of more than 15 minutes or a name that is taken writes the reason to `failed.txt`. Then the
-review goes on without that reviewer, and the other reviewers still run. `/sin-flow:review` of a PR runs only `codex`.
-`codex-trial.tsv` records only `codex`.
-
-`sin-flow-profile <key> mirror` prints the mirror route of a repo: `off`, `github` or the expanded script path. An
-absent `notes.mirror` follows the `## Inferred` notes line. The mirror script gets one of three commands. `<ticket>`
-is the id on the plan's `ticket:` line, and `<file>` is a `sin-flow-mirror` copy, never split.
-
-- `<script> put <ticket> <file>`: keep one copy of the plan on the ticket. Make it the first time, then replace it.
-  Print its URL and exit `0`.
-- `<script> add <ticket> <file>`: add one evidence file to the ticket as a new note. Print its URL and exit `0`.
-- `<script> get <ticket>`: print the time of the last change of the copy (ISO 8601, UTC) on the first line, then the
-  copy. Exit `1` when the ticket has no copy.
-
-Any other exit: the stage writes the first stderr line to its ledger or report and continues. The local `plan.md`
-stays the truth.
-
-## Onboard (first run in a repo — no profile)
-
-0. **Upstream repo** — the repo, from the URL or slug, else `origin` (its parent when `origin` is a fork, `gh repo view --json isFork,parent`),
-   is someone else's (`gh repo view <slug> --json viewerPermission` is `READ`, `TRIAGE` or empty): the checkout is `$(sin-flow-profile user opensource_dir)/<name>` (`<owner>-<name>` when that folder holds
-   another repo). Absent → `gh repo clone <slug> "$(sin-flow-profile user opensource_dir)/<name>"`. Inside it `gh repo fork --remote --remote-name fork`:
-   `origin` stays the upstream, `fork` is the user's fork. A clone whose `origin` is a fork
-   → `git remote rename origin fork`, then `upstream` renamed to `origin`, or `git remote add origin <parent URL>`.
-   Continue in that folder; `${CLAUDE_PLUGIN_ROOT}/skills/ingest/reference/upstream.md` applies from here.
-   A URL or slug of the user's own repo (`WRITE`, `MAINTAIN` or `ADMIN`) that is not this checkout's `origin` → one line
-   «run /sin-flow:setup inside `<slug>`'s checkout», then stop, and the calling stage with it; never onboard this checkout under another slug.
-1. `sin-flow-infer` (read-only, ≈ 5 s) prints the `## Inferred <date>` block: base, issues/Projects, merge methods, team by
-   PR authors, the CI and lefthook files (`gate files:`), a stack fallback when no CI file exists,
-   dev server, sensitive paths.
-2. Find credential files: `ls -a <main checkout> | grep -E '^\.env\.[a-z0-9_]+_readonly$'`; for each, names only.
-   Find the app's local secret files: `git -C <main checkout> ls-files --others --ignored --exclude-standard` lines
-   whose file name starts with `.env`, minus `*.example` and `*_readonly`; names only, never the content.
-3. Ask, one per turn, only what is missing:
-   - base — only when `sin-flow-infer` printed `CONFLICT`;
-   - "Where do read-only numbers come from: a doc path or `none`?" — always, the route is never inferred;
-   - board — only when Projects are enabled: "does the team run a board? which number?";
-   - for each `.env.<source>_readonly`: "what is the source `<source>` for?" (one sentence → `purpose`);
-   - UI stack found (next/react/rails views): "check the UI with Playwright? URL?" — optional.
-4. Write `~/.claude/sin-flow/profiles/<key>/profile.md`: frontmatter with `key`, `repo.slug`, `repo.path` (the main
-   checkout, `dirname "$(git rev-parse --path-format=absolute --git-common-dir)"`, `$HOME` written as `~`), `repo.fork` (the slug of remote `fork`, only when it exists), `repo.local_files` (the step 2 secret files, repo-relative; exec copies them into every worktree), `measure.doc`
-   and only the deviations the user gave; then `sin-flow-infer --write <key>` fills `## Inferred` and you name the gates into it
-   (below); add `## Measure` in one or two lines. Write `notes.mirror: github` into the frontmatter when the Inferred notes line
-   says mirrored and the team has more than one author, else `notes.mirror: off` — a default the user changes, also to a script path (§ Your own scripts).
-   `notes.paths` (absent by default): space-separated globs of the repo's own agent notes; the shipper never stages them.
-   If the profile gets a board, also write `tracker.write.light: off`, `tracker.write.assign: off`,
-   `tracker.write.status: off` and `group_by: milestone`. These are defaults that the user changes. The sync
-   skill's `## Tracker and switches` gives their meanings.
-   Show the file. A personal measurement doc lives beside it as `measure.md`.
-5. Hand back to the stage that called setup, at the step it stopped on.
-
-**Name the gates** — after every `sin-flow-infer --write`, read each file on its `gate files:` line in full and write
-these lines right under it. A `gates.*` key in the profile wins over them. A command counts when a `run:` line
-(comments skipped) calls a test, lint or security command of the stack, always without options or paths, once per
-entry. Examples per stack:
-- JavaScript: `npm <script>` / `npm run <script>` (not ci or install), `pnpm <script>` / `pnpm run <script>`,
-  `yarn <script>` (not install), eslint, jest, vitest, tsc, written bare, never `npx eslint` or `npx tsc`.
-- Ruby: rspec, rubocop, brakeman, bundle-audit, bundler-audit, i18n-tasks with its subcommand, `rails test`,
-  `rake test|spec`, each with its `bundle exec ` / `bin/` / `npx ` prefix.
-- Python: pytest. Go: `go test`. Rust: `cargo test`.
-
-The lines to write:
-- `gates (CI): <entries joined by "; ">.` — one entry per `.github/workflows/*` file whose `on:` has `pull_request` or
-  `push`: `` `cmd`, `cmd` — <file> (<all its triggers joined by />[ on <the pull_request/push branches joined by ", ">]) ``, <file> being the repo-relative path (`.github/workflows/ci.yml`);
-  a file with no such command is left out. One entry for `.circleci/config.yml`, from the jobs listed under `workflows`
-  without `filters.branches.only`: `` `cmd` (<workflow>/<job>, …), `cmd` (…) — .circleci/config.yml, workflows that run on
-  feature branches ``, or, when none of those jobs calls such a command, `CircleCI: no gate command found in jobs that
-  run on feature branches — .circleci/config.yml (workflows: <workflow>/<job>, …)`. No entry at all →
-  `gates (stack fallback, no CI found): …` from the stack's manifest, for example the package.json `lint` / `test` /
-  `build` scripts, `bundle exec rspec` for a Gemfile, `pytest` for a pyproject.toml.
-- `gates (pre-commit, lefthook.yml): <hook> <name>: `<first line of run, ≤ 90 chars>`; ….` — every `pre-commit`,
-  `commit-msg` and `pre-push` command or job with a `run:`.
-
-Profile format: flat `group.key: value` lines (lists as `["a","b"]`), prose sections `## Inferred`, `## Measure`, `## Run`,
-`## Ship`, `## Tracker`, `## Never`. Optional keys the stages read when set: `tracker.skip_milestones` (a comma list of milestones that a sync batch proposal skips), `review.request` (logins exec asks for review and asks again after each reply batch), `review.deploy_bots` (logins of deploy bots that the base watcher skips), `review.ignored_approvers` (logins whose approval `sin-flow-rerequest` does not count, and with no key every approval counts), `gates.lint_fix` (the lint autocorrect commands), `pr.relink_after_bot: on` (shipper saves the PR body once more when a bot added a `Closes` line that GitHub did not link), `tracker.held_statuses` (Status options that a new board leaves out of scope), `gates.spec_cmd` (a test command that takes spec file paths; exec runs the canary with it, and no key means no canary), `review.preship_agent` (a `subagent_type` that exec runs on the final diff before the PR), `notes.paths` (extra globs the shipper treats as agent notes), `notes.mirror` (`off`, `github` or a script path, § Your own scripts), `tracker.stale_days` (the days after a take when a claimed ticket with no open PR shows as a stale claim, default 3), `ci.after_merge: on` (exec watches each workflow run on the merge commit to its end, and no key means no watch), `ui.after_merge` (a URL where exec does the visual check again after each merge that changed a rendered surface, and no key means a check on `ui.server` after the merge only when the visual check before it was blocked, red or had a `SKIP`). Keys that setup may write: `tracker.adapter`, `tracker.write.light`, `tracker.write.assign`, `tracker.write.status`, `group_by`. Required: `key`, `repo.slug`, `measure.doc`. Never a secret — pointers only.
-
-## Check (every later run)
-
-Run each check; print one line per layer, then exactly `all good` when all are `✓`, else one row per problem with
-one fix. `✗` = a stage cannot work; `!` = it can, marked "not measured".
-
-| layer | checks | fix offered |
-|---|---|---|
-| flow | `claude plugin list` shows `sin-flow` enabled; `sin-flow-profile`, `sin-flow-infer`, `sin-flow-handoff` on PATH; the Stop hook `work-commit.sh` in the plugin's `hooks/hooks.json`; `gh auth status`; `git`, `jq`, `bash` | `claude plugin install sin-flow@sin-flow`; `gh auth login`; `brew install …` |
-| user | `~/.claude/sin-flow/{profiles,work,reviews}` exist; `git -C ~/.claude/sin-flow status --porcelain` empty or committable; `~/.claude/sin-flow/user.md` has frontmatter keys → `!` "the preferences are not migrated to the plugin options", fix: `sin-flow-profile migrate-user`; `work_remote` set → `git ls-remote` reachable and `git -C ~/.claude/sin-flow remote get-url origin` prints it (else `!` "Git does not push to the copy on GitHub.", fix: `git remote add origin <work_remote>`), unset → `!` "Your plans and evidence are on this computer only.", fix: the copy question of Install step 3; every value is read with `sin-flow-profile user <key>`; `handoff` is `auto`, `same-session`, `print`, `tmux`, `cmux`, `iterm`, `ghostty`, `warp`, `orca` or an executable path; `workspace` is empty, `git`, `orca` or an executable path; `reviewer_watch` is empty, `orca` or an executable path; `claude plugin configure <id> --json` lists `context_guard` as unconfigured → `!` "the context guard uses the default 40", fix: Install step 3's `context_guard` question, then set `context_guard: <N>`; the same list holds `limit_guard` → `!` "the limit guard reads any status line that writes the state file", fix: Install step 3's `limit_guard` question; `limit_guard: on` and `statusLine.command` of `S` contains `sin-flow-statusline` → `cmp` the copy in `~/.claude/sin-flow/bin/` with `${CLAUDE_PLUGIN_ROOT}/bin/sin-flow-statusline`, a difference → `!` "the status line wrapper is out of date", fix: copy it again; same case and the wrapped command names a file that does not exist → `!` "the wrapped status line file does not exist: <path>", fix: restore `statusLine` from the newest `~/.claude/sin-flow/backups/*/settings.json`, or Install step 3's wrapper install again; `limit_guard: on`, no wrapper and no own writer (Install step 3 item 3) → `!` "the limit guard has no writer", fix: Install step 3's wrapper install; under a terminal name `sin-flow-handoff --check <name>` prints `ok` (else `!` with the printed reason, fix: install it or `handoff: print`); under `auto` `sin-flow-handoff --detect` names a terminal (`none` → `!` "The flow did not find your terminal. It shows the command, and then you start the next stage.", fix: Install step 4's terminal question and `--check`); `sin-flow-profile model strong`, `… mid`, `… cheap` each print an alias (exit 2 → `✗`, fix: the value it names); `tail -3 ~/.claude/sin-flow/stop-commit.log` has no `failed` | `git init`; `chmod +x <handoff path>` |
-| project | `sin-flow-profile validate` (required keys, paths, `notes.mirror` and `tracker.adapter` scripts executable, `sources.*` env files: present, `600`, git-ignored, variable present); `gh repo view <slug>`; `git ls-remote --heads origin <base>`; every gate command's binary on PATH; `sin-flow-infer` vs `## Inferred` — base or `gate files:` changed?; the gates named again from those files vs the stored `gates` lines — changed?; each source's preflight/verify | `sin-flow-infer --write <key>`, then name the gates; `chmod 600 <file>`; "add to .gitignore"; "open the tunnel: <tunnel>" |
-
-A source that is unreachable now (tunnel closed, VPN off, SSO expired) is a `!` row with its human step, never a failure.
+The preferences are the `userConfig` options of the plugin. The manifest is the one source of each key, its default
+and its meaning. When a mode needs them, print them with one command:
 
 ```
-sin-flow:setup <date>
-[✓] flow      skills N/N, sin-flow-* on PATH, Stop hook ok, gh auth ok
-[✓] user      ~/.claude/sin-flow ok, git clean, remote: — (local only), prefs: en · squash · new-commit · handoff auto (iterm) · models opus/sonnet/haiku
-[✓] project   <key>: profile valid · base <b> on origin · gates ✓ · measure: <doc|none> · sources: <names>
-all good
+jq -r '.userConfig | to_entries[] | "\(.key)\t\(.value.default // "")\t\(.value.description)"' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json"
 ```
 
-## Add — `/sin-flow:setup add <source>`
+`sin-flow-profile user <key>` prints the value in use. Do not keep a second list of the options in a skill.
 
-For a source without a `.env.<source>_readonly` file the user already keeps, or to re-verify one that has it.
+## Files
 
-1. Ask only: where the credential lives (file) and the variable name, plus one sentence on what it is for. Default file
-   name `.env.<source>_readonly` in the main checkout root.
-   When the file does not exist yet, give the user one line to run in their own terminal, never through `!`, because
-   the `!` shell cannot read input: `( umask 077; read -rs v; printf '<VAR>=%s\n' "$v" > <abs file> )`, then paste the
-   value and press Enter. For a new database role, the user runs `openssl rand -hex 24` in that terminal and uses the output for the role and the file.
-2. `git check-ignore -q <file>` in the repo; not ignored → fix "add to `.gitignore`" after a yes. `chmod 600` after a yes.
-3. One harmless call, never a write — the provider table:
-
-| provider | call | records |
-|---|---|---|
-| Postgres (`kind: postgres`) | open the tunnel if `tunnel` is set (bounded: `timeout 60 ssh -N -L …` in the background), then `psql "$VAR" -tA -c "select current_user, pg_is_in_recovery(), has_table_privilege(current_user, '<table>', 'INSERT'), (select count(*) from information_schema.table_privileges where grantee = current_user and privilege_type in ('INSERT','UPDATE','DELETE','TRUNCATE'))"` | `readonly: "verified <date>: role …, INSERT = false, 0 write grants"` |
-| Postgres via IAM (`kind: postgres-iam`) | the profile's `preflight`, then the measure doc's connect recipe with `select current_user, pg_is_in_recovery()` | `readonly: verified …` when the role has no write grant |
-| Cloudflare | `curl -s -H "Authorization: Bearer $VAR" https://api.cloudflare.com/client/v4/user/tokens/verify` → `.result.status` only | `status: "active <date> (permissions not exposed by verify)"` |
-| AWS | `aws sts get-caller-identity --query Arn` | `status: "active <date> (identity only)"` |
-| GitHub | `gh auth status` | scopes when shown |
-| other HTTP API | one `GET` of a small read endpoint the user names | `status: "active <date> (HTTP <code>)"` |
-
-   The call shows write rights → say so and do not record the source until the user confirms.
-4. Write to the profile:
-   `sources.<name>.{kind, env_file, var, base_url, tunnel, preflight, verify, readonly|status, purpose}` — `env_file` is
-   the file name relative to the main checkout, never a value. Add one `## Measure` line naming when to use the source.
-5. Offer an allow-rule in the repo's `.claude/settings.local.json` (`Bash(psql *)`, `Bash(curl -s -H * <base_url>/*)`,
-   and `Bash(<tunnel>)` with the exact `tunnel` string when it is set, so auto mode does not send it to the
-   classifier) — only after a yes.
-6. Before the final message, grep everything written this run for the credential's first characters, without printing
-   them: `( set -a; . <file>; set +a; grep -rlF -- "${VAR:0:24}" ~/.claude/sin-flow | wc -l )` must be `0`.
-
-A second `add` of the same source only re-verifies and updates `readonly`/`status`.
+| file | holds |
+|---|---|
+| `reference/install.md` | the folders, the tools, the settings message and its questions, the guards, the terminal, the allow rules, the model grid |
+| `reference/onboard.md` | the upstream repo step, `sin-flow-infer`, the questions, the profile and its format |
+| `reference/gates.md` | how to name the gates from the CI and lefthook files |
+| `reference/check.md` | `sin-flow-check`, how to read its rows, the session checks, the output block |
+| `reference/add.md` | the credential file, the harmless call for each provider, the profile keys of a source |
+| `reference/user-scripts.md` | "Your own scripts": the contract of each script of the user. Other stages cite it |

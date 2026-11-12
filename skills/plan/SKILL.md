@@ -37,8 +37,9 @@ says: no profile → run `/sin-flow:setup` onboarding in this session, then cont
 `jq` missing → stop on one line with the fix; a gate not runnable → continue (plan does not run
 gates).
 
-Resolve the tiers once: `sin-flow-profile model strong` and `sin-flow-profile model mid`. `<strong>` and `<mid>`
-below are the aliases they print; pass the alias as `model`, never the tier word.
+The model grid gives the model and the effort of each dispatch. `sin-flow-profile model <role> [level] <worktree>`
+prints both, for example `sonnet medium`. Pass the first word as `model` and the second word as `effort`.
+An effort of `-` means: pass no effort.
 
 Read once and keep for the whole run: the profile frontmatter, `## Inferred` (base, gates, tracker,
 team, notes, sensitive), `## Measure`, `## Run`, `## Never`. Read via `sin-flow-profile <key> get <k>` for
@@ -50,9 +51,9 @@ a single key.
 **Never ask the user anything.** Every question belongs to ingest. A point the seed left open is
 yours: decide it, write it into the plan's Rulings (Step 6), move on.
 
-Models: this stage runs on the strong tier. Source analysts are `sin-flow:read-only-analyst` on `<mid>`,
-`<strong>` only for a unit that adds a table, a migration or an abstraction other units build on. Name the
-model on every dispatch, and only one of the resolved tiers.
+Models: source analysts are `sin-flow:read-only-analyst` on the grid role `analyst`. Use the level `hard`
+only for a unit that adds a table, a migration or an abstraction other units build on. Name the
+model and the effort on every dispatch, and only from the grid.
 
 ---
 
@@ -145,8 +146,10 @@ done
 
 A local tracker (`tracker.kind: local`) has its story text in the intake; read that slice of the
 repo's own artifacts the intake names. A rich seed does not skip this read — a comment may be newer
-than the ingest session. A newer comment that contradicts a locked decision is not applied: the
-decision stands, and the pair goes into the closing report as a question for the user.
+than the ingest session. If a newer comment contradicts a locked decision, that
+decision is stale. Do not ask the user. Decide which of the two the measurement supports. Write one
+`Stale decision:` line in the plan's Rulings with the decision, the comment, your call and its evidence.
+Exec reports that line in its final message.
 
 **For a reopen, the last comment is the ticket.** Note per ticket: the layer, any question QA left
 explicitly unverified (those are yours), and what would *disprove* it — that is the probe.
@@ -245,15 +248,17 @@ Shape and order: `reference/plan-template.md` — follow it literally. The parts
 
 **Verdicts — `builder` and `audit`** are the two fields exec reads before dispatching. You assign them
 because you measured and wrote the change; exec may raise either with a logged reason, never lower.
+`builder` is the level of the unit: `cheap`, `mid`, `hard` or `strong`. The model grid turns it into a model and an effort.
 - `builder: cheap` only when the change alters no behaviour (docs, comments, a rename with no
   call-site semantics) — even when the exact code is written out (measured: 4 of 5 haiku (cheap) rows on
-  behaviour changes came back for a fix round). `mid` otherwise. `strong` only from the forcing list.
+  behaviour changes came back for a fix round). `mid` otherwise. `hard` and `strong` only from the forcing list.
 - `audit: skip` only for the same no-behaviour set. `run` for everything else.
-- **Forcing list → `builder: strong` + `audit: run`**, whatever the size: a path in the repo's
+- **Forcing list → `builder: hard` + `audit: run`**, whatever the size: a path in the repo's
   sensitive list (`.claude/sensitive-paths.txt` or the profile's `sensitive_paths`); without one,
   authorization or roles, money or billing, a migration or the persistence schema, dedup/matching
   constants, an abstraction other units build on. Name the trigger in the row.
-- Unsure `mid`/`strong` → `mid` unless the forcing list clearly hits; unsure `skip`/`run` → `run`.
+  If no gate, spec or probe can check the result of that unit, write `builder: strong` and name the missing check.
+- Unsure `mid`/`hard` → `mid` unless the forcing list clearly hits; unsure `skip`/`run` → `run`.
 
 **Waves** from the ownership table: no two units in one wave share a file or an interface; schema
 files, routes, locale files and layout/nav components count as shared; **a unit with a migration sits
@@ -297,7 +302,7 @@ standing authorization; a plan that ends at "ready to commit" is unfinished.
 **Mirror.** The local `plan.md` is the truth. `sin-flow-profile <key> mirror` prints the route; never mirror in upstream
 mode. `off` → no mirror. A script path and a `ticket:` other than `none` → `sin-flow-mirror plan.md > mirror.md`, then `<script> put <ticket> mirror.md`,
 and `<script> add <ticket> <file>` for each new evidence file from its own `sin-flow-mirror` copy, never split
-(`skills/setup/SKILL.md` § Your own scripts). `github`: one comment on the issue, created once and edited in place
+(`skills/setup/reference/user-scripts.md`). `github`: one comment on the issue, created once and edited in place
 (`gh api -X PATCH repos/<slug>/issues/comments/<id> -F body=@mirror.md`). Never write the plan over an issue body, also
 not on the user's own issue: the body is the ticket text. `sin-flow-mirror --comment plan.md >
 mirror.md` writes its first line `<!-- sin-flow:plan <id> -->`: never add it by hand. The comment to edit has that
@@ -312,7 +317,7 @@ A multi-ticket plan goes to every ticket's issue.
 
 ## Step 7 — Plan audit before hand-off
 
-One `sin-flow:read-only-analyst` (`<mid>`) reads the written plan against the code in the worktree and
+One `sin-flow:read-only-analyst` (grid role `plan-audit`) reads the written plan against the code in the worktree and
 returns, with `file:line`: every seed unit without a section or a verdicts row; every row without
 `builder`/`audit`; every owned file two units claim and neither flags shared; every wave that breaks
 a dependency; every method, constant, keyword or i18n key a `Change` calls but neither creates nor
@@ -347,9 +352,9 @@ A local tracker: the disposition is the unit's row in the plan (`no code — <wh
 
 ≤ 12 lines, lead with **what the measurement changed**: verdict per ticket one line each; every
 re-attributed root cause and to what; every ticket that left and where; traps found (a fix that
-would have shipped a new bug); dispositions with links; locked-decision vs newer-comment pairs as
-the only question; branch, PR title, and the `RULING_NEEDED` units if any. Calls you made are one
-line each ("GH-N: BE gate goes too — FE-only measured as a 409"), never a question.
+would have shipped a new bug); dispositions with links; each stale locked decision with the call
+you made; branch, PR title, and the `RULING_NEEDED` units if any. Calls you made are one
+line each ("GH-N: BE gate goes too — FE-only measured as a 409"), never a question. The report asks nothing.
 
 ## Step 10 — Hand off to sin-flow:exec and end the turn
 
@@ -359,10 +364,11 @@ plan file.** A later change goes into the file, and one line tells the user to p
 **An old ledger.** `work/<key>/<id>/progress.md` that already holds `Plan <id>: shipped` or `Plan <id>: blocked` is
 the ledger of an earlier plan in this folder. Before the launch, `mv` it to `progress-<YYYYMMDD-HHMM>.md`.
 
-**`sin-flow:exec` always runs on `<strong>`**, never this session's model:
+**The model grid sets the model and the effort of `sin-flow:exec`**, never this session's model. `<level>` is the
+highest `builder:` of the plan, in the order cheap, mid, hard, strong:
 
 ```
-sin-flow-handoff --cwd <worktree> --name exec-<id> --model <strong> \
+sin-flow-handoff --cwd <worktree> --name exec-<id> --level <level> \
   --goal 'work/<key>/<id>/progress.md has "Plan <id>: shipped <PR-URL>", or "Plan <id>: blocked", or "handoff written".' \
   sin-flow:exec <absolute plan path>
 ```
@@ -374,7 +380,7 @@ Non-zero — nothing started: `1` bad path, `2` bad option or `handoff:` setting
 launcher's own (the command is printed after it) → give the user the exact command in one line; never
 run `sin-flow:exec` in this session. Never diagnose a subprocess from an empty log: check `git status`, `git branch` and the child transcript first.
 
-**`CTX GUARD` in a tool result** hands this plan to a fresh `sin-flow:plan`: let the in-flight dispatch finish, put every measured number in `evidence/<unit>.md` with its query, run `sin-flow-handoff --cwd <worktree> --name plan-<id> --model <strong> sin-flow:plan <absolute plan path> "continue: from Step <n>"`, read its output as above and end the turn. Never hand a half-measured plan to `sin-flow:exec`.
+**`CTX GUARD` in a tool result** hands this plan to a fresh `sin-flow:plan`: let the in-flight dispatch finish, put every measured number in `evidence/<unit>.md` with its query, run `sin-flow-handoff --cwd <worktree> --name plan-<id> sin-flow:plan <absolute plan path> "continue: from Step <n>"`, read its output as above and end the turn. Never hand a half-measured plan to `sin-flow:exec`.
 
 This stage writes no auto-memory: what the next run needs is in the plan and its evidence. A tool,
 script, hook or hand-off that fails and needs a workaround is a flow defect: in the same turn append one

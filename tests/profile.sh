@@ -218,7 +218,7 @@ expect_eq "user from settings" tmux "$out"
 run sin-flow-profile user context_guard
 expect_eq "user number from settings" 30 "$out"
 run sin-flow-profile model plan "$nongit"
-expect_eq "stage model falls to tier" fable "$out"
+expect_eq "stage model falls to tier" "fable -" "$out"
 out=$(CLAUDE_PLUGIN_OPTION_HANDOFF=iterm sin-flow-profile user handoff)
 expect_eq "user env wins" iterm "$out"
 

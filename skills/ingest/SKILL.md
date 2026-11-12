@@ -74,7 +74,7 @@ checkout (the parent of `git rev-parse --path-format=absolute --git-common-dir`)
 maps to its repo. A GitHub issue or repo URL (or `owner/repo`) in the source decides the key — the profile whose `repo.slug` is that slug (`grep -lE "^repo\.slug:[[:space:]]*\"?<slug>\"?([[:space:]]|$)" ~/.claude/sin-flow/profiles/*/profile.md`, the match of `agents/shipper.md:30`); none → setup's onboard with that URL (§ Onboard step 0) — only when the cwd's
 repo has no profile, or the slug is neither its `repo.slug` nor in that profile's `consumers`; a consumer slug keeps the cwd's key. With several sources, the first source decides the key. A source in another repo with a profile becomes a unit of that repo (`exits.md` § Ticket map). When the cwd is in no repo with a profile and no key or URL was given, ask in one line —
 never guess. A problem in a tool with no URL and no matching cwd: ask in one line which repo; never guess. Read `profile.md` once (`sin-flow-profile <key> dir`); hand an agent only the section it needs.
-Resolve `<mid>` and `<strong>` once for the resolved key's checkout (`sin-flow-profile <key> get repo.path`, `~` expanded; none → the cwd): `sin-flow-profile model mid <checkout>`, `sin-flow-profile model strong <checkout>`.
+Resolve the grid row `ingest-reader` once for the resolved key's checkout (`sin-flow-profile <key> get repo.path`, `~` expanded; none → the cwd): `sin-flow-profile model ingest-reader <checkout>`. It prints the model and the effort of each read-only dispatch. An effort of `-` means: pass no effort.
 
 Then, whatever validate printed: `sin-flow-profile <key> get repo.fork` prints a slug → upstream mode: read
 `reference/upstream.md` once; its § Rules to read run before step 1.
@@ -138,7 +138,7 @@ and `git grep <pattern> origin/<branch>`. `<branch>` is the branch that runs whe
 repo's `CLAUDE.md` names it. None named: `repo.base`. Read a consumer checkout the same way. Each analyst brief
 names that ref. A claim read at another ref is not carried forward.
 
-More than two files → fan out `sin-flow:read-only-analyst` agents (`<mid>`), one narrow question each, all in
+More than two files → fan out `sin-flow:read-only-analyst` agents (grid row `ingest-reader`), one narrow question each, all in
 one message, `file:line` in a reply of ≤ 40 lines; relay only its conclusion, never paste the report. An agent's report is a
 reading, not a fact, until step 3 measures it or you read the lines yourself. Every claim carried
 forward is tagged **measured**, **read at `file:line`** or **inferred**. A "no" in chat is a claim

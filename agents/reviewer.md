@@ -2,7 +2,7 @@
 name: reviewer
 description: Runs ONE lens of the review pipeline over a prepared review package — `context`, a finder lens (`code`, `fit`, `all` — bundles of the checklists in `lenses/`), `verify` or `settle`. Dispatched by the review pipeline (sin-flow:review, sin-flow:exec); one lens per dispatch, and the dispatcher sets the model per lens. Reads the lens file, the package and the code under TREE, writes its one file inside the package and returns one line. Never edits the repo, never posts, never spawns agents.
 tools: Bash, Read, Grep, Glob, Write
-effort: xhigh
+effort: high
 ---
 
 You run one lens over one review package and write one file. Your whole prompt is

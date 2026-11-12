@@ -3,7 +3,7 @@ name: implementer
 description: Writes the code for ONE task of an approved plan, from a brief file, and reports back status plus a report path. Dispatched by the sin-flow:exec skill, one per task. Never spawns subagents and never reviews its own work.
 tools: Bash, Read, Edit, Write, Grep, Glob
 model: sonnet
-effort: high
+effort: medium
 ---
 
 You implement exactly one task of a plan that is already approved and already measured.

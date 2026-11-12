@@ -5,11 +5,13 @@ FLOW_HOME="${FLOW_HOME:-$HOME/.claude/sin-flow}"
 PROFILES="$FLOW_HOME/profiles"
 PLUGIN_JSON="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/.claude-plugin/plugin.json"
 SETTINGS="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json"
+GRID="$(dirname "$PLUGIN_JSON")/../examples/models.tsv"
 
 usage() {
   cat >&2 <<'EOF'
 usage: sin-flow-profile key [DIR]
-       sin-flow-profile model strong|mid|cheap|<stage> [DIR]
+       sin-flow-profile model strong|mid|cheap [DIR]
+       sin-flow-profile model <role> [LEVEL] [DIR]
        sin-flow-profile resolve [KEY]
        sin-flow-profile list
        sin-flow-profile <key> dir|file|get FIELD|section HEADING|mirror
@@ -161,17 +163,45 @@ model_field() {
   printf '%s' "$v"
 }
 
+grid_row() {
+  local role="$1" level="$2" dir="$3" key="" files=("$GRID")
+  [ ! -f "$FLOW_HOME/models.tsv" ] || files+=("$FLOW_HOME/models.tsv")
+  if key=$(key_for_dir "$dir" 2>/dev/null) && [ -f "$PROFILES/$key/models.tsv" ]; then files+=("$PROFILES/$key/models.tsv"); fi
+  awk -F'\t' -v role="$role" -v level="$level" '
+    FNR == 1 && $1 == "role" { next }
+    /^[[:space:]]*$/ { next }
+    NF != 4 || $3 !~ /^(strong|mid|cheap|opus|sonnet|haiku|fable|same)$/ || $4 !~ /^(low|medium|high|xhigh|max|-)$/ {
+      printf "%s:%d: not a grid row, the row below it in the layers is used. Want 4 tab-separated fields: role, level, model (strong, mid, cheap, opus, sonnet, haiku, fable, same), effort (low, medium, high, xhigh, max, -). Got: %s\n", FILENAME, FNR, $0 > "/dev/stderr"
+      next
+    }
+    $3 == "same" && !($1 == "implementer" && $2 ~ /^fix-[23]$/) {
+      printf "%s:%d: not a grid row, the row below it in the layers is used. The model same is valid only on an implementer row with the level fix-2 or fix-3. Got: %s\n", FILENAME, FNR, $0 > "/dev/stderr"
+      next
+    }
+    $1 == role && $2 == level { exact = $3 " " $4 }
+    $1 == role && $2 == "*" { any = $3 " " $4 }
+    END { if (exact != "") print exact; else if (any != "") print any }' "${files[@]}"
+}
+
 resolve_model() {
-  local name="$1" dir="$2" v="" tier="$1"
+  local name="$1" level="$2" dir="$3" v="" row m e
   case "$name" in
-    strong|mid|cheap) ;;
-    setup|sync|ingest|plan|exec|review|learning) v=$(model_field "$name" "$dir"); tier=strong ;;
-    *) echo "model must be a tier (strong, mid, cheap) or a stage (setup, sync, ingest, plan, exec, review, learning): $name" >&2; exit 2 ;;
+    strong|mid|cheap)
+      v=$(model_field "$name" "$dir")
+      case "$v" in
+        opus|sonnet|haiku|fable) printf '%s\n' "$v"; return 0 ;;
+        *) echo "models.$name: '$v' is not one of opus, sonnet, haiku, fable" >&2; exit 2 ;;
+      esac ;;
   esac
-  [ -n "$v" ] || v=$(model_field "$tier" "$dir")
-  case "$v" in
-    opus|sonnet|haiku|fable) printf '%s\n' "$v" ;;
-    *) echo "models.$name: '$v' is not one of opus, sonnet, haiku, fable" >&2; exit 2 ;;
+  case "$level" in haiku) level=cheap ;; sonnet) level=mid ;; opus) level=strong ;; esac
+  row=$(grid_row "$name" "$level" "$dir")
+  [ -n "$row" ] || { echo "no grid row for role '$name', level '$level' (roles: $(awk -F'\t' 'NR > 1 && !seen[$1]++ { printf "%s ", $1 }' "$GRID"))" >&2; exit 2; }
+  m="${row% *}"; e="${row#* }"
+  case "$name" in setup|sync|ingest|plan|exec|review|learning) v=$(model_field "$name" "$dir"); [ -z "$v" ] || m="$v" ;; esac
+  case "$m" in strong|mid|cheap) v=$(model_field "$m" "$dir"); name="$m"; m="$v" ;; esac
+  case "$m" in
+    opus|sonnet|haiku|fable|same) printf '%s %s\n' "$m" "$e" ;;
+    *) echo "models.$name: '$m' is not one of opus, sonnet, haiku, fable" >&2; exit 2 ;;
   esac
 }
 
@@ -334,7 +364,16 @@ case "$1" in
       done
       exit $rc
     fi ;;
-  model) [ $# -ge 2 ] || usage; resolve_model "$2" "${3:-$PWD}" ;;
+  model)
+    [ $# -ge 2 ] || usage
+    if [ -n "${3:-}" ] && [ -d "$3" ]; then
+      resolve_model "$2" "*" "$3"
+    else
+      case "${3:-}" in
+        */*|"~"*) echo "not a folder: $3" >&2; exit 2 ;;
+      esac
+      resolve_model "$2" "${3:-*}" "${4:-$PWD}"
+    fi ;;
   user)
     [ $# -eq 2 ] || usage
     jq -e --arg k "$2" '.userConfig | has($k)' "$PLUGIN_JSON" >/dev/null || { echo "not a user key: $2 (keys: $(user_keys | tr '\n' ' '))" >&2; exit 2; }

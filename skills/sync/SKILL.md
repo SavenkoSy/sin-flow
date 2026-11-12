@@ -63,7 +63,7 @@ switch is `off`; an absent `group_by` is `milestone`. When `sin-flow-profile <ke
 line with the first line of its stderr, and stop. Give the result in each dispatch prompt as
 `writes: light=<on|off> assign=<on|off|own> status=<on|off>`, `group_by: <mode>` and `skip_milestones: <list | none>`.
 
-Resolve `<cheap>` once for the key's checkout (`sin-flow-profile <key> get repo.path`, `~` expanded; missing → the cwd): `sin-flow-profile model cheap <checkout>`.
+Resolve the grid row `board` once for the key's checkout (`sin-flow-profile <key> get repo.path`, `~` expanded; missing → the cwd): `sin-flow-profile model board <checkout>`. It prints `<model>` and `<effort>` for the board agent. An effort of `-` means: pass no effort.
 
 Everything repo-specific — slug, base, board, ticket prefix, sensitive areas — comes from the
 profile; the board's own state, batch table and field ids from `$(sin-flow-profile <key> dir)/board/`.
@@ -119,7 +119,7 @@ boards.
 One call, nothing before it.
 
 ```
-Agent(subagent_type: "sin-flow:board", model: "<cheap>", description: "Sync <key> board",
+Agent(subagent_type: "sin-flow:board", model: "<model>", effort: "<effort>", description: "Sync <key> board",
       prompt: "key: <key>\nmode: sync\nresolved: <line>\nwrites: light=<on|off> assign=<on|off|own> status=<on|off>\n
                group_by: <mode>\nskip_milestones: <list | none>\n\nRun the sync pass in
                ${CLAUDE_PLUGIN_ROOT}/skills/sync/reference/board-pass.md and return the SYNC DIGEST
@@ -295,7 +295,7 @@ the whole session.
 ## 5. Dispatch take mode
 
 ```
-Agent(subagent_type: "sin-flow:board", model: "<cheap>", description: "Take <batch> on <key>",
+Agent(subagent_type: "sin-flow:board", model: "<model>", effort: "<effort>", description: "Take <batch> on <key>",
       prompt: "key: <key>\nmode: take <batch name>\ntickets: <numbers, when the user narrowed the batch>\n
                resolved: <line>\nwrites: light=<on|off> assign=<on|off|own> status=<on|off>\ngroup_by: <mode>\nskip_milestones: <list | none>\n\n
                Run the take pass in ${CLAUDE_PLUGIN_ROOT}/skills/sync/reference/board-pass.md and return
