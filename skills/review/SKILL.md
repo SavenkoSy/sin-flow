@@ -26,9 +26,10 @@ rewritten after that commit.
 one line that the next `/sin-flow:review` command — `post`, `recheck` or another PR — belongs in a new session, and stop.
 
 A flaw of the flow (a tool, script, hook or rule of this plugin fails, or another rule of the user conflicts with
-this skill) goes to one `open` row of `inbox.md` in the `learning_dir` option (`sin-flow-profile user learning_dir`)
-in the same turn: the date, `review`, the exact error or the two rules, and what you did. Then go on. Never offer a
-change to the plugin, a profile or memory in this chat.
+this skill) goes to one `open` row of `inbox.md` in the folder that
+`${CLAUDE_PLUGIN_ROOT}/skills/learning/scripts/learning-dir.sh` prints (it expands a leading `~`), in the same turn:
+the date, `review`, the exact error or the two rules, and what you did. Then go on. Never offer a change to the
+plugin, a profile or memory in this chat.
 
 ## Where it runs
 
@@ -122,7 +123,8 @@ grep '^lens .* failed' "$REVIEW"
 `/sin-flow:review recheck <PR>`, or "recheck", "they pushed the fixes", "approved or not?". A question about the state
 of a PR that this session reviewed ("what is there?") is a recheck too when its head differs from `SHA` or a comment
 we posted has a reply: run Recheck before you answer. `SHA` = the newest `$REVIEWS/$KEY-<pr>-*.md`; `K` = the rows
-posted from it.
+posted from it. When nothing was posted from it (`review_action` `none`), `K` = its open high and med `reproduces`
+rows.
 1. `"$REF/build-package.sh" pr <PR> "$PKG" --base <SHA> --depth quick`, then `$REF/pipeline.md` — the
    commits since the review only — and `bash "$REF/eval.sh" responses "$KEY" <PR>`: the author's answer to
    each comment we posted (`fixed`, `intentional`, `wrong`, `ignored`), appended to `$REVIEWS/responses.tsv`, and

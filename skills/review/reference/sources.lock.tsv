@@ -4,7 +4,7 @@ intent	bmad-code-org/BMAD-METHOD	skills/bmad-code-review/customize.toml	a27894e4
 paths	bmad-code-org/BMAD-METHOD	skills/bmad-code-review/review-prompts/edge-case-hunter.md	84def5a7d38401c7f4aadeff4d3e213d5208d88f	2026-09-05	-
 tests	bmad-code-org/BMAD-METHOD	skills/bmad-code-review/review-prompts/verification-gap.md	61e01f82644c4bb533750cfa0d6d61ab61d2cc9b	2026-10-18	-
 failures	anthropics/claude-plugins-official	plugins/pr-review-toolkit/agents/silent-failure-hunter.md	4ca561fb8532594e7a5faef945e85096fcec0616	2025-11-20	unchanged since initial plugin scaffold commit
-verify	anthropics/claude-plugins-official	plugins/code-review/commands/code-review.md	c905cd8fec340e465dd66990b82b95b6e45db212	2026-10-26	unchanged since initial plugin scaffold commit
+verify	anthropics/claude-plugins-official	plugins/code-review/commands/code-review.md	c905cd8fec340e465dd66990b82b95b6e45db212	2026-10-26	-
 verify	obra/superpowers	skills/receiving-code-review/SKILL.md	3fb75974186ea7fada621d8ab77b3b02169baf57	2026-07-24	-
 verify	EveryInc/compound-engineering-plugin	skills/ce-code-review/references/subagent-template.md	94d707bb7bd37a8f9c186b921d826bc5549d2129	2026-11-05	-
 verify	kodustech/kodus-ai	libs/code-review/infrastructure/agents/prompts/verifier-prompt.ts	eba422586d4bf10013242d2c518044d8e15d90ad	2026-10-24	refute-to-drop verifier prompt

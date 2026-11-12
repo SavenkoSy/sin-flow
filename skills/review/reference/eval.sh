@@ -24,13 +24,15 @@ threads() {
     --jq '.[] | [.id, (.in_reply_to_id // 0), .user.login, .user.type, .path, (.line // 0), .original_line, .original_commit_id, (.body | gsub("[\t\r\n]"; " "))] | @tsv' \
     | awk -F'\t' -v me="$me" -v author="$author" -v pr="$pr" '
       $2 == 0 { top[$1] = $0; order[++n] = $1; next }
-      !($2 in reply) { reply[$2] = $9 }
+      $3 == author && !($2 in reply) { reply[$2] = $9 }
       END {
         for (i = 1; i <= n; i++) {
           split(top[order[i]], f, "\t")
           r = tolower(reply[f[1]])
-          if (substr(r, 1, 40) ~ /fixed|done|resolved|taken|agreed|confirmed|good catch/) c = "fixed"
-          else if (r ~ /intend|deliberate|by design|on purpose|decision|chose/) c = "intentional"
+          if (r ~ /intend|intention|deliberate|by design|on purpose/) c = "intentional"
+          else if (r ~ /disagree|not fixed|won(.|’)t|will not/) c = "wrong"
+          else if (r ~ /^(fixed|done|resolved|taken|agreed|confirmed|good catch)/) c = "fixed"
+          else if (r ~ /decision|chose/) c = "intentional"
           else if (r != "") c = "wrong"
           else if (f[6] == 0) c = "fixed"
           else c = "ignored"
