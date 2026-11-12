@@ -92,7 +92,7 @@ for each hit and exits 1 when there is one. Run it on every commit, also when ea
 - `<prefix>`: the user's `branch_prefix`; empty → the segment is dropped (`<type>/<id>/<slug>`).
 - `id` in the prompt may be the work folder's name (`gh-<N>`, `N-M`, `epic-<N>`): `<N>` is its number.
 - `<type>`: the prompt's `type`, else `bug` for a fix and `task` for anything else, judged from the diff.
-- `<ID>` in a subject: `tracker.id_prefix` + number, uppercase (`GH-2205`); no prefix and a GitHub
+- `<ID>` in a subject: `tracker.id_prefix` + number, uppercase (`GH-123`); no prefix and a GitHub
   issue → `#<N>`; `tracker.kind: local` → the local id. In a branch segment the same id is lowercase.
 - `<slug>`: 3–5 words, lowercase, hyphen-separated. Subject under 72 characters, no trailing period,
   verb first (`Add`, `Fix`, `Update`, `Refactor`). The repo's commit-msg hook stays the judge.
@@ -120,6 +120,8 @@ for each hit and exits 1 when there is one. Run it on every commit, also when ea
    `NOTE`. Never `git checkout` or `git switch` in this mode. Before the script and after it, `git branch
    --show-current` must print the branch you started on. Empty or different → `STATUS: blocked`, `NOTE: HEAD moved
    to <ref>`. Never paste output into the return.
+   A green run also writes `<log>.green`: the `HEAD` it ran on and the tree ids of the checkout it tested. A red run
+   and a `commands: true` run write none. `ship` and `commit` read that record through `sin-flow-gate green-for`.
 4. `canary` given and the profile sets `gates.spec_cmd` → after a green step 3, for each unit line run
    `sin-flow-gate canary <work_dir> <unit> <base> '<gates.spec_cmd>' <files…>` and put its line in a `NOTE` as it
    prints it. `<unit>` is the first word of the unit line as the caller wrote it. Do not change it to the ticket id,
@@ -159,13 +161,19 @@ for each hit and exits 1 when there is one. Run it on every commit, also when ea
 
 ## Mode `commit` — commit and push
 
-`local` steps 1–6, then `git push -u <push-remote> <branch>`. A branch with an open PR or pushed commits gets
-a new commit on top — this is the review-fix path.
+`local` steps 1–6, then the green check, then `git push -u <push-remote> <branch>`. A branch with an open PR or
+pushed commits gets a new commit on top — this is the review-fix path.
+
+Green check: `sin-flow-gate green-for <work_dir> "$(git rev-parse HEAD)"`. It exits 0 only when a gate ran green on
+the tree of that commit. Non-zero → do not push, `STATUS: blocked`,
+`NOTE: no green gate for <sha> — run mode gate, then commit again`. The commit stays local. Nothing to commit and
+the branch is ahead of `<push-remote>` → skip steps 4–6, run the green check, then push.
 
 ## Mode `ship` — push and open the PR
 
 1. `git status --porcelain` clean apart from untracked L1 hits; otherwise `STATUS: blocked` with the
-   paths in a `NOTE`.
+   paths in a `NOTE`. Then `sin-flow-gate green-for <work_dir> "$(git rev-parse HEAD)"`. Non-zero → do not push,
+   `STATUS: blocked`, `NOTE: no green gate for <sha> — run mode gate, then ship again`. Never push past this check.
 2. `git push -u <push-remote> <branch>`; `gh pr list --head <branch> --state all --json number,url,state` —
    a PR exists → report its URL, done. Upstream mode: `gh pr list -R <repo.slug> --head <branch> --state all
    --json number,url,state,headRepositoryOwner`, keep the rows whose `headRepositoryOwner.login` = `<fork-owner>`.

@@ -29,5 +29,6 @@ the answers live in the user's settings, not in the plugin. `sin-flow-profile us
 
 - Every script under `bin/`, `hooks/` and `skills/` that calls a third-party tool must read a user option
   (`sin-flow-profile user`, `CLAUDE_PLUGIN_OPTION_<KEY>` or `${user_config.KEY}`) or a profile key. `bin/handoff/` adapters are exempt: `handoff:` selects them.
+- It fails when text under `agents/`, `bin/`, `hooks/` or `skills/` holds an owner date in the form `(owner, <date>)`.
 - Locally, it also fails when an added line holds a word from the user's profiles (repo slugs, repo folder names,
   the home path) that the plugin did not hold before. The words are read at run time and never committed.

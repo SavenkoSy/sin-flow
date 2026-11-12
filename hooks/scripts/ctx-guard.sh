@@ -68,7 +68,7 @@ case "$skill" in
   sin-flow:plan) rule="hand off now per the skill's CTX GUARD rule: let the in-flight dispatch finish, put every measured number in evidence/<unit>.md, run sin-flow-handoff with sin-flow:plan, the same plan path and \"continue: from Step <n>\", then end the turn; never hand a half-measured plan to sin-flow:exec." ;;
   sin-flow:sync) rule="follow the skill's CTX GUARD rule: finish the in-flight dispatch; a batch already taken gets its hand-off to sin-flow:plan now; otherwise tell the user in one line that the talk continues in a new /sin-flow:sync <key> session, then stop." ;;
   sin-flow:review) rule="follow the skill's CTX GUARD rule: finish the step in flight and its chat (the review file is the trail), then tell the user in one line that the next /sin-flow:review command belongs in a new session, then stop." ;;
-  sin-flow:learning) rule="follow the skill's CTX GUARD rule: let the in-flight readers finish, write the digest and the ledger entry for the sessions they covered, then tell the user in one line to run /sin-flow:learning with the same mode in a new session, then stop." ;;
+  sin-flow:learning) rule="follow the skill's CTX GUARD rule: let the in-flight readers finish, write the files that rule names, hand off with sin-flow-handoff as that rule says, then stop." ;;
   *) rule="follow the skill's CTX GUARD rule." ;;
 esac
 say "CTX GUARD: context at ${used_i} % (threshold ${thr} %). This is a ${skill} session — $rule"

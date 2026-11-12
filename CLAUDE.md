@@ -12,7 +12,7 @@ A Claude Code plugin: the ticket-to-PR flow as skills, agents, hooks and CLIs.
 
 ## Rules
 
-- Every change belongs to one layer: plugin, user or profile. Read `ARCHITECTURE.md` before a change to `skills/`, `agents/`, `hooks/` or `bin/`; `scripts/check-layers.sh` must pass.
+- Every change belongs to one layer: plugin, user or profile. Read `ARCHITECTURE.md` before a change to `skills/`, `agents/`, `hooks/` or `bin/`; `scripts/check-layers.sh` and `tests/run-all.sh` must pass.
 
 - Work through pull requests to `main`; never push to `main` directly.
 - No AI attribution: no `Co-Authored-By`, no "Generated with" line, in commits or PR bodies.

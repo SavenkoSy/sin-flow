@@ -189,7 +189,7 @@ defect is in the comment, not the body.
 A deferred ticket carries a `def` object and stays on the page — the deferral is a decision about
 *what to work on*, not about the board. The report must not re-argue it:
 
-> Still deferred, not proposed: GH-976, GH-1227.
+> Still deferred, not proposed: GH-101, GH-102.
 
 Never re-explain a reason already in `def.why`, never re-propose a deferred ticket under
 `What I recommend taking`, and never silently drop one from the line.
@@ -197,7 +197,7 @@ Never re-explain a reason already in `def.why`, never re-propose a deferred tick
 **The one exception that earns a second line** is the digest's `DEFERRED WITH MOVEMENT` slot:
 someone commented, labelled, or closed it — that is how most deferrals lift.
 
-> Deferred with movement: GH-1227 — updated 2026-09-22.
+> Deferred with movement: GH-102 — updated <date>.
 
 Un-defer only when the user says so.
 
@@ -230,7 +230,7 @@ Send everything you decided back in one message; the agent writes it and republi
 
 ```
 SendMessage(to: "<agent id>",
-            message: "decisions:\n  GH-1307 · batch <batch> · light yellow · priority High (inferred)\n  GH-1288 · accept the board's red · waits on <org>/<repo>#884\nApply these, republish, and return the SYNC DIGEST again.")
+            message: "decisions:\n  GH-103 · batch <batch> · light yellow · priority High (inferred)\n  GH-104 · accept the board's red · waits on <org>/<repo>#<N>\nApply these, republish, and return the SYNC DIGEST again.")
 ```
 
 **After a take pass, or any other board dispatch since that agent returned, do not resume it.** Its context holds
@@ -266,7 +266,7 @@ The briefs are on disk, one block per in-scope ticket, comments included:
 $(sin-flow-profile <key> dir)/board/tickets.md
 ```
 
-**Read the slice, never the file.** `grep -A6 '^### GH-1227' …`, or one `grep` for the whole group
+**Read the slice, never the file.** `grep -A6 '^### GH-102' …`, or one `grep` for the whole group
 the user named. Only when a block is not enough do you open the issue — and then read the **latest
 comment first**, because most of these are reopens.
 
