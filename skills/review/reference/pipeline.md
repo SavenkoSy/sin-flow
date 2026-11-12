@@ -41,7 +41,7 @@ added to the prompt biases the lens and is paid for twice.
    the caller's skill says this round runs without extra reviewers, the same message also runs
    `bash $LENSES/../reviewers.sh find "$PKG"` as a background Bash call. The script reads the `extra_reviewers` option,
    runs every listed reviewer in parallel and prints one line for each. It prints
-   `REVIEWERS · off` when the list is empty. A reviewer is `codex` or the user's own script (setup § Your own scripts),
+   `REVIEWERS · off` when the list is empty. A reviewer is `codex` or the user's own script (`skills/setup/reference/user-scripts.md`),
    and its name is the name of its findings file. In pr mode only `codex` runs, and only when
    `codex_model_pr` names a model family or a model, and runs on the newest model of that family.
 3. `verify` — alone, after every finder and the extra reviewers are back or recorded as failed. It is a fresh agent

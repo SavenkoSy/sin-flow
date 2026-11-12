@@ -158,8 +158,8 @@ the command instead. With `--probe` it prints what it would run and opens nothin
 
 A step that acts outside the flow can run your own script instead of the built-in. The
 options `workspace` (worktrees), `extra_reviewers` (more reviewers) and `reviewer_watch` (reviewer steps), and the profile keys `notes.mirror` (the plan copy on
-the ticket) and `tracker.adapter` (the board), take a path. `examples/` holds one script for each, and setup's
-§ Your own scripts gives each contract.
+the ticket) and `tracker.adapter` (the board), take a path. `examples/` holds one script for each, and
+`skills/setup/reference/user-scripts.md` gives each contract.
 
 ### Guards
 

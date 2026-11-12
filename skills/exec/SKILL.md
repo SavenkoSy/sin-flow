@@ -80,7 +80,7 @@ The dispatching thread is the most expensive place in the chain when it fills wi
    `<workspace>/issue-plan.md` and `diff` it against `sin-flow-mirror --comment plan.md` (over 60 000 bytes, part 1 of `sin-flow-mirror --comment plan.md <dir>`) — the mirror points at no local file.
    A script path and a `ticket:` other than `none` → `<script> get <ticket>`: exit `1` → skip, no copy; another
    non-zero exit → skip the compare and ledger `plan: mirror get failed — <first stderr line>`; exit `0` → its first
-   line is the edit time and the rest goes to `<workspace>/issue-plan.md`, diffed against `sin-flow-mirror plan.md` (`skills/setup/SKILL.md` § Your own scripts).
+   line is the edit time and the rest goes to `<workspace>/issue-plan.md`, diffed against `sin-flow-mirror plan.md` (`skills/setup/reference/user-scripts.md`).
    They differ and the issue was edited after the file's mtime → the issue wins: write it over the local file, keep the
    local header lines the mirror drops (`worktree:`, `measure:`), ledger
    `plan: issue newer, taken`. The file newer → ledger `plan: local newer`; it is mirrored at Finish.

@@ -15,7 +15,7 @@ once in its own plan tab, with no `after:`. The spec carries the shared contract
 fixes the contract first sends the final contract to the other tab (`SKILL.md` § 5, a new fact). `after: <id>` across
 repos only when a unit cannot start at all without the merged code of `<id>`. It waits in `sin-flow:plan` Step 1. Then run everything below once per unit, in map order. A unit in
 another repo takes everything from that repo's profile. A unit in a repo with no profile follows `sin-flow:setup`'s
-Onboard step 0. The user's own repo that is not this checkout's `origin` → one line «run /sin-flow:setup inside
+Onboard step 0 (`skills/setup/reference/onboard.md`). The user's own repo that is not this checkout's `origin` → one line «run /sin-flow:setup inside
 `<slug>`'s checkout», then stop this ingest with every unit of the map. Never onboard that repo from this checkout.
 Someone else's repo → onboard it in this session first, then it goes on like every other unit: its own seed,
 `after: <id>` when it waits, and its tab in the same turn as the others. Never leave a unit of the map for later.
@@ -127,7 +127,7 @@ issue on GitHub.
 
 `sin-flow-profile <key> mirror` prints the route; never mirror in upstream mode. `off` → no mirror. A script path
 and a unit with a ticket → `<script> put <ticket> <file>` with the `sin-flow-mirror plan.md` copy, and `<script> add
-<ticket> <file>` for each evidence file from its own copy (`skills/setup/SKILL.md` § Your own scripts). `github` →
+<ticket> <file>` for each evidence file from its own copy (`skills/setup/reference/user-scripts.md`). `github` →
 the rest of this section, only when the unit is an issue. Nothing from `work/` is ever `git add`ed.
 Every issue body, mirror and comment is self-contained: no local path (`~/`, `/Users/`, a scratchpad),
 code cited as a permalink at the base SHA, a local source or evidence file summarized in the text.

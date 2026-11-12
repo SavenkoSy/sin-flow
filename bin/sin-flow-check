@@ -1,0 +1,356 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+FLOW_HOME="${FLOW_HOME:-$HOME/.claude/sin-flow}"
+PLUGIN="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SETTINGS="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json"
+INSTALL='reference/install.md'
+
+case "${1:-}" in
+  -h|--help) echo "usage: sin-flow-check [DIR]" >&2; exit 2 ;;
+esac
+dir="${1:-$PWD}"
+
+open=0
+stopped=0
+flow_mark='✓'
+user_mark='✓'
+project_mark='✓'
+
+worse() {
+  case "$1$2" in
+    *✗*) echo '✗' ;;
+    *!*) echo '!' ;;
+    *\?*) echo '?' ;;
+    *) echo '✓' ;;
+  esac
+}
+
+row() {
+  local mark="$1" layer="$2" name="$3" text="$4" fix="${5:-}"
+  case "$layer" in
+    flow) flow_mark=$(worse "$flow_mark" "$mark") ;;
+    user) user_mark=$(worse "$user_mark" "$mark") ;;
+    project) project_mark=$(worse "$project_mark" "$mark") ;;
+  esac
+  if [ "$mark" = '✓' ]; then
+    printf '%s %-7s %-14s %s\n' "$mark" "$layer" "$name" "$text"
+    return
+  fi
+  open=$((open + 1))
+  [ "$mark" != '✗' ] || stopped=1
+  printf '%s %-7s %-14s %s → fix: %s\n' "$mark" "$layer" "$name" "$text" "$fix"
+}
+
+pref() { sin-flow-profile user "$1" 2>/dev/null || true; }
+expand_home() { case "$1" in "~"/*) printf '%s\n' "$HOME/${1#\~/}" ;; *) printf '%s\n' "$1" ;; esac; }
+is_script() { local p; p=$(expand_home "$1"); case "$p" in /*) [ -f "$p" ] && [ -x "$p" ] ;; *) return 1 ;; esac; }
+words_of() { printf '%s\n' "$1" | xargs -n1 printf '%s\n' 2>/dev/null || true; }
+frontmatter() { awk 'NR==1 && $0=="---" {inside=1; next} inside && $0=="---" {exit} inside {print}' "$1"; }
+inferred_of() { awk '/^## / { inside = (index($0, "## Inferred") == 1) } inside { print }' "$1"; }
+base_of() { sed -n 's/^base: \([^ ;.]*\).*/\1/p' | head -1; }
+gate_files_of() { sed -n 's/^gate files[^:]*: //p' | head -1; }
+
+missing=""
+for tool in git jq bash; do
+  command -v "$tool" >/dev/null 2>&1 || missing="${missing:+$missing }$tool"
+done
+if [ -n "$missing" ]; then
+  row '✗' flow tools "not on PATH: $missing" "brew install $missing"
+  echo "open: $open"
+  exit 1
+fi
+row '✓' flow tools "git, jq, bash"
+
+plugin_id=""
+if command -v claude >/dev/null 2>&1; then
+  plugin_id=$(claude plugin list --json 2>/dev/null | jq -r '[.[] | select((.id | startswith("sin-flow@")) and .enabled)][0].id // empty' 2>/dev/null) || plugin_id=""
+fi
+skills_all=$(find "$PLUGIN/skills" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
+skills_ok=$(find "$PLUGIN/skills" -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l | tr -d ' ')
+if [ -n "$plugin_id" ]; then
+  row '✓' flow plugin "$plugin_id enabled, skills $skills_ok/$skills_all"
+else
+  row '✗' flow plugin "claude plugin list shows no enabled sin-flow" "claude plugin install sin-flow@sin-flow"
+fi
+
+missing=""
+for tool in sin-flow-profile sin-flow-infer sin-flow-handoff; do
+  command -v "$tool" >/dev/null 2>&1 || missing="${missing:+$missing }$tool"
+done
+if [ -z "$missing" ]; then
+  row '✓' flow path "sin-flow-* on PATH"
+else
+  row '✗' flow path "not on PATH: $missing" "claude plugin install sin-flow@sin-flow"
+  echo "open: $open"
+  exit 1
+fi
+
+hook_state=missing
+gh_state="not ok"
+if jq -e '[.hooks.Stop[]?.hooks[]?.command] | any(contains("work-commit.sh"))' "$PLUGIN/hooks/hooks.json" >/dev/null 2>&1; then
+  hook_state=ok
+  row '✓' flow stop-hook "Stop hook ok"
+else
+  row '✗' flow stop-hook "the Stop hook work-commit.sh is not in hooks/hooks.json of the plugin" "claude plugin install sin-flow@sin-flow"
+fi
+
+if ! command -v gh >/dev/null 2>&1; then
+  row '✗' flow gh "gh is not on PATH" "brew install gh"
+elif gh auth status >/dev/null 2>&1; then
+  gh_state=ok
+  row '✓' flow gh "gh auth ok"
+else
+  row '✗' flow gh "gh is not logged in" "gh auth login"
+fi
+
+missing=""
+for folder in profiles work reviews; do
+  [ -d "$FLOW_HOME/$folder" ] || missing="${missing:+$missing }$FLOW_HOME/$folder"
+done
+if [ -z "$missing" ]; then
+  row '✓' user folders "$FLOW_HOME ok"
+else
+  row '✗' user folders "missing: $missing" "mkdir -p $missing"
+fi
+
+git_state="no git"
+if changes=$(git -C "$FLOW_HOME" status --porcelain 2>/dev/null); then
+  if [ -z "$changes" ]; then git_state="git clean"; else git_state="git: $(printf '%s\n' "$changes" | wc -l | tr -d ' ') paths to commit"; fi
+  row '✓' user git "$git_state"
+else
+  row '✗' user git "$FLOW_HOME is not a git repository" "git init"
+fi
+
+if [ -f "$FLOW_HOME/user.md" ] && frontmatter "$FLOW_HOME/user.md" | grep -qE '^[A-Za-z0-9_.]+:'; then
+  row '!' user migrate "the preferences are not migrated to the plugin options" "sin-flow-profile migrate-user"
+else
+  row '✓' user migrate "the preferences are plugin options"
+fi
+
+work_remote=$(pref work_remote)
+remote_text="— (local only)"
+if [ -z "$work_remote" ]; then
+  row '!' user work-remote "Your plans and evidence are on this computer only." "the copy question of Install step 3 ($INSTALL)"
+else
+  remote_text="$work_remote"
+  origin=$(git -C "$FLOW_HOME" remote get-url origin 2>/dev/null) || origin=""
+  if [ "$origin" != "$work_remote" ]; then
+    if [ -z "$origin" ]; then verb=add; else verb=set-url; fi
+    row '!' user work-remote "Git does not push to the copy on GitHub." "git -C $FLOW_HOME remote $verb origin $work_remote"
+  elif ! GIT_TERMINAL_PROMPT=0 git ls-remote "$work_remote" >/dev/null 2>&1; then
+    row '!' user work-remote "Git does not push to the copy on GitHub." "git ls-remote $work_remote does not answer: get access to it, then check again"
+  else
+    row '✓' user work-remote "remote: $work_remote"
+  fi
+fi
+
+handoff=$(pref handoff)
+handoff=${handoff:-auto}
+terminal=""
+case "$handoff" in
+  auto|same-session|print) row '✓' user handoff "handoff $handoff" ;;
+  tmux|cmux|iterm|ghostty|warp|orca) terminal=$handoff; row '✓' user handoff "handoff $handoff" ;;
+  *)
+    if is_script "$handoff"; then
+      row '✓' user handoff "handoff $handoff"
+    elif [ -f "$(expand_home "$handoff")" ]; then
+      row '✗' user handoff "handoff $handoff is not executable" "chmod +x $handoff"
+    else
+      row '✗' user handoff "handoff '$handoff' is not auto, same-session, print, tmux, cmux, iterm, ghostty, warp, orca or an executable path" "set the hand-off again: Install step 4 ($INSTALL)"
+    fi ;;
+esac
+
+workspace=$(pref workspace)
+case "$workspace" in
+  ""|git|orca) row '✓' user workspace "workspace ${workspace:-git}" ;;
+  *)
+    if is_script "$workspace"; then
+      row '✓' user workspace "workspace $workspace"
+    else
+      row '✗' user workspace "workspace '$workspace' is not empty, git, orca or an executable path" "chmod +x $workspace, or set the option to git"
+    fi ;;
+esac
+
+watch=$(pref reviewer_watch)
+case "$watch" in
+  ""|orca) row '✓' user reviewer-watch "reviewer_watch ${watch:-off}" ;;
+  *)
+    if is_script "$watch"; then
+      row '✓' user reviewer-watch "reviewer_watch $watch"
+    else
+      row '!' user reviewer-watch "reviewer_watch '$watch' is not empty, orca or an executable path" "chmod +x $watch, or clear the option"
+    fi ;;
+esac
+
+unconfigured=""
+[ -z "$plugin_id" ] || unconfigured=$(claude plugin configure "$plugin_id" --json 2>/dev/null | jq -r '.unconfigured[]?' 2>/dev/null) || unconfigured=""
+if grep -qx context_guard <<<"$unconfigured"; then
+  row '!' user context-guard "the context guard uses the default 40" "the context_guard question of Install step 3 ($INSTALL), then set context_guard: <N>"
+else
+  row '✓' user context-guard "context_guard $(pref context_guard)"
+fi
+if grep -qx limit_guard <<<"$unconfigured"; then
+  row '!' user limit-guard "the limit guard reads any status line that writes the state file" "the limit_guard question of Install step 3 ($INSTALL)"
+else
+  row '✓' user limit-guard "limit_guard $(pref limit_guard)"
+fi
+
+if [ "$(pref limit_guard)" = on ]; then
+  status_cmd=""
+  [ ! -f "$SETTINGS" ] || status_cmd=$(jq -r '.statusLine.command // ""' "$SETTINGS" 2>/dev/null) || status_cmd=""
+  case "$status_cmd" in
+    *sin-flow-statusline*)
+      if cmp -s "$FLOW_HOME/bin/sin-flow-statusline" "$PLUGIN/bin/sin-flow-statusline"; then
+        row '✓' user wrapper "the status line wrapper is the plugin copy"
+      else
+        row '!' user wrapper "the status line wrapper is out of date" "cp \"\${CLAUDE_PLUGIN_ROOT}/bin/sin-flow-statusline\" $FLOW_HOME/bin/ && chmod +x $FLOW_HOME/bin/sin-flow-statusline"
+      fi
+      wrapped=$(words_of "$status_cmd" | sed -n '3p')
+      lost=""
+      while IFS= read -r word; do
+        case "$word" in
+          /*|"~"/*) [ -e "$(expand_home "$word")" ] || lost="${lost:+$lost }$word" ;;
+        esac
+      done < <(words_of "$wrapped")
+      if [ -z "$lost" ]; then
+        row '✓' user wrapped "the wrapped status line is in place"
+      else
+        row '!' user wrapped "the wrapped status line file does not exist: $lost" "restore statusLine from the newest $FLOW_HOME/backups/*/settings.json, or the wrapper install of Install step 3 ($INSTALL) again"
+      fi ;;
+    *)
+      writer=""
+      while IFS= read -r word; do
+        file=$(expand_home "$word")
+        [ -f "$file" ] && grep -q 'state/sessions' "$file" 2>/dev/null && grep -q 'limit_5h' "$file" 2>/dev/null && writer=$word
+      done < <(words_of "$status_cmd")
+      if [ -n "$writer" ]; then
+        row '✓' user wrapper "the status line $writer writes the state file"
+      else
+        row '!' user wrapper "the limit guard has no writer" "the wrapper install of Install step 3 ($INSTALL)"
+      fi ;;
+  esac
+fi
+
+detected=""
+if [ -n "$terminal" ]; then
+  reason=$(sin-flow-handoff --check "$terminal" 2>&1 | tail -1)
+  if [ "$reason" = ok ]; then
+    row '✓' user terminal "$terminal ok"
+  else
+    row '!' user terminal "$reason" "install it, or set handoff: print"
+  fi
+elif [ "$handoff" = auto ]; then
+  detected=$(sin-flow-handoff --detect 2>/dev/null | head -1)
+  case "$detected" in
+    ""|none*)
+      detected=none
+      row '!' user terminal "The flow did not find your terminal. It shows the command, and then you start the next stage." "the terminal question of Install step 4 ($INSTALL) and sin-flow-handoff --check" ;;
+    *) row '✓' user terminal "auto finds $detected" ;;
+  esac
+fi
+
+models=""
+for tier in strong mid cheap; do
+  if alias=$(sin-flow-profile model "$tier" "$dir" 2>&1); then
+    row '✓' user "model-$tier" "$alias"
+  else
+    row '✗' user "model-$tier" "$alias" "set the option that it names to opus, sonnet, haiku or fable"
+  fi
+  models="${models:+$models/}$alias"
+done
+
+if failed=$(tail -3 "$FLOW_HOME/stop-commit.log" 2>/dev/null | grep failed | tail -1) && [ -n "$failed" ]; then
+  row '!' user stop-commit "the Stop hook commit failed: $failed" "run git -C $FLOW_HOME status and repair what it names"
+else
+  row '✓' user stop-commit "the last Stop hook commits have no failure"
+fi
+
+project_line=""
+if top=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null); then
+  main=$(dirname "$(git -C "$top" rev-parse --path-format=absolute --git-common-dir)")
+  if ! key=$(sin-flow-profile key "$top" 2>/dev/null) || [ -z "$key" ]; then
+    row '✗' project profile "no profile for this repo" "onboard: reference/onboard.md"
+    project_line="no profile"
+  else
+    profile=$(sin-flow-profile "$key" file)
+    verdict=$(cd "$top" && sin-flow-profile validate "$key" 2>&1)
+    valid="not valid"
+    case "$verdict" in
+      OK*) valid=valid; row '✓' project profile "profile valid" ;;
+      *)
+        while IFS= read -r problem; do
+          [ -n "$problem" ] || continue
+          case "$problem" in
+            *"is not chmod 600"*) fix="chmod 600 $(sed -E 's/^sources\.[^:]*: (.*) is not chmod 600$/\1/' <<<"$problem")" ;;
+            *"is not git-ignored"*) fix="add to .gitignore" ;;
+            *) fix="correct the profile key that it names in $profile" ;;
+          esac
+          row '✗' project profile "$problem" "$fix"
+        done < <(printf '%s\n' "${verdict#FAIL "$key": }" | tr ';' '\n') ;;
+    esac
+
+    slug=$(sin-flow-profile "$key" get repo.slug 2>/dev/null) || slug=""
+    if [ -n "$slug" ] && gh repo view "$slug" --json name >/dev/null 2>&1; then
+      row '✓' project repo "gh repo view $slug ok"
+    else
+      row '✗' project repo "gh repo view ${slug:-<no repo.slug>} fails" "gh auth login, or correct repo.slug in $profile"
+    fi
+
+    stored=$(inferred_of "$profile")
+    base=$(sin-flow-profile "$key" get repo.base 2>/dev/null) || base=""
+    [ -n "$base" ] || base=$(base_of <<<"$stored")
+    base_state="not on origin"
+    if [ -n "$base" ] && [ -n "$(git -C "$main" ls-remote --heads origin "$base" 2>/dev/null)" ]; then
+      base_state="on origin"
+      row '✓' project base "base $base on origin"
+    else
+      row '✗' project base "base ${base:-<none>} is not a branch on origin" "sin-flow-infer --write $key, then name the gates (reference/gates.md)"
+    fi
+
+    commands=$(sin-flow-profile "$key" get gates.commands 2>/dev/null) || commands=""
+    [ -n "$commands" ] || commands=$(grep '^gates' <<<"$stored" || true)
+    lost=""
+    while IFS= read -r binary; do
+      [ -n "$binary" ] || continue
+      case "$binary" in
+        */*) [ -x "$main/$binary" ] || [ -x "$binary" ] || lost="${lost:+$lost }$binary" ;;
+        *) command -v "$binary" >/dev/null 2>&1 || lost="${lost:+$lost }$binary" ;;
+      esac
+    done < <(grep -oE '`[^`]+`' <<<"$commands" | sed -E 's/^`//; s/`$//' | awk '{print $1}' | sort -u)
+    gates_state='!'
+    if [ -z "$lost" ]; then
+      gates_state='✓'
+      row '✓' project gate-tools "the binary of each gate command is on PATH"
+    else
+      row '!' project gate-tools "not on PATH: $lost" "install $lost"
+    fi
+
+    fresh=$(sin-flow-infer "$top" 2>/dev/null) || fresh=""
+    if [ -z "$fresh" ]; then
+      row '!' project inferred "sin-flow-infer gave no answer" "gh auth login, then check again"
+    elif [ "$(base_of <<<"$fresh")" != "$(base_of <<<"$stored")" ] || [ "$(gate_files_of <<<"$fresh")" != "$(gate_files_of <<<"$stored")" ]; then
+      row '!' project inferred "the base or the gate files changed after the last sin-flow-infer --write" "sin-flow-infer --write $key, then name the gates (reference/gates.md)"
+    else
+      row '✓' project inferred "the base and the gate files are the stored ones"
+    fi
+
+    row '?' project gates-named "the session names the gates again and compares them with the stored gates lines" "reference/check.md § Session checks"
+    sources=$(frontmatter "$profile" | sed -n 's/^sources\.\([A-Za-z0-9_-]*\)\..*/\1/p' | sort -u | tr '\n' ' ')
+    sources=${sources% }
+    [ -z "$sources" ] || row '?' project sources "the session runs the preflight and the verify call of: $sources" "reference/check.md § Session checks"
+
+    measure=$(sin-flow-profile "$key" get measure.doc 2>/dev/null) || measure=none
+    project_line="$key: profile $valid · base ${base:-?} $base_state · gates $gates_state · measure: $measure · sources: ${sources:-none}"
+  fi
+fi
+
+language=$(pref chat_language)
+echo
+echo "sin-flow:setup $(date +%F)"
+printf '[%s] %-9s skills %s/%s, sin-flow-* on PATH, Stop hook %s, gh auth %s\n' "$flow_mark" flow "$skills_ok" "$skills_all" "$hook_state" "$gh_state"
+printf '[%s] %-9s %s, %s, remote: %s, prefs: %s · %s · %s · handoff %s%s · models %s\n' "$user_mark" user "$FLOW_HOME ok" "$git_state" \
+  "$remote_text" "${language:-the language of the user}" "$(pref merge)" "$(pref after_review)" "$handoff" "${detected:+ ($detected)}" "$models"
+[ -z "$project_line" ] || printf '[%s] %-9s %s\n' "$project_mark" project "$project_line"
+if [ "$open" -eq 0 ]; then echo "all good"; else echo "open: $open"; fi
+[ "$stopped" -eq 0 ]
