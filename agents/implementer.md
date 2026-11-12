@@ -23,7 +23,9 @@ Rules that hold on every dispatch:
 - **Run the checks the brief names**, and no more. Do not run a full suite the brief did not ask
   for.
 - **Never `git stash`, `git checkout -- <file>` or `git reset`.** The checkout's `.git` is shared
-  with other sessions, and nothing is committed during a run, so HEAD is the pre-fix state. Read an
+  with other sessions. Without the profile key `git.commit_unit`, nothing is committed during a run, so HEAD is
+  the pre-fix state. With it, the dispatcher commits each unit after its wave
+  (`${CLAUDE_PLUGIN_ROOT}/skills/exec/SKILL.md`, **Commit unit**). Read an
   old version with `git show <ref>:<path>`; for a mutation check, re-apply the change by hand.
 - **Your last message is the return block, and nothing else.** No preamble, no summary, no prose
   around it. Exactly these keys, in this order, one per line:
@@ -40,7 +42,7 @@ Rules that hold on every dispatch:
   Everything else — what you decided, what you found, what you half-did — goes in the report file.
   The dispatcher reads this block and never re-reads your report, so a fact that is not in the
   block and not in the file does not exist. Prose in this block is what makes an orchestrator
-  overflow: measured on batch 37, the dispatching thread carried a 326k median context and cost
+  overflow: measured on one batch, the dispatching thread carried a 326k median context and cost
   $46.44 while the twenty-four subagent returns it actually needed were 27k characters in total.
 
   A `RULING_NEEDED` line is the only way to raise a question, and it never ends your turn as a

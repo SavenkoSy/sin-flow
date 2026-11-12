@@ -171,7 +171,7 @@ Rules that bind every number:
 
 - **A rate needs at least five repetitions, each printed.** One run of a query is a sample.
 - **Every number carries its filter set** — the `WHERE`, the date range, the account — beside it.
-- **Measure on the fixture the report names.** The report said account 81418 → measure 81418.
+- **Measure on the fixture the report names.** The report said account `<id>` → measure that account.
 - **Read the notes on the record first**: a "reactivate" that was a deliberate cancellation two days
   earlier is a business decision, not a defect.
 - **A failing spec is a task in the plan, never a run here.**

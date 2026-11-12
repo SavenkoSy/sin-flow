@@ -5,8 +5,16 @@ root="${FLOW_HOME:-$HOME/.claude/sin-flow}"
 log="$root/stop-commit.log"
 pushed="$root/.last-push"
 pushing="$root/.pushing"
+lock="$root/.autosave.lock"
+STALE_LOCK_MINUTES=10
 cat >/dev/null 2>&1 || true
 [ -d "$root/.git" ] || exit 0
+if ! mkdir "$lock" 2>/dev/null; then
+  [ -n "$(find "$lock" -maxdepth 0 -mmin "+$STALE_LOCK_MINUTES" 2>/dev/null)" ] || exit 0
+  rmdir "$lock" 2>/dev/null || true
+  mkdir "$lock" 2>/dev/null || exit 0
+fi
+trap 'rmdir "$lock" 2>/dev/null || true' EXIT
 stamp=$(date '+%F %T')
 today=$(date '+%F')
 big=$(cd "$root" && find work profiles -type f -size +50M 2>/dev/null || true)
@@ -37,6 +45,7 @@ git -C "$root" remote get-url origin >/dev/null 2>&1 || exit 0
 head=$(git -C "$root" rev-parse HEAD)
 branch=$(git -C "$root" branch --show-current)
 printf '%s' "$head" >"$pushing"
+trap - EXIT
 (
   if git -C "$root" push -q origin "$head:refs/heads/$branch" >/dev/null 2>>"$log"; then
     printf '%s' "$today" >"$pushed"
@@ -44,6 +53,7 @@ printf '%s' "$head" >"$pushing"
   else
     printf '%s\tpush failed\n' "$(date '+%F %T')" >>"$log"
   fi
+  rmdir "$lock" 2>/dev/null || true
   rm -f "$pushing"
 ) </dev/null >/dev/null 2>&1 &
 exit 0

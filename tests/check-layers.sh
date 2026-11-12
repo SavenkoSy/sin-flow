@@ -49,4 +49,13 @@ added "the widgetry repo"
 out=$(check) && fail "case 8: a repo.slug part passes"
 grep -qF "private: 'widgetry'" <<<"$out" || fail "case 8: got $out"
 
-echo "ok: 8 cases"
+added "plain text"
+mkdir -p skills/demo
+echo "the call stops on a prompt (owner, 2026-01-02)" > skills/demo/SKILL.md
+out=$(check) && fail "case 9: an owner date in plugin text passes"
+grep -qF "private: an owner date in plugin text: skills/demo/SKILL.md:1:" <<<"$out" || fail "case 9: got $out"
+
+echo "written on 2026-01-02 by the owner" > skills/demo/SKILL.md
+out=$(check) || fail "case 10: a plain date fails: $out"
+
+echo "ok: 10 cases"

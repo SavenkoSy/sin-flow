@@ -11,6 +11,7 @@ usage: sin-flow-gate run <log> <commands-file>
        sin-flow-gate canary <work_dir> <unit> <base> <spec_cmd> <file>...
        sin-flow-gate verdict <work_dir> <unit> <sha|uncommitted> <clean|skipped>
        sin-flow-gate notes <key>   (paths on stdin, one per line)
+       sin-flow-gate green-for <work_dir> <sha>
 EOF
   exit 2
 }
@@ -49,13 +50,33 @@ count_tests() {
     }' "$1"
 }
 
+tree_with() {
+  local scratch index tree
+  scratch=$(mktemp -d)
+  index=$(git rev-parse --git-path index)
+  [ -f "$index" ] && cp -p "$index" "$scratch/index"
+  tree=$(GIT_INDEX_FILE="$scratch/index" git add "$1" >/dev/null 2>&1 && GIT_INDEX_FILE="$scratch/index" git write-tree 2>/dev/null)
+  rm -rf "$scratch"
+  [ -n "$tree" ] && echo "tree $tree"
+}
+
+record_green() {
+  git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
+  {
+    echo "head $(git rev-parse --verify -q HEAD || echo none)"
+    tree_with --all
+    tree_with --update
+  } >"$1.green"
+}
+
 cmd_run() {
-  local log=$1 commands=$2 section status tests
+  local log=$1 commands=$2 section status tests gated=0
   [ -f "$commands" ] || usage
-  rm -f "$log.tail"
+  rm -f "$log.tail" "$log.green"
   section=$(mktemp)
   { echo "commands:"; split_commands "$commands" | sed 's/^/  /'; } >"$log"
   while IFS= read -r cmd; do
+    [ "$cmd" = true ] || gated=1
     echo "=== $cmd ===" >>"$log"
     bash -c "$cmd" >"$section" 2>&1
     status=$?
@@ -76,8 +97,20 @@ cmd_run() {
     fi
   done < <(split_commands "$commands")
   rm -f "$section"
+  [ "$gated" -eq 1 ] && record_green "$log"
   tail -40 "$log" >"$log.tail"
   echo "green"
+}
+
+cmd_green_for() {
+  local work=$1 sha=$2 tree
+  tree=$(git rev-parse --verify -q "$sha^{tree}") || { echo "no green gate for $sha: not a commit here"; return 1; }
+  if grep -qsx "tree $tree" "$work"/*.green; then
+    echo "green gate for $sha"
+    return 0
+  fi
+  echo "no green gate for $sha"
+  return 1
 }
 
 cmd_canary() {
@@ -180,6 +213,7 @@ shift
     canary) [ $# -ge 5 ] || usage; cmd_canary "$@" ;;
     verdict) [ $# -eq 4 ] || usage; cmd_verdict "$@" ;;
     notes) [ $# -eq 1 ] || usage; cmd_notes "$1" ;;
+    green-for) [ $# -eq 2 ] || usage; cmd_green_for "$@" ;;
     *) usage ;;
   esac
   exit

@@ -222,11 +222,11 @@ said to the list. Silence, "not now" or a question is not approval.
    by piece. Denied: give the user the line `! bash <abs path>/apply-<layer>.sh`.
 4. When the applied text differs from the proposed text, add a `⚠ CORRECTION` note to the proposal entry, with why.
 5. Author mode, after the applies: tell the user to run `/reload-plugins`. Ship the checkout changes as one PR through
-   `sin-flow:shipper` in ship mode, with the profile that `sin-flow-profile key` resolves in the plugin checkout.
+   `sin-flow:shipper` in ship mode, after its `gate` mode ran green on the same tree, with the profile that `sin-flow-profile key` resolves in the plugin checkout.
    Before the PR goes into the chat report, review it from the plugin checkout: `cd "${CLAUDE_PLUGIN_ROOT}" &&
    skills/review/reference/build-package.sh pr <PR> <absolute LD>/<date>/review-pkg`, then `pipeline.md` as
    written. Its `reproduces` rows go to one fix as a new commit
-   through `sin-flow:shipper` `commit` mode. The report names the review file and the rows left as `possible`.
+   through `sin-flow:shipper` `gate`, then `commit` mode. The report names the review file and the rows left as `possible`.
 6. A declined proposal stays in the digest marked `declined <date>`. The next run does not propose it again unless new
    rows contradict the decline.
 

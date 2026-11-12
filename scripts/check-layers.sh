@@ -16,6 +16,11 @@ while IFS= read -r f; do
   fail=1
 done < <(git ls-files bin hooks skills | grep -v node_modules)
 
+while IFS= read -r hit; do
+  echo "private: an owner date in plugin text: ${hit:0:160}"
+  fail=1
+done < <(git grep --untracked -nE '\(owner, 20[0-9]{2}-[0-9]{2}-[0-9]{2}\)' -- agents bin hooks skills)
+
 flow_home=${FLOW_HOME:-$HOME/.claude/sin-flow}
 if [ -d "$flow_home/profiles" ] && git rev-parse --verify --quiet "$base" >/dev/null; then
   terms=$( {

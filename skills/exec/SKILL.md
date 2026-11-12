@@ -93,7 +93,7 @@ The dispatching thread is the most expensive place in the chain when it fills wi
    command with `--cwd <that path>`, then end the turn. Otherwise, when this checkout is busy — a dirty tree, another
    branch, another session in it → `sin-flow-worktree --repo <this checkout> --name <id> --branch <header's branch:> --base <base>`,
    then the § Hand-off command with `--cwd <its path:>`, then end the turn. Never `EnterWorktree`: an Orca workspace
-   lies outside `.claude/worktrees/`, so the call stops on a permission prompt (owner, 2026-11-05). No
+   lies outside `.claude/worktrees/`, so the call stops on a permission prompt. No
    `branch:` line → `sin-flow:shipper` names it by convention on its first `local` / `commit`. Never work on the base branch.
    Then each name in the profile's `repo.local_files` that this checkout lacks and `repo.path` has → `cp -p
    <repo.path>/<name> <name>`; never a link, never print one. Ledger `Base: <ref> (<why>)` and `Copied: <names>`.
@@ -200,7 +200,8 @@ finding for that unit's fix loop, then the canary again. Do not stop between wav
    K<n> — plan:<line> «<quote>»` or `— measured: <number, filter>`. «Reopens a plan decision» without a quoted line,
    «a new mechanism», «outside this ticket», «a separate PR» are not exceptions. Rejected rows → one ledger line `final-review
    rejected: <n> (<reason> <count>, …)`.
-6. **After the fix**: scoped re-review, `sin-flow:shipper` `gate` (when the fix touched code), `sin-flow:shipper` `local` (`commit` once a PR exists) — a new
+6. **After the fix**: scoped re-review, `sin-flow:shipper` `gate` (after every fix: the shipper pushes only a tree that
+   a gate ran green on), `sin-flow:shipper` `local` (`commit` once a PR exists) — a new
    commit. **Review until clean** when the profile folder has `review-team.md`: steps 3–5 again on
    the fix commits only (`build-package.sh exec <SHA= of the previous round's manifest.env> …-<round> --depth quick`)
    — every line the fix wrote gets the lenses; code an earlier round passed is not reviewed again. These rounds
@@ -229,6 +230,8 @@ FAIL / SHOTS`; ledger it, and act on it as § After of that file says.
 2. **`sin-flow:shipper` mode `ship`**: branch, base, PR title in English (the plan's, translated when it is not, with the
    tracker prefix the profile's convention gives and `<ATTENTION>` when step 5 of Setup hit), `body_file`. It pushes
    the branch (never the base) and opens the PR; ledger its `PR:` and `MERGE:` (the user's merge method).
+   It refuses with `NOTE: no green gate for <sha>` when no gate ran green on the tree of `HEAD`
+   (`${CLAUDE_PLUGIN_ROOT}/agents/shipper.md` § Mode `ship`, step 1): dispatch `gate`, then `ship` again.
    If the plan header has `after:`, pass `draft: true`. Read the `repo` cell of the `after:` row in the spec. It tells
    same repo from other repo. At this point the header `base:` is the first branch. Same repo: first start one
    background Bash with `run_in_background`, and end the turn:
