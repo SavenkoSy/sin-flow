@@ -30,8 +30,9 @@ read session followed, lines that a hook or another line contradicts, lines that
 of lines that say the same thing, merged into one. A run that adds and never deletes is incomplete.
 
 A **Rewrite** proposal is due when the stage skill grew in each of the last 3 digests of that stage and no Rewrite of
-that stage was carried within those 3 digests. It is the whole skill from scratch in `D/flow-<stage>-rewrite.md`,
-with only what a read session followed or a hook enforces. The user approves it as a whole.
+that stage was carried within those 3 digests. It is the whole skill from scratch, with only what a read
+session followed or a hook enforces. Write it as the proposed copy `D/flow-<stage>/proposed/plugin/skills/<stage>/SKILL.md`,
+then copy it to `D/flow-<stage>-rewrite.md` for the user to read. The user approves it as a whole.
 
 A declined proposal stays in the digest marked `declined <date>`. The next run does not propose it again unless new
 rows contradict the decline.
@@ -69,7 +70,9 @@ Each proposal that the mode lets this run apply is a whole file before the chat 
 - a file of the plugin: `D/flow-<stage>/proposed/plugin/<path below the plugin root>`.
 - a profile file or the user's copy of a script: `D/flow-<stage>/proposed/user/<path below ~/.claude/sin-flow>`.
 
-Copy the live file there with `cp -p`, then edit the copy. A new file is written there directly. Put all proposals
+Copy the live file there with `cp -p`, then edit the copy. A new file is written there directly. In the same step,
+append one line `<root>\t<path>\t<sha256 of the live file, or absent>` to `D/flow-<stage>/proposed/base.tsv`. The root is
+`plugin` or `user`, the path is the one below it, and the sha is `shasum -a 256` of the live file before the edit. Put all proposals
 of the stage for one file into one copy. `scripts/make-apply.sh` reads these trees, and it builds `targets.tsv`,
 `patches.diff` and the apply scripts. A plugin option is not a file: name its key and value in the proposal, and
 the main thread sets it after the approval.

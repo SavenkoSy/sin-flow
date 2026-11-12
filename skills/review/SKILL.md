@@ -35,7 +35,7 @@ plugin, a profile or memory in this chat.
 
 Inside the product repo that owns the PR. `git rev-parse --show-toplevel` must succeed; if it does
 not, say in one line which repo the review needs and stop. `KEY=$(sin-flow-profile key)`; no profile →
-one line "no profile for this repo — running setup", run `sin-flow:setup`'s onboard in this session, then continue. The model grid gives the model and the effort of each dispatch: `sin-flow-profile model <role>` prints both. The lens rows are in `reference/pipeline.md`.
+one line "no profile for this repo — running setup", run `sin-flow:setup`'s onboard in this session, then continue. The model grid gives the model and the effort of each dispatch: `sin-flow-profile model <role>` prints both. An effort of `-` means: pass no effort. The lens rows are in `reference/pipeline.md`.
 
 User preferences are the plugin options, read with `sin-flow-profile user <key>`. `REVIEWS` = the `reviews_dir` option (default
 `~/.claude/sin-flow/reviews`). The verdict tokens `reproduces` / `possible` / `invented` and the

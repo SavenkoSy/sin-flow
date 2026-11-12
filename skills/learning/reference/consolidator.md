@@ -21,8 +21,12 @@ $S/turns.sh D/run <stage> > D/flow-<stage>/turns.txt
 
 - `dump-session.sh` writes `<sid8>.{txt,ctx,guards,agents.tsv,long.txt,errors,misses,ledger-paths}`, and adds to
   `stats.txt` and `transcripts.tsv`. `.misses` holds every `ingest-miss:` line that the session itself wrote.
-- Files under review: `${CLAUDE_PLUGIN_ROOT}/skills/<stage>/SKILL.md`, the agents and hooks that the stage calls, and
-  `~/.claude/sin-flow/profiles/<key>/profile.md`. A stage with no sin-flow:* skill yet is read against the skill in
+- Files under review: `${CLAUDE_PLUGIN_ROOT}/skills/<stage>/SKILL.md`, the agents and hooks that the stage calls
+  (`agents/{shipper,implementer,reviewer,read-only-analyst}.md`, `hooks/scripts/{stage,work-commit,ctx-guard,exec-guard}.sh`,
+  the run-log hook that `grep -l 'runs.tsv' ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/*.sh` finds, `sin-flow-handoff` and the
+  launcher that the `handoff` option names), and `~/.claude/sin-flow/profiles/<key>/profile.md`. For the stage `review`
+  they also hold `skills/review/reference/{pipeline.md,lenses/,sources.lock.tsv}` and
+  `~/.claude/sin-flow/profiles/<key>/review-team.md`. A stage with no sin-flow:* skill yet is read against the skill in
   its `skill` column, and its proposals go to the sin-flow:* skill that replaces it.
 - Stage review, before its proposals: run `bash ${CLAUDE_PLUGIN_ROOT}/skills/review/reference/check-sources.sh`. Each
   row it prints is a source that moved. Fetch its compare diff and propose a numbered diff to the lens whose
@@ -42,7 +46,8 @@ Every reader is `sin-flow:read-only-analyst` on the grid row `learning-reader`, 
   list. It gives the class of every user turn, the count for each class and session, and every class e and g turn
   verbatim with the session and HH:MM. Its counts cover every row of the stage.
 - **PR reader**, one for each 20 values of the `pr` column that are not `none`. It gets those rows of
-  `sessions.tsv` and item 8 of the exec list. It reads the review file of each PR and may run read-only
+  `sessions.tsv` and item 8 of the exec list. It reads the review file of each PR, in the `reviews_dir` option (`sin-flow-profile user reviews_dir`, default
+  `~/.claude/sin-flow/reviews/`), and may run read-only
   `gh pr view` and `gh api` on that PR. It returns the post-PR defects for each PR and their sum.
 
 Each prompt also carries:

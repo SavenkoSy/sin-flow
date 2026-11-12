@@ -151,6 +151,21 @@ run sin-flow-profile model rebase "$plain"
 expect_eq "good row beside a malformed row" "opus high" "$out"
 rm "$FLOW_HOME/models.tsv"
 
+{ row role level model effort; row visual '*' same low; row implementer fix-2 same -; } > "$FLOW_HOME/models.tsv"
+run sin-flow-profile model visual "$plain"
+expect_eq "same on another role falls to the default row" "sonnet medium" "$out"
+expect_has "same on another role message" "models.tsv:2: not a grid row" "$err"
+expect_has "same on another role names the rule" "valid only on an implementer row" "$err"
+run sin-flow-profile model implementer fix-2 "$plain"
+expect_eq "same on implementer fix-2 stays valid" "same -" "$out"
+rm "$FLOW_HOME/models.tsv"
+
+run sin-flow-profile model exec "$scratch/no-such-folder"
+expect_eq "a missing folder rc" 2 "$rc"
+expect_has "a missing folder message" "not a folder: $scratch/no-such-folder" "$err"
+run sin-flow-profile model implementer hard "$plain"
+expect_eq "a level word is still read as a level" "opus high" "$out"
+
 options '{"handoff": "print"}'
 touch "$plain/x.md"
 { row role level model effort; row exec mid mid high; } > "$FLOW_HOME/models.tsv"
@@ -160,5 +175,11 @@ out=$(sin-flow-handoff --probe --cwd "$plain" --level hard sin-flow:exec "$plain
 expect_has "hand-off with no effort in the grid" "--model 'opus' '/sin-flow:exec" "$out"
 out=$(sin-flow-handoff --probe --cwd "$plain" --level mid --model fable --effort low sin-flow:exec "$plain/x.md" | sed -n 2p)
 expect_has "hand-off options win over the grid" "--model 'fable' --effort 'low' '/sin-flow:exec" "$out"
+rm "$FLOW_HOME/models.tsv"
+out=$(sin-flow-handoff --probe --cwd "$plain" --model fable --effort low sin-flow:nope "$plain/x.md" 2>/dev/null | sed -n 2p)
+expect_has "a grid failure does not stop a hand-off that names its model" "--model 'fable' --effort 'low' '/sin-flow:nope" "$out"
+rc=0
+sin-flow-handoff --probe --cwd "$plain" sin-flow:nope "$plain/x.md" >/dev/null 2>&1 || rc=$?
+expect_eq "a grid failure without --model stops the hand-off" 2 "$rc"
 
 echo "ok: $cases cases"

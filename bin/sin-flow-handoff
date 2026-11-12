@@ -132,7 +132,7 @@ FLOW_CWD=$(cd "${cwd:-$target_dir}" && (git rev-parse --show-toplevel 2>/dev/nul
 FLOW_NAME="${name:-${stage#sin-flow:}}"
 FLOW_NAME="${FLOW_NAME:-continue-$$}"
 model_name="${stage#sin-flow:}"
-grid=$("$(dirname "$adapters")/sin-flow-profile" model "${model_name:-strong}" ${model_name:+"${level:-*}"} "$FLOW_CWD") || exit 2
+grid=$("$(dirname "$adapters")/sin-flow-profile" model "${model_name:-strong}" ${model_name:+"${level:-*}"} "$FLOW_CWD") || { [ -n "$model" ] || exit 2; grid=""; }
 FLOW_MODEL="${model:-${grid%% *}}"
 [ -n "$effort" ] || [ "$grid" = "${grid#* }" ] || effort="${grid#* }"
 case "$effort" in -) effort="" ;; ""|low|medium|high|xhigh|max) ;; *) echo "--effort must be low, medium, high, xhigh or max: $effort" >&2; exit 2 ;; esac

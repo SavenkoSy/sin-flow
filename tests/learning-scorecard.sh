@@ -106,4 +106,10 @@ mkdir -p "$FLOW_LEARNING_DIR/2026-01-02"
 printf '# Digest\n\n- Stage exec.\n- Sessions covered:\n  aaaaaaa1 aaaaaaa2\n  aaaaaaa3\n- Read: aaaaaaa1\n- No transcript: bbbbbbb1\n\n## 1. Timeline\ncccccccc\n' > "$FLOW_LEARNING_DIR/2026-01-02/flow-exec.md"
 [ "$("$S/covered-sids.sh" | tr '\n' ' ')" = "aaaaaaa1 aaaaaaa2 aaaaaaa3 " ] || fail "case 28: only the Sessions covered block counts: $("$S/covered-sids.sh" | tr '\n' ' ')"
 
-echo "ok: 28 cases"
+all_flagged="$scratch/all-flagged"
+mkdir -p "$all_flagged"
+awk -F'\t' 'NR == 1 || $4 == "sess03-0"' "$out/sessions.tsv" > "$all_flagged/sessions.tsv"
+"$S/flag.sh" "$all_flagged" 2026-01-02 >/dev/null
+[ "$(awk -F'\t' 'NR > 1 { print $4 ":" $6 }' "$all_flagged/flags.tsv")" = "sess03-0:flag" ] || fail "case 29: a run with no clean session keeps its flagged rows: $(cat "$all_flagged/flags.tsv")"
+
+echo "ok: 29 cases"

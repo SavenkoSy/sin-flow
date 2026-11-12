@@ -46,10 +46,10 @@ awk -F'\t' '$6 == "clean" { print $1 "\t" $5 }' "$tmp/marked" | while IFS=$'\t' 
   printf '%s\t%s\t%s\n' "$st" "$(printf '%s%s' "$day" "$sid" | cksum | cut -d' ' -f1)" "$sid"
 done | sort -t$'\t' -k1,1 -k2,2n > "$tmp/order"
 
+cp "$tmp/marked" "$tmp/marked2"
 awk -F'\t' -v OFS='\t' '
-  FNR == 1 { pass++ }
-  pass == 1 { clean[$1]++; rank[$3] = clean[$1]; next }
-  pass == 2 { rows[$1]++; if ($6 == "clean") total[$1]++; if ($6 == "flag") flagged[$1]++; next }
+  FILENAME == ARGV[1] { clean[$1]++; rank[$3] = clean[$1]; next }
+  FILENAME == ARGV[2] { rows[$1]++; if ($6 == "clean") total[$1]++; if ($6 == "flag") flagged[$1]++; next }
   {
     if ($6 == "clean") {
       want = int((total[$1] + 9) / 10); if (want < 2) want = 2
@@ -58,7 +58,7 @@ awk -F'\t' -v OFS='\t' '
     }
     print
   }
-' "$tmp/order" "$tmp/marked" "$tmp/marked" | sort -t$'\t' -k1,1 -k2,2 -k5,5 | awk -F'\t' -v OFS='\t' -v per="$per_reader" '
+' "$tmp/order" "$tmp/marked" "$tmp/marked2" | sort -t$'\t' -k1,1 -k2,2 -k5,5 | awk -F'\t' -v OFS='\t' -v per="$per_reader" '
   BEGIN { print "stage", "repo", "n", "sid8", "session_id", "pick", "reasons", "reader", "events" }
   { reader = "-"; if ($6 == "flag" || $6 == "sample") { picked[$1]++; reader = $1 "-" int((picked[$1] + per - 1) / per) } print $1, $2, $3, $4, $5, $6, $7, reader, $8 }
 ' > "$out/flags.tsv"

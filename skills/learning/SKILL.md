@@ -47,7 +47,7 @@ column, not a separate flow.
 - The run log is `~/.claude/sin-flow/runs.tsv`: `date repo stage n session_id account model start end turns
   user_turns ctx_first_k ctx_last_k handoff limit_hits skill`.
 - Resolve each grid row once with `sin-flow-profile model <grid row>`. It prints a model and an effort. Name both on
-  every dispatch:
+  every dispatch. An effort of `-` means: pass no effort.
 
 | role | agent | grid row |
 |---|---|---|
@@ -105,7 +105,7 @@ this block. Counts carry their filter set in the digest.
 ## Approval
 
 Nothing is edited before the user approves. "Do it" or "go" in the launch request approves the run, not a diff the
-user did not see. The user approves by number or all at once, in a line said to the list. Silence, "not now" or a
+user did not see. The user approves by number, or all at once: "all", "yes", "apply" or "your call", in any language, said to the list. Silence, "not now" or a
 question is not approval. The ledger quotes the user line verbatim with its HH:MM. An apply script runs only after
 that line exists in the transcript.
 

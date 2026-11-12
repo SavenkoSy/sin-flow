@@ -63,7 +63,7 @@ switch is `off`; an absent `group_by` is `milestone`. When `sin-flow-profile <ke
 line with the first line of its stderr, and stop. Give the result in each dispatch prompt as
 `writes: light=<on|off> assign=<on|off|own> status=<on|off>`, `group_by: <mode>` and `skip_milestones: <list | none>`.
 
-Resolve the grid row `board` once for the key's checkout (`sin-flow-profile <key> get repo.path`, `~` expanded; missing → the cwd): `sin-flow-profile model board <checkout>`. It prints `<model>` and `<effort>` for the board agent.
+Resolve the grid row `board` once for the key's checkout (`sin-flow-profile <key> get repo.path`, `~` expanded; missing → the cwd): `sin-flow-profile model board <checkout>`. It prints `<model>` and `<effort>` for the board agent. An effort of `-` means: pass no effort.
 
 Everything repo-specific — slug, base, board, ticket prefix, sensitive areas — comes from the
 profile; the board's own state, batch table and field ids from `$(sin-flow-profile <key> dir)/board/`.

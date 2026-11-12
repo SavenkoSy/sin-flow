@@ -4,7 +4,7 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 make="$root/skills/learning/scripts/make-apply.sh"
 scratch=$(cd "$(mktemp -d)" && pwd -P)
-trap 'rm -rf "$scratch"' EXIT
+trap 'chmod -R u+w "$scratch" 2>/dev/null; rm -rf "$scratch"' EXIT
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
@@ -67,4 +67,53 @@ printf 'UNO\ntwo\nthree\nfour\nfive\nsix\nSEVEN\n' | propose merged/proposed/plu
 "$make" "$day" >/dev/null || fail "case 18: a merged copy resolves the conflict"
 [ "$(head -1 "$day/apply/proposed/plugin/skills/demo/SKILL.md")" = UNO ] || fail "case 18: the merged copy wins"
 
-echo "ok: 18 cases"
+day2="$scratch/learning/2026-01-03"
+mkdir -p "$CLAUDE_PLUGIN_ROOT/skills/zdir" "$day2"
+printf 'a1\n' > "$CLAUDE_PLUGIN_ROOT/skills/demo/a.md"
+printf 'b1\n' > "$CLAUDE_PLUGIN_ROOT/skills/zdir/b.md"
+day="$day2"
+printf 'a2\n' | propose flow-exec/proposed/plugin/skills/demo/a.md
+printf 'b2\n' | propose flow-exec/proposed/plugin/skills/zdir/b.md
+"$make" "$day2" >/dev/null || fail "case 19: make-apply fails on two targets"
+chmod a-w "$CLAUDE_PLUGIN_ROOT/skills/zdir"
+if touch "$CLAUDE_PLUGIN_ROOT/skills/zdir/probe" 2>/dev/null; then
+  rm -f "$CLAUDE_PLUGIN_ROOT/skills/zdir/probe"
+  echo "skip: cases 20 and 21 need a folder that the user cannot write"
+else
+  rc=0; bash "$day2/apply/apply-plugin.sh" >/dev/null 2>&1 || rc=$?
+  [ "$rc" = 4 ] || fail "case 20: a failed copy stops the apply, rc $rc"
+  [ "$(cat "$CLAUDE_PLUGIN_ROOT/skills/demo/a.md")" = a1 ] || fail "case 21: the target applied before the failure is restored"
+  [ "$(cat "$CLAUDE_PLUGIN_ROOT/skills/zdir/b.md")" = b1 ] || fail "case 21: the failed target keeps its text"
+fi
+chmod u+w "$CLAUDE_PLUGIN_ROOT/skills/zdir"
+
+day3="$scratch/learning/2026-01-04"
+mkdir -p "$day3"
+day="$day3"
+printf 'a3\n' | propose flow-exec/proposed/plugin/skills/demo/a.md
+"$make" "$day3" >/dev/null || fail "case 22: make-apply fails on one target"
+mkdir -p "$scratch/learning/backups"
+chmod a-w "$scratch/learning/backups"
+if mkdir "$scratch/learning/backups/probe" 2>/dev/null; then
+  rmdir "$scratch/learning/backups/probe"
+  echo "skip: case 23 needs a folder that the user cannot write"
+else
+  rc=0; out=$(bash "$day3/apply/apply-plugin.sh" 2>&1) || rc=$?
+  [ "$rc" = 4 ] || fail "case 23: a failed backup stops the apply, rc $rc: $out"
+  [ "$(cat "$CLAUDE_PLUGIN_ROOT/skills/demo/a.md")" = a1 ] || fail "case 23: nothing is replaced after a failed backup"
+fi
+chmod u+w "$scratch/learning/backups"
+
+day4="$scratch/learning/2026-01-05"
+mkdir -p "$day4"
+day="$day4"
+base=$(shasum -a 256 "$CLAUDE_PLUGIN_ROOT/skills/demo/a.md" | cut -d' ' -f1)
+printf 'a4\n' | propose flow-exec/proposed/plugin/skills/demo/a.md
+printf 'plugin\tskills/demo/a.md\t%s\n' "$base" | propose flow-exec/proposed/base.tsv
+printf 'a1\nedited by another session\n' > "$CLAUDE_PLUGIN_ROOT/skills/demo/a.md"
+"$make" "$day4" >/dev/null || fail "case 24: make-apply fails with a base record"
+[ "$(awk -F'\t' '$3 == "skills/demo/a.md" { print $5 }' "$day4/apply/targets.tsv")" = "$base" ] || fail "case 24: the expected sha is the recorded base"
+rc=0; bash "$day4/apply/apply-plugin.sh" >/dev/null || rc=$?
+[ "$rc" = 3 ] || fail "case 24: an edit between the copy and the build stops the apply, rc $rc"
+
+echo "ok: 24 cases"

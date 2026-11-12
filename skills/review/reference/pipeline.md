@@ -30,7 +30,7 @@ and the prompt exactly `Package: <PKG>. Lens: <lens>. Lenses: <LENSES>.` — not
 added to the prompt biases the lens and is paid for twice.
 
 `sin-flow-profile model lens-<lens> <checkout>` prints that row, for example `opus high`. The first word is the
-`model` and the second word is the `effort`. The grid roles are `lens-context`, `lens-code`, `lens-fit`, `lens-all`,
+`model` and the second word is the `effort`. An effort of `-` means: pass no effort. The grid roles are `lens-context`, `lens-code`, `lens-fit`, `lens-all`,
 `lens-verify` and `lens-settle`. Each lens has one row with the level `*`. A lens never moves to another row.
 
 ## 3. Order

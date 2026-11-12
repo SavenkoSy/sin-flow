@@ -49,7 +49,9 @@ cut -f1,2 "$list" | uniq | while IFS=$'\t' read -r root path; do
     done
   fi
   if [ -e "$target" ] && cmp -s "$final" "$target"; then rm -f "$final"; continue; fi
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$layer" "$root" "$path" "$target" "$(sha "$target")" "$final" "$stages" >> "$apply/targets.tsv"
+  want_sha=$(awk -F'\t' -v r="$root" -v p="$path" '$1 == r && $2 == p { print $3; exit }' "$day"/*/proposed/base.tsv 2>/dev/null)
+  [ -n "$want_sha" ] || want_sha=$(sha "$target")
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$layer" "$root" "$path" "$target" "$want_sha" "$final" "$stages" >> "$apply/targets.tsv"
   if [ -e "$target" ]; then diff -u "$target" "$final" >> "$apply/patches.diff"; else diff -u /dev/null "$final" >> "$apply/patches.diff"; fi
 done
 rm -f "$list"
@@ -78,6 +80,7 @@ restore() {
     if [ -e "$rollback/$root/$path" ]; then cp -p "$rollback/$root/$path" "$target"; elif [ "$want" = absent ]; then rm -f "$target"; fi
   done
 }
+abort() { echo "$1: every target restored"; restore; exit 4; }
 [ -n "$(rows)" ] || { echo "no target for: $layers"; exit 0; }
 stale=0
 while IFS=$'\t' read -r layer root path target want proposed stages; do
@@ -86,9 +89,9 @@ done < <(rows)
 [ "$stale" = 0 ] || exit 3
 while IFS=$'\t' read -r layer root path target want proposed stages; do
   if [ "$want" != absent ]; then
-    mkdir -p "$(dirname "$backups/$path")" "$(dirname "$rollback/$root/$path")"
-    [ -e "$backups/$path" ] || cp -p "$target" "$backups/$path"
-    cp -p "$target" "$rollback/$root/$path"
+    mkdir -p "$(dirname "$backups/$path")" "$(dirname "$rollback/$root/$path")" || abort "backup folder failed: $target"
+    [ -e "$backups/$path" ] || cp -p "$target" "$backups/$path" || abort "backup failed: $target"
+    cp -p "$target" "$rollback/$root/$path" || abort "rollback copy failed: $target"
   fi
   mkdir -p "$(dirname "$target")"
   if cp -p "$proposed" "$target.new" && mv "$target.new" "$target" && cmp -s "$proposed" "$target"; then

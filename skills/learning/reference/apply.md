@@ -5,8 +5,9 @@
 `scripts/make-apply.sh D` reads every `D/*/proposed/plugin/` and `D/*/proposed/user/` tree and writes `D/apply/`:
 
 - `targets.tsv` with the columns `layer root path target sha256 proposed stages`. `target` is the real path below
-  one root: the resolved `${CLAUDE_PLUGIN_ROOT}` or `~/.claude/sin-flow`. `sha256` is the live file (`shasum -a 256`),
-  or `absent` for a new file. A copy equal to the live file gets no row.
+  one root: the resolved `${CLAUDE_PLUGIN_ROOT}` or `~/.claude/sin-flow`. `sha256` is the live file that the proposed copy started from, read from
+  `D/*/proposed/base.tsv` (`shasum -a 256`), or `absent` for a new file. A file with no record there gets the sha of
+  the live file at build time. A copy equal to the live file gets no row.
 - `proposed/`, the final copy of each target, and `patches.diff`.
 - `apply-user.sh` for the `user` and `profile` layers, and `apply-plugin.sh` for the `plugin` layer.
 
@@ -16,10 +17,11 @@ the same lines, it stops and names the file. Then the main thread writes the mer
 
 Each apply script does these steps:
 1. It checks the live sha of each target against `targets.tsv`. When one differs, another session edited the file.
-   The script stops and changes nothing. Rebase the copy onto the live file and run `make-apply.sh` again.
+   The script stops and changes nothing. Rebase the copy onto the live file, record the new base sha in `base.tsv`, and run `make-apply.sh` again.
 2. It copies each target to `LD/backups/<date>/<path below its root>` first. A backup from an earlier apply of that
    day stays. Then it copies the proposed file with `cp -p` to `<target>.new` and moves it over the target with `mv`,
-   so that a script that runs at that moment keeps its old text. It checks the target with `cmp`.
+   so that a script that runs at that moment keeps its old text. It checks the target with `cmp`. When a backup copy,
+   a rollback copy or the file copy fails, it restores every target and stops with exit 4, before the next target.
 3. `apply-plugin.sh` only: it runs `bash scripts/check-layers.sh` in the checkout. A failure restores every target
    and stops.
 
