@@ -31,7 +31,6 @@ Chat with the user in the `chat_language` option (`sin-flow-profile user chat_la
   the only way to a number.
 - **Never print a credential.** Values from a source's env file reach a subprocess as `$VAR` only;
   never `cat`, `echo`, `env` or paste them; never print a connection URL.
-- **Never post to Slack** — read tools only. Reply drafts are text in the chat; the user posts.
 - **Never comment on an issue in a repo the user does not own without a "yes" for that specific
   comment.** Draft it, show it, wait. An earlier "go ahead" does not cover it. In upstream mode the rule is `reference/upstream.md` § Write policy instead.
 - **Never write agent notes into a repo or worktree.**
@@ -237,7 +236,7 @@ names, then read that terminal once to confirm the tab took it.
 | `plan` | a defect or change with decisions to lock, or anything failing a `hotfix` criterion | tracker unit(s), own worktree each, seed `plan.md` + evidence | `sin-flow:plan` in a new tab |
 | `hotfix` | all five hotfix criteria below | own worktree, one-block `plan.md` with `exit: hotfix` | `sin-flow:exec` in a new tab → PR, no question |
 | `data-fix` | the code is right, specific rows are wrong | a recipe in the profile's `support/` + a reply draft | a human runs it |
-| `answer` | nobody needs code | a reply draft, evidence linked | the user posts it |
+| `answer` | nobody needs code | a reply draft, evidence linked | the user |
 | `investigation` | the mechanism is not proven, the behaviour is by design, or the fix belongs to work not yet taken | `work/<key>/<id>/investigation.md` | the user, and the exit the finding names |
 
 **Hotfix criteria — all five, or it is `plan`:**

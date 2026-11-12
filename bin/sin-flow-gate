@@ -10,6 +10,7 @@ usage: sin-flow-gate run <log> <commands-file>
        sin-flow-gate count <log>
        sin-flow-gate canary <work_dir> <unit> <base> <spec_cmd> <file>...
        sin-flow-gate verdict <work_dir> <unit> <sha|uncommitted> <clean|skipped>
+       sin-flow-gate notes <key>   (paths on stdin, one per line)
 EOF
   exit 2
 }
@@ -151,13 +152,35 @@ cmd_verdict() {
   fi
 }
 
+cmd_notes() {
+  local work="$HOME/.claude/sin-flow/work" globs hashes p hit hits=0
+  globs="$(sin-flow-profile user notes_globs 2>/dev/null) $(sin-flow-profile "$1" get notes.paths 2>/dev/null)"
+  hashes=$(find "$work" -type f ! -path '*/.git/*' -exec git hash-object {} + 2>/dev/null | sort -u)
+  while IFS= read -r p; do
+    [ -z "$p" ] && continue
+    [ ! -e "$p" ] && [ ! -L "$p" ] && git cat-file -e "HEAD:$p" 2>/dev/null && continue
+    hit=$(printf '%s\n' "$p" | awk -v globs="$globs" 'function g2r(g){gsub(/[.+^$(){}|\\]/,"\\\\&",g);gsub(/\*/,"[^\n]*",g);gsub(/\?/,".",g);return "^" g "$"} {n=split(globs,a," ");for(i=1;i<=n;i++) if($0 ~ g2r(a[i])){print 1;exit}}')
+    if [ -n "$hit" ] && ! git cat-file -e "HEAD:$p" 2>/dev/null; then hit=1
+    elif [ -L "$p" ] && [[ $(readlink -f "$p") == "$work"/* ]]; then hit=1
+    elif [ -f "$p" ] && grep -qxF "$(git hash-object "$p")" <<<"$hashes"; then hit=1
+    else hit=
+    fi
+    [ -n "$hit" ] && { echo "L1 $p"; hits=$((hits + 1)); }
+  done
+  [ "$hits" -eq 0 ]
+}
+
 [ $# -ge 1 ] || usage
 mode=$1
 shift
-case "$mode" in
-  run) [ $# -eq 2 ] || usage; cmd_run "$@" ;;
-  count) [ $# -eq 1 ] || usage; count_tests "$1" ;;
-  canary) [ $# -ge 5 ] || usage; cmd_canary "$@" ;;
-  verdict) [ $# -eq 4 ] || usage; cmd_verdict "$@" ;;
-  *) usage ;;
-esac
+{
+  case "$mode" in
+    run) [ $# -eq 2 ] || usage; cmd_run "$@" ;;
+    count) [ $# -eq 1 ] || usage; count_tests "$1" ;;
+    canary) [ $# -ge 5 ] || usage; cmd_canary "$@" ;;
+    verdict) [ $# -eq 4 ] || usage; cmd_verdict "$@" ;;
+    notes) [ $# -eq 1 ] || usage; cmd_notes "$1" ;;
+    *) usage ;;
+  esac
+  exit
+}

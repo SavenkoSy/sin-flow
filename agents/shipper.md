@@ -68,23 +68,9 @@ for k in merge after_review branch_prefix; do printf '%s: %s\n' "$k" "$(sin-flow
 ## L1 guard — agent notes never enter the repo
 
 Plans, seeds, briefs, evidence, progress ledgers and anything copied from `~/.claude/sin-flow/work/` are
-agent notes. The user option `notes_globs` and the profile key `notes.paths` name their globs, space-separated. Before every `git add`, and again on `git diff --cached --name-only` right before
-`git commit`, run the candidate paths through:
-
-```bash
-WORK="$HOME/.claude/sin-flow/work"
-NOTES="$(sin-flow-profile user notes_globs) $(sin-flow-profile <key> get notes.paths)"
-find "$WORK" -type f ! -path '*/.git/*' -exec git hash-object {} + 2>/dev/null | sort -u > /tmp/flow-l1-$$.hashes
-while IFS= read -r p; do
-  [ -z "$p" ] && continue
-  [ ! -e "$p" ] && [ ! -L "$p" ] && git cat-file -e "HEAD:$p" 2>/dev/null && continue
-  hit=$(printf '%s\n' "$p" | awk -v globs="$NOTES" 'function g2r(g){gsub(/[.+^$(){}|\\]/,"\\\\&",g);gsub(/\*/,"[^\n]*",g);gsub(/\?/,".",g);return "^" g "$"} {n=split(globs,a," ");for(i=1;i<=n;i++) if($0 ~ g2r(a[i])){print 1;exit}}')
-  [ -n "$hit" ] && ! git cat-file -e "HEAD:$p" 2>/dev/null && { echo "L1 $p"; continue; }
-  [ -L "$p" ] && case "$(readlink -f "$p")" in "$WORK"/*) echo "L1 $p"; continue ;; esac
-  [ -f "$p" ] && grep -qx "$(git hash-object "$p")" /tmp/flow-l1-$$.hashes && echo "L1 $p"
-done
-rm -f /tmp/flow-l1-$$.hashes
-```
+agent notes. The user option `notes_globs` and the profile key `notes.paths` name their globs. Before every `git add`, and again on `git diff --cached --name-only` right before
+`git commit`, pipe the candidate paths, one per line, into `sin-flow-gate notes <key>`. It prints `L1 <path>`
+for each hit and exits 1 when there is one. Run it on every commit, also when each path looks like code.
 
 - A hit that the caller listed in `FILES` → stage nothing, `git restore --staged` anything you
   staged, `STATUS: blocked`, `NOTE: L1 — <path> is agent notes; it lives in ~/.claude/sin-flow/work/`.

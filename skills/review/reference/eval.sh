@@ -29,8 +29,8 @@ threads() {
         for (i = 1; i <= n; i++) {
           split(top[order[i]], f, "\t")
           r = tolower(reply[f[1]])
-          if (r ~ /^(fixed|done|resolved)/) c = "fixed"
-          else if (r ~ /intend|by design|on purpose|decision|chose/) c = "intentional"
+          if (substr(r, 1, 40) ~ /fixed|done|resolved|taken|agreed|confirmed|good catch/) c = "fixed"
+          else if (r ~ /intend|deliberate|by design|on purpose|decision|chose/) c = "intentional"
           else if (r != "") c = "wrong"
           else if (f[6] == 0) c = "fixed"
           else c = "ignored"

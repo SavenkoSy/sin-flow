@@ -367,9 +367,7 @@ sin-flow-handoff --cwd <worktree> --name exec-<id> --model <strong> \
   sin-flow:exec <absolute plan path>
 ```
 
-Relay the `opened:` or printed line.
-
-**Read the output and the exit code.** `opened: …` — exec runs in a new tab; never start a second one.
+**Read the output and the exit code.** `opened: …` — relay it: exec runs in a new tab; never start a second one.
 `paste into a new terminal tab …` — no tab: relay the printed command in one line.
 `continue in this session: …` — the user chose one session: invoke `sin-flow:exec` with that path here.
 Non-zero — nothing started: `1` bad path, `2` bad option or `handoff:` setting, any other code is the
@@ -386,5 +384,5 @@ prints, with the date, `plan`, the exact error text, `file:line` when known and 
 ## What this skill never does
 
 - File follow-up issues or write a deferred-work file.
-- Put a no-code ticket's id in the PR title, or write a change for a ticket it did not measure.
+- Write a change for a ticket it did not measure.
 - Let an agent's report stand where a probe contradicts it.

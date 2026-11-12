@@ -223,7 +223,7 @@ the mechanism in one sentence, no identifier before the plain sentence that expl
 chat, two sentences for the user: what the reply tells the reporter, and why that helps them.
 
 - Slack thread: Slack-ready plain text — no headings, no tables, no blockquote — shown in chat as
-  plain paragraphs. The user copies it from the chat or from `reply.md` and posts it.
+  plain paragraphs, also saved in `reply.md`.
 - Issue in our repo: post only on the user's word — `gh issue comment <N> --repo <slug> --body-file <work>/reply.md`.
 - Issue in another repo: show the exact text and wait for a "yes" for that comment — except upstream mode: `upstream.md` § Write policy.
 - If auto mode refuses the post, give the user that one command once, prefixed `!`, flush left in a code

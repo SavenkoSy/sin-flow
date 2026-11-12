@@ -1,6 +1,6 @@
 ---
 name: review
-description: 'Review stage of the flow, for any repo with a flow profile. Reviews a PR through the review pipeline — a package of the code at the PR''s SHA, a context pass (what the PR does, the flow from its entry point, three files to read first), one finder agent at quick, two at thorough (code checklists; team, docs, tests, intent) and one verify pass that sorts every finding into reproduces / possible / invented with a quoted file:line. Depth comes from the profile: review-team.md in the profile folder → thorough, none → quick. Writes the review to the reviews folder from the user preferences as <key>-<pr>-<sha8>.md and summarizes it in chat in the chat language. Posts the high/med reproduces findings itself, never the rest, as ONE review with event COMMENT through the review-poster agent; `recheck` reviews only the commits since the last review and approves the PR itself when nothing is left open. Must run inside the product repo. Use when invoked as "/sin-flow:review <PR>" or "/sin-flow:review post <n,n>", or when the user says "look at this PR", "review a teammate''s PR", "what is in this PR".'
+description: 'Review stage of the flow, for any repo with a flow profile. Reviews a PR through the review pipeline — a package of the code at the PR''s SHA, a context pass (what the PR does, the flow from its entry point, three files to read first), one finder agent at quick, two at thorough (code checklists; team, docs, tests, intent) and one verify pass that sorts every finding into reproduces / possible / invented with a quoted file:line. Depth comes from the profile: review-team.md in the profile folder → thorough, none → quick. Writes the review to the reviews folder from the user preferences as <key>-<pr>-<sha8>.md and summarizes it in chat in the chat language. The `review_action` option decides what happens next: `none` (default) shows the review in chat only, `post` posts the high/med reproduces findings as ONE review with event COMMENT through the review-poster agent, `post-approve` also approves the PR when nothing is left open. `recheck` reviews only the commits since the last review. Must run inside the product repo. Use when invoked as "/sin-flow:review <PR>" or "/sin-flow:review post <n,n>", or when the user says "look at this PR", "review a teammate''s PR", "what is in this PR".'
 argument-hint: "<PR number|url> [quick|thorough] [--at <sha>] [--base <sha>] | post <n,n,…> | recheck <PR>"
 ---
 
@@ -24,6 +24,11 @@ rewritten after that commit.
 
 `CTX GUARD` in a tool result: finish the step in flight and its chat (the review file is the trail), then say in
 one line that the next `/sin-flow:review` command — `post`, `recheck` or another PR — belongs in a new session, and stop.
+
+A flaw of the flow (a tool, script, hook or rule of this plugin fails, or another rule of the user conflicts with
+this skill) goes to one `open` row of `inbox.md` in the `learning_dir` option (`sin-flow-profile user learning_dir`)
+in the same turn: the date, `review`, the exact error or the two rules, and what you did. Then go on. Never offer a
+change to the plugin, a profile or memory in this chat.
 
 ## Where it runs
 
@@ -52,9 +57,11 @@ review file headings are format: they stay English, in chat too.
    rows, a value that no writer sets), the row is `settled — <number, filter>` and does not count for
    the verdict. When the number confirms the row, the number stays beside it. When the preflight fails
    or `measure.doc` is `none`, relay as usual and add one line: the human step that the preflight names.
-6. **Post without asking:** every K row that is `high` or `med` and `reproduces` goes through Post,
-   below, in this invocation. Nothing else is posted. None qualifies → post nothing.
-7. Chat, below.
+6. **After the review:** `ACTION=$(sin-flow-profile user review_action)`. `post` or `post-approve`: every K
+   row that is `high` or `med` and `reproduces` goes through Post, below, in this invocation. Nothing else is
+   posted. None qualifies → post nothing. `none`: post nothing; the user posts with `post <n,…>`.
+7. `ACTION` is `post-approve` and the VERDICT below is `approve` → Approve, below, without asking.
+8. Chat, below.
 
 ## Chat — in the chat language, plain
 
@@ -70,8 +77,8 @@ grep '^lens .* failed' "$REVIEW"
 ```
 
 - **VERDICT** — the first line: `approve` when no K row is high or med (rows that step 5 settled do
-  not count) and verify said `blocking no`; else `don't approve — K<n>, …` (those rows). Advice; the
-  user decides.
+  not count) and verify said `blocking no`; else `don't approve — K<n>, …` (those rows). Advice
+  unless `ACTION` is `post-approve`.
 - **WHAT IT DOES** — the `## What it does` sentences.
 - **ENTRY POINT** — the `## Entry points` rows.
 - **FLOW** — the `## Flow` lines, then the three `## Read first` files.
@@ -81,7 +88,7 @@ grep '^lens .* failed' "$REVIEW"
 - **REJECTED** — `N — in the file` (invented, needless validation, duplicates, pre-existing, nit without a rule).
 - A failed lens, if any, in one line.
 - The `REVIEW` path, absolute, on its own line.
-- The last line, always: `posted: K<n>, … — <review url>`, or `not posted — no high/med reproduces`.
+- The last line, always: `posted: K<n>, … — <review url>`, or `not posted — no high/med reproduces`, or `not posted — review_action none`.
 
 ## Post
 
@@ -112,15 +119,20 @@ grep '^lens .* failed' "$REVIEW"
 
 ## Recheck
 
-`/sin-flow:review recheck <PR>`, or "recheck", "they pushed the fixes", "approved or not?". `SHA` = the newest
-`$REVIEWS/$KEY-<pr>-*.md`; `K` = the rows posted from it.
+`/sin-flow:review recheck <PR>`, or "recheck", "they pushed the fixes", "approved or not?". A question about the state
+of a PR that this session reviewed ("what is there?") is a recheck too when its head differs from `SHA` or a comment
+we posted has a reply: run Recheck before you answer. `SHA` = the newest `$REVIEWS/$KEY-<pr>-*.md`; `K` = the rows
+posted from it.
 1. `"$REF/build-package.sh" pr <PR> "$PKG" --base <SHA> --depth quick`, then `$REF/pipeline.md` — the
    commits since the review only — and `bash "$REF/eval.sh" responses "$KEY" <PR>`: the author's answer to
-   each comment we posted (`fixed`, `intentional`, `wrong`, `ignored`), appended to `$REVIEWS/responses.tsv`.
+   each comment we posted (`fixed`, `intentional`, `wrong`, `ignored`), appended to `$REVIEWS/responses.tsv`, and
+   `bash "$REF/eval.sh" build "$KEY" <PR>`: each teammate comment the author fixed, appended to the profile's
+   `review-evals.tsv`.
 2. Chat opens with one line: `approve` or `don't approve — K<n>, …`: each posted K row closed /
    open at the head, then the new high/med rows, then the answer counts from step 1.
-3. Every K row closed and no new high/med row → Approve, below, without asking. Anything else → no
-   approve; the new high/med `reproduces` rows go through Post as in Review step 6.
+3. `ACTION` as in Review step 6. Every K row closed and no new high/med row → with `ACTION` `post-approve`, Approve, below, without
+   asking; else say that approve is due. Anything else → no approve; the new high/med `reproduces` rows
+   follow Review step 6.
 
 ## Approve
 
