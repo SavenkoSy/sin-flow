@@ -38,7 +38,11 @@
       "type": "string",
       "title": "Merge method",
       "description": "Merge method for your own PRs.",
-      "options": ["squash", "merge", "rebase"],
+      "options": [
+        "squash",
+        "merge",
+        "rebase"
+      ],
       "default": "squash"
     },
     "after_review": {
@@ -46,6 +50,17 @@
       "title": "Review fixes",
       "description": "How review fixes land on an open PR. new-commit: a new commit on top.",
       "default": "new-commit"
+    },
+    "review_action": {
+      "type": "string",
+      "title": "After a review",
+      "description": "What /sin-flow:review does when a review is done. none: show it in the chat only. post: post the high and medium reproducing findings. post-approve: post them, and approve the PR when nothing is left open.",
+      "options": [
+        "none",
+        "post",
+        "post-approve"
+      ],
+      "default": "none"
     },
     "branch_prefix": {
       "type": "string",
@@ -64,28 +79,46 @@
       "type": "string",
       "title": "Limit guard",
       "description": "on: warn a flow session near the 5-hour or 7-day limit, from the state file of the status line wrapper. off: only the Claude Code auto-continue.",
-      "options": ["on", "off"],
+      "options": [
+        "on",
+        "off"
+      ],
       "default": "on"
     },
     "models_strong": {
       "type": "string",
       "title": "Strong model",
       "description": "Plan, exec and learning sessions, every hand-off, the review lenses on the strong tier.",
-      "options": ["opus", "sonnet", "haiku", "fable"],
+      "options": [
+        "opus",
+        "sonnet",
+        "haiku",
+        "fable"
+      ],
       "default": "opus"
     },
     "models_mid": {
       "type": "string",
       "title": "Mid model",
       "description": "Read-only analysts, implementers, shipper, review-poster, the review lenses on the mid tier.",
-      "options": ["opus", "sonnet", "haiku", "fable"],
+      "options": [
+        "opus",
+        "sonnet",
+        "haiku",
+        "fable"
+      ],
       "default": "sonnet"
     },
     "models_cheap": {
       "type": "string",
       "title": "Cheap model",
       "description": "The board agent.",
-      "options": ["opus", "sonnet", "haiku", "fable"],
+      "options": [
+        "opus",
+        "sonnet",
+        "haiku",
+        "fable"
+      ],
       "default": "haiku"
     },
     "reviews_dir": {

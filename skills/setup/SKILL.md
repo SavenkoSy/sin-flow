@@ -136,6 +136,7 @@ Claude Code keeps the values in `pluginConfigs["<id>"].options` of the user's `s
 | `learning_cwd` | `learning_dir` | where that learning session starts; its `CLAUDE.md`, else `<learning_dir>/ledger.md`, is the hand-off path |
 | `merge` | `squash` | merge method for the user's own PRs |
 | `after_review` | `new-commit` | how review fixes land on an open PR: a new commit on top |
+| `review_action` | `none` | what `/sin-flow:review` does when a review is done: `none` — show it in the chat only · `post` — post the high and med `reproduces` findings as one review with event COMMENT · `post-approve` — post them, and approve the PR when nothing is left open |
 | `branch_prefix` | `""` | first segment of the convention branch `<prefix>/<type>/<id>/<slug>`; empty → no segment |
 | `context_guard` | `40` | percent of the 1M-token context window at which plan, exec, ingest, sync, review and learning hand off or stop; `CTX_GUARD_THRESHOLD` overrides it for one session |
 | `limit_guard` | `on` | `on`: the LIMIT GUARD warns a session at 90 % of the 5-hour or 98 % of the 7-day limit, from the state file that the status line wrapper writes. `off`: only the Claude Code auto-continue. Setup sets `off` when the user keeps the built-in |

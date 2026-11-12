@@ -50,7 +50,7 @@ and opens the PR without asking. You come back to a PR and a final message.
 | `/sin-flow:ingest` | takes one or more sources, verifies them in code and data, ends in one of five exits |
 | `/sin-flow:plan` | turns a seed into a measured plan, one block per ticket, then hands off to exec; never asks |
 | `/sin-flow:exec` | executes the plan with subagents in waves, runs the gates and a review, opens the PR without asking (upstream, from your fork, for an open-source repo) |
-| `/sin-flow:review` | reviews any PR (quick or thorough), sorts findings into reproduces / possible / invented, posts the high and medium reproducing ones as one review |
+| `/sin-flow:review` | reviews any PR (quick or thorough), sorts findings into reproduces / possible / invented, posts the high and medium reproducing ones as one review when the `review_action` option says so |
 | `/sin-flow:learning` | reads the logged runs of every stage and proposes changes to the flow |
 
 On a solo repo, exec waits for your "merge" and merges (squash by default, or your `merge` option). It takes a draft PR out of draft before the merge. On a team repo, it follows the PR through review.

@@ -87,9 +87,9 @@ The dispatching thread is the most expensive place in the chain when it fills wi
    A base that is not ready never stops you: when the plan depends on an unmerged branch or PR, start from that
    branch, otherwise from a freshly fetched `origin/<base>`. That branch stays the header `base:`, and the PR is a
    draft against it. After the first unit merges, the target is the profile base (`repo.base` or `## Inferred`). This session already runs in a clean checkout on the
-   header's `branch:` → work in place, no `EnterWorktree`. A clean checkout whose branch is already merged into the
-   base (a stage-verify fix plan) → `git switch -c <header's branch:> origin/<base>` there, in place: no new
-   worktree, no `EnterWorktree`. The header's `worktree:` exists and this session is not in it → the § Hand-off
+   header's `branch:` → work in place. A clean checkout whose branch is already merged into the
+   base (a stage-verify fix plan) → `git switch -c <header's branch:> origin/<base>` there, in place, no new
+   worktree. The header's `worktree:` exists and this session is not in it → the § Hand-off
    command with `--cwd <that path>`, then end the turn. Otherwise, when this checkout is busy — a dirty tree, another
    branch, another session in it → `sin-flow-worktree --repo <this checkout> --name <id> --branch <header's branch:> --base <base>`,
    then the § Hand-off command with `--cwd <its path:>`, then end the turn. Never `EnterWorktree`: an Orca workspace

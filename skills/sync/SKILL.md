@@ -14,9 +14,6 @@ one batch in a single move.
 | **1 — Sync and propose** | a ranked proposal of which batch to take, then **stop and wait** |
 | **2 — Take a batch** | the batch is claimed and `sin-flow:ingest` runs on it in this session |
 
-Phase 2 runs **only** when the user says the word. Never take a batch on your own initiative, and
-read **Discussing a batch is not taking it** below before you believe you have been told to.
-
 Chat with the user in the `chat_language` option (`sin-flow-profile user chat_language`), or in the language the user writes in when it is absent. Headings and fixed phrases defined here are rendered in that language. Files, commits, PRs and issues are always English.
 
 ## Tracker and switches
@@ -289,14 +286,11 @@ The user assembles a batch out loud, over several turns, before taking it. Assem
 |---|---|
 | "take …", "yes, take <batch>", "take all the greens", "take these 4 greens" | **phase 2** |
 | "split it over two accounts, but do it", "take all four batches", "take it and run everything yourself" | **phase 2 for every batch**, with § 6 **Several batches** |
-| "add to the batch", "let's add 7 greens", "let's talk about the yellows", "I'll add something else", "leave it out of this scope", "976 stays out of this one" | **nothing** — keep the running list, keep talking |
+| "add to the batch", "let's add 7 greens", "let's talk about the yellows", "I'll add something else", "leave it out of this scope", "976 stays out of this one" | **nothing**. Keep the running list and restate it when it changes. Do not assign, dispatch the agent or run `sin-flow:ingest` |
 
 The trigger is **take**, said as an instruction, nothing else. When you are not certain, keep
 talking. Asking "take it?" once costs one line; starting ingest the user did not ask for costs
 the whole session.
-
-While the user is assembling, hold the list in the conversation and restate it when it changes. Do not
-assign anything, do not dispatch the agent, do not run `sin-flow:ingest`.
 
 ## 5. Dispatch take mode
 

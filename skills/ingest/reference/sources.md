@@ -10,7 +10,7 @@ Which ones the repo enables: SKILL.md § Arguments.
 | Issue URL | `gh issue view <url> --comments` | ours, a consumer repo's, or an upstream repo's; a consumer issue is the normal case when the profile lists `consumers` |
 | Repo URL + words | the slug decides the key (SKILL.md § Arguments); no profile → setup § Onboard step 0 | the request is the words |
 | `GH-N` | `gh issue view N --repo <repo.slug> --comments` | our repo's issue |
-| Slack permalink | `slack_read_thread`, then `slack_read_file` for every attachment | read tools only — never a send, draft, reaction or canvas tool |
+| Slack permalink | `slack_read_thread`, then `slack_read_file` for every attachment | the thread and every attachment |
 | Rollbar item URL | `mcp__<integrations.rollbar>__get-item-details`, then `list-occurrences` | fingerprint, first/last seen, real parameters, the version each occurrence carries |
 | `"words"` | the user's quote is the source | any language; recorded verbatim in the seed and the evidence header |
 | screenshot path | `Read` the image | it names the page, the state and often the record nobody typed |

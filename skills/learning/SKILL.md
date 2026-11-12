@@ -84,7 +84,7 @@ $S/select-runs.sh <key|all> [stage] [n] > <workspace>/dumps/rows.tsv
   with at most 3 readers in flight, writes its digest, and returns only the ranked modes and the proposals (≤ 300
   words). At most 4 consolidators are in flight. A stage with fewer than 3 undigested rows, or a stage the user leaves
   out of the run, is skipped and named in the ledger entry. The last consolidator runs **self** when 3 or more learning
-  runs are undigested. It reads earlier learning runs only, never this one. Plan the reader counts so that self fits inside the 20-subagent cap.
+  runs are undigested. It reads earlier learning runs only, never this one.
 - **Workspace**: `LD/<YYYY-MM-DD>/flow-<stage>/` with `dumps/` and `readers/`. A second run on the same day uses the
   workspace `flow-<stage>-2/` and writes `flow-<stage>-2.md`. Every file inside the workspace keeps its plain name.
 
@@ -176,9 +176,10 @@ One proposal per numbered entry, each with:
   (the mechanism, for every user). A proposal that rests on sessions or a complaint from one repo, or on the words of
   one user, is `user` or `profile` by default. It is `plugin` only with evidence from 2 or more users or a defect in
   the mechanism. A `plugin` proposal holds no word
-  that only one repo uses. Read it against each repo key in its evidence and one key that is not there. A `plugin`
-  proposal for one tool or one practice also names the plugin option or profile key that turns it on, and says what a
-  user with no such key gets.
+  that only one repo uses. Read it against each repo key in its evidence and one key that is not there.
+- **switch**: the plugin option or profile key that turns the behaviour on, read from the proposed text. `author` when
+  it acts only in author mode or only in this user's own setup. `none` when it acts for every user. With a key, say
+  what a user without that key gets. § Chat sorts the proposals by this field, never by the target file.
 - **target**: a `file:line` in `${CLAUDE_PLUGIN_ROOT}/skills/<stage>/SKILL.md`,
   `${CLAUDE_PLUGIN_ROOT}/agents/<name>.md` or `${CLAUDE_PLUGIN_ROOT}/skills/review/reference/lenses/<lens>.md`, a hook
   path, `${CLAUDE_PLUGIN_ROOT}/bin/…`, `~/.claude/sin-flow/profiles/<key>/profile.md`, a plugin option by its key,
@@ -201,7 +202,8 @@ Each proposal that the mode lets this run apply is a file before the chat report
      stops and changes nothing. Rebase the copy onto the live file and write its row again.
   2. copies each target to `LD/backups/<date>/<target path below its root>` first (root `${CLAUDE_PLUGIN_ROOT}` or
      `~/.claude/sin-flow`, `mkdir -p` the folder, a second edit on the same day reuses the backup). Then it copies the
-     proposed file over the target and checks it with `cmp`.
+     proposed file with `cp -p` to `<target>.new` and moves it over the target with `mv`, so that a script that runs at that
+     moment keeps its old text. It checks the target with `cmp`.
   3. `apply-plugin.sh` only: runs `bash ${CLAUDE_PLUGIN_ROOT}/scripts/check-layers.sh` in the checkout. A failure restores
      every target from its backup and stops.
 
@@ -221,6 +223,10 @@ said to the list. Silence, "not now" or a question is not approval.
 4. When the applied text differs from the proposed text, add a `⚠ CORRECTION` note to the proposal entry, with why.
 5. Author mode, after the applies: tell the user to run `/reload-plugins`. Ship the checkout changes as one PR through
    `sin-flow:shipper` in ship mode, with the profile that `sin-flow-profile key` resolves in the plugin checkout.
+   Before the PR goes into the chat report, review it from the plugin checkout: `cd "${CLAUDE_PLUGIN_ROOT}" &&
+   skills/review/reference/build-package.sh pr <PR> <absolute LD>/<date>/review-pkg`, then `pipeline.md` as
+   written. Its `reproduces` rows go to one fix as a new commit
+   through `sin-flow:shipper` `commit` mode. The report names the review file and the rows left as `possible`.
 6. A declined proposal stays in the digest marked `declined <date>`. The next run does not propose it again unless new
    rows contradict the decline.
 
@@ -265,13 +271,12 @@ hold.
 ## Chat
 
 The conclusion and the path, in the `chat_language` option, ≤ 15 lines. The proposals go in three lists: «your
-settings», «only for you», then «the plugin, for everyone». «Only for you» holds a change that acts only in author
-mode, such as the apply scripts or a step that only the plugin author runs. It also holds a plugin change that only
-this user's own setup needs, such as their terminal, account or bot. Before the report, read each «for everyone» line
-as a user with another setup. When it changes nothing for that user, move it to «only for you». Inside each list, show
-the proposals as one block «today → after the change». The lists follow the layers of `ARCHITECTURE.md`. A proposal
-goes to the list of the switch that turns its behaviour on, not of the file it edits: a plugin fix that acts only under
-a user option goes to «your settings», and one that acts only where a profile key turns it on goes to that profile. Group them by what the user sees,
+settings», «only for you», then «the plugin, for everyone». Each proposal goes to the list that its **switch** names:
+a plugin option or a profile key goes to «your settings» under that key, `author` goes to «only for you» (the apply
+scripts, a step that only the plugin author runs, this user's terminal, account or bot), `none` goes to «the plugin,
+for everyone». Before the report, read each «for everyone» line as a user with another setup. When it changes nothing
+for that user, its switch is wrong: fix it in the digest and move the line. Inside each list, show
+the proposals as one block «today → after the change». The lists follow the layers of `ARCHITECTURE.md`. Group them by what the user sees,
 one short bold topic for each group. Each topic gives what happens today and what changes against today, in plain
 words, with no file name. Do not give one line for each proposal or each file. In user mode, one more line names
 `proposals-for-author.md` and the count of blocks added. After the lists, one inbox block: one line for each `P<n>` with
