@@ -43,7 +43,7 @@ Invocation — an explicit argument is the decision, never re-asked:
 
 ### E2. Ground every question in code before asking it
 
-This session reads no code for the batch. Dispatch one `sin-flow:read-only-analyst` (`<mid>`) per candidate
+This session reads no code for the batch. Dispatch one `sin-flow:read-only-analyst` (grid row `ingest-reader`) per candidate
 story, all in **one message**. Each brief carries the story's heading and line range in the backlog
 and this fixed question set, answered in ≤ 40 lines with `file:line`:
 

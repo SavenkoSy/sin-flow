@@ -21,9 +21,10 @@ Chat with the user in the `chat_language` option (`sin-flow-profile user chat_la
   before the first wave with the fix). Then read the profile once: `sin-flow-profile <key> get <group.key>` for keys, the
   `## Inferred`, `## Run`, `## Never` sections for prose. An agent with a clean context gets only the section it needs,
   pasted into its brief.
-- **Models** — before the first dispatch run `sin-flow-profile model strong`, `sin-flow-profile model mid` and
-  `sin-flow-profile model cheap` once and write the three aliases to the ledger. `<strong>`, `<mid>`, `<cheap>` below
-  mean those aliases; pass the alias as `model`, never the tier word.
+- **Models**: the model grid is the only source of the model and the effort of a dispatch.
+  `sin-flow-profile model <role> [level] <checkout>` prints both, for example `sonnet high`. Before the first
+  dispatch, run it once for each row of the table below and write the results to the ledger. Pass the first word
+  as `model` and the second word as `effort`. An effort of `-` means: pass no effort.
 - **User preferences**: the plugin options, read with `sin-flow-profile user <key>` (chat language, branch prefix, hand-off launcher, reviews folder);
   unset → the defaults in the plugin's `userConfig`. They are the user's, never a repo's.
 
@@ -32,24 +33,29 @@ Chat with the user in the `chat_language` option (`sin-flow-profile user chat_la
 The main session's model is never changed — switching it breaks the prompt cache. An omitted model inherits this
 session's and burns it on mechanical work.
 
-| Role | Agent | Tier | Effort |
+| Dispatch | Agent | Grid role | Level |
 |---|---|---|---|
-| Implementer | `sin-flow:implementer` | `builder:` from the plan's verdicts row | medium; high when `builder:` is strong (or legacy `opus`) |
-| Implementer, fix round 3 | `sin-flow:implementer` | strong | high |
-| Coverage audit, scoped re-review | `sin-flow:read-only-analyst` | mid | low |
-| Adversarial check, the user's code question | `sin-flow:read-only-analyst` | mid | medium |
-| Final review | `sin-flow:reviewer`, one per lens | the lens table in `${CLAUDE_PLUGIN_ROOT}/skills/review/reference/pipeline.md` | the table's; none named → medium |
-| Visual check | `sin-flow:implementer` | mid | medium |
-| Gate, commit, push, PR | `sin-flow:shipper` | mid | low |
-| Rebase onto a moved base | `sin-flow:implementer` | mid | low |
+| Implementer | `sin-flow:implementer` | `implementer` | `builder:` from the plan's verdicts row |
+| Implementer, a return block that does not parse | `sin-flow:implementer` | `implementer` | the unit's |
+| Implementer, fix round 2 and fix round 3 | `sin-flow:implementer` | `implementer` | `fix-2`, `fix-3` |
+| Fix dispatch: final-review rows, the user's findings, the post-PR batch | `sin-flow:implementer` | `fix` | the highest `builder:` of the touched units |
+| Coverage audit, scoped re-review | `sin-flow:read-only-analyst` | `audit` | none |
+| Adversarial check, the user's code question | `sin-flow:read-only-analyst` | `adversarial` | none |
+| Final review | `sin-flow:reviewer`, one per lens | `lens-<lens>` | none |
+| Pre-ship reviewer | the profile's `review.preship_agent` | `preship` | none |
+| Visual check | `sin-flow:implementer` | `visual` | none |
+| Gate, commit, push, PR | `sin-flow:shipper` | `shipper` | none |
+| Rebase onto a moved base | `sin-flow:implementer` | `rebase` | none |
+| Hand-off of this session | `sin-flow-handoff --level` | `exec` | the highest `builder:` of the plan |
 
-`builder:` and `audit:` come from the plan. `builder:` is a tier — `cheap`, `mid` or `strong`; a plan written before
-tiers says `haiku`, `sonnet` or `opus`, read as cheap, mid, strong. You may raise either with the reason in the
-ledger — cheap → mid when the brief carries no exact code, mid → strong when the diff hits the plan's forcing list.
+`builder:` and `audit:` come from the plan. `builder:` is the level of the unit. The levels are `cheap`, `mid`,
+`hard` and `strong`, lowest first. An old plan says `haiku`, `sonnet` or `opus`. Read them as cheap, mid, strong.
+You can raise `builder:` or `audit:` with the reason in the ledger. Raise cheap → mid when the brief carries no
+exact code. Raise mid → hard when the diff hits the plan's forcing list.
 Never lower one, never raise one because you are unsure. A row with no value is a plan defect: treat it as mid / run
 and ledger it.
-Purpose-made agents only — never `general-purpose`. A model comes only from the three resolved tiers; never name one
-outside them. No subagent has a turn cap (`maxTurns` is inert, measured): keep briefs small and split a unit rather
+Purpose-made agents only — never `general-purpose`. A model comes only from the grid. Do not name a model
+that the grid does not give. No subagent has a turn cap (`maxTurns` is inert, measured): keep briefs small and split a unit rather
 than trust an implementer to stop.
 
 ## The orchestrator does not run the work
@@ -135,7 +141,7 @@ and effort. Same-shape small edits in different files → one implementer, one b
 **Return block** `TASK / STATUS / FILES / TESTS / DEFERRED / RULING_NEEDED` (`${CLAUDE_PLUGIN_ROOT}/agents/implementer.md`).
 Ledger it. A `DEFERRED` line is this PR's work: it enters that unit's fix loop as a finding. A `RULING_NEEDED` line
 is yours: `Ruling: …` in the ledger; if it changes the unit, resume that implementer with the ruling. A block that
-does not parse is not a red: re-dispatch once to a fresh implementer with the schema restated and the report path it
+does not parse is not a red: re-dispatch once to a fresh implementer (the unit's level) with the schema restated and the report path it
 already wrote; malformed again → ledger it and hand the unit to the final review as unverified. Never spend a fix
 round on a reporting failure.
 
@@ -148,8 +154,12 @@ constant production also uses; a listed file the diff never touches; a spec dele
 retargeting kept coverage. ≤ 30 lines, no code-quality judgement. The audits of wave N, any re-review of a fix and
 any adversarial check go out **in the same message** as wave N+1's implementers.
 
-**Fix loop, 3 rounds max, per unit.** Rounds 1–2 resume the original implementer with the findings verbatim; round 3
-a fresh implementer on `<strong>`. Each round ends in a scoped re-review of the fix diff: ADDRESSED / NOT ADDRESSED per
+**Fix loop, 3 rounds max, per unit.** Round 1 resumes the original implementer with the findings verbatim.
+Round 2 follows the grid row `implementer fix-2`, and round 3 follows `implementer fix-3`. A row that says `same`
+resumes the original implementer. Any other row starts a fresh implementer on that row. If the unit ran on a
+higher model or effort than the row, the fresh implementer keeps what the unit ran on. Only a failed check
+counts as a round: a red gate, a failed spec or a finding of the coverage audit. A timeout, a tool failure or a
+return block that does not parse is a retry on the same grid row. It does not count. Each round ends in a scoped re-review of the fix diff: ADDRESSED / NOT ADDRESSED per
 finding, plus `${CLAUDE_PLUGIN_ROOT}/skills/review/reference/lenses/paths.md` on that diff. At the cap, rule on each open finding and ledger it.
 Never fix findings yourself.
 
@@ -187,13 +197,13 @@ finding for that unit's fix loop, then the canary again. Do not stop between wav
    prints only the package path `<pkg>`; a non-zero exit is a broken call — fix it, never hand-build a package.
    Check `grep -c '^diff --git' <pkg>/diff.patch` against the union of all `FILES`, then
    `cat <workspace>/global-constraints.md >> <pkg>/rules.md`.
-4. **Run** `${CLAUDE_PLUGIN_ROOT}/skills/review/reference/pipeline.md` as written, every lens as `subagent_type: sin-flow:reviewer` with the lens table's
-   model. Each reviewer returns one line — ledger it, and each `reviewers.sh` line too: the `<NAME> · found …` stats line
+4. **Run** `${CLAUDE_PLUGIN_ROOT}/skills/review/reference/pipeline.md` as written, every lens as `subagent_type: sin-flow:reviewer` with the model
+   and the effort of its `lens-<lens>` grid row. Each reviewer returns one line — ledger it, and each `reviewers.sh` line too: the `<NAME> · found …` stats line
    is the per-PR record of that extra reviewer. Read `<pkg>/verdict.md` only; never open `findings/`. Render
    the review file into the reviews folder (user preference) as `<key>-<branch>.md` (`-<sha8>` added when that
    file already holds the review of another commit).
-5. **Rows → one fix dispatch.** `reproduces` rows and `possible` rows of every severity go into ONE fix dispatch,
-   every K block verbatim, plus the ledger's `Ruling:` lines. A fix that reverses a ruling is a regression the
+5. **Rows → one fix dispatch.** `reproduces` rows and `possible` rows of every severity go into ONE fix dispatch
+   (grid role `fix`), every K block verbatim, plus the ledger's `Ruling:` lines. A fix that reverses a ruling is a regression the
    scoped re-review reports. A `possible` row is fixed the way it proposes, with a spec asserting the fixed behaviour
    («measure the settle → fix what reproduces»). Two exceptions, only these: the plan's text already accepts this
    exact risk, or the measurement the row's `settle` names was run and refutes it — ledger `final-review settled:
@@ -209,13 +219,13 @@ finding for that unit's fix loop, then the canary again. Do not stop between wav
    settle; at most 3 rounds; rows still open → ledger `final-review open: K<n> — <claim>`. No team file → one scoped
    re-review after the fix, no second round.
 7. **Pre-ship reviewer** — when the profile sets `review.preship_agent`. After step 6, dispatch that `subagent_type`
-   once (`<strong>`, high) with `<pkg>/diff.patch` of the last package, the plan path and one ask: review this diff as
+   once (grid role `preship`) with `<pkg>/diff.patch` of the last package, the plan path and one ask: review this diff as
    you review this team's PRs. Its points go through step 5 like verify's rows, then step 6. The type is not
    available → ledger `preship: <type> not available`, go on.
 
 ## Visual check — when the profile sets `ui.visual_check` and a unit has `UI surface: yes`
 
-Follow `reference/visual-check.md` (one source; do not restate it). Dispatch one `sin-flow:implementer` (`<mid>`, medium) with
+Follow `reference/visual-check.md` (one source; do not restate it). Dispatch one `sin-flow:implementer` (grid role `visual`) with
 that path, every unit's `### UI checklist`, the ledger's `Ruling:` lines that changed a rendered surface, the profile's
 `ui.*` values, `## Run` and the UI section of its `measure.doc`, and the label `<id>`. It returns `VISUAL / RESULT /
 FAIL / SHOTS`; ledger it, and act on it as § After of that file says.
@@ -236,7 +246,7 @@ FAIL / SHOTS`; ledger it, and act on it as § After of that file says.
    same repo from other repo. At this point the header `base:` is the first branch. Same repo: first start one
    background Bash with `run_in_background`, and end the turn:
    `deadline=$(( $(date +%s) + 86400 )); until git ls-remote --exit-code origin <base> >/dev/null 2>&1 || [ $(date +%s) -gt $deadline ]; do sleep 60; done`.
-   The notification of the finished background Bash wakes the session. Then dispatch one `sin-flow:implementer` on `<mid>`, effort low, to run `git rebase <base>` in the worktree, as
+   The notification of the finished background Bash wakes the session. Then dispatch one `sin-flow:implementer` (grid role `rebase`) to run `git rebase <base>` in the worktree, as
    the rebase round does. Then run `ship`. If the remote base is still absent after the loop, do not ship. Write one line to
    the user. The plan stays `status: verified`.
 3. **Mirror**. Set `status: shipped` in the plan header. Route `github` and mirrored (Setup 2) → write `sin-flow-mirror --comment plan.md` back to
@@ -274,8 +284,7 @@ merged PRs means team. **Team → the post-PR loop. Solo → the user's review.*
    «you run it».
 3. **Wait for the user's verdict.** This is the one place where waiting is correct: shipping was pre-authorized,
    judging is the user's. Do not declare the work done, do not start the next plan. The user's findings come back
-   **collected, not one at a time**: one implementer on the touched unit's `builder:` (mid when they span units,
-   strong only when the forcing list is hit), the visual check again when a rendered surface changed, then one
+   **collected, not one at a time**: one implementer (grid role `fix`), the visual check again when a rendered surface changed, then one
    `sin-flow:shipper` gate + `commit` for the batch (a new commit); ledger `Round <k>: complete (<sha>)`.
 4. **Merge on the user's go-ahead.** A message that asks to merge or approves the merge → run
    `gh pr view <PR> --json isDraft,baseRefName`. For a plan with `after:`, also run
@@ -302,7 +311,7 @@ After each push, run step 1 again before you write to the user. Act on every new
 the user only when you wait for a person outside this session.
 
 1. **State.** `gh pr view <url> --json state,reviewDecision,reviews,comments,mergeStateStatus > <workspace>/pr.json`,
-   grep it. `BEHIND` or `DIRTY` → one rebase round onto the base — an `sin-flow:implementer` on `<mid>`, effort low,
+   grep it. `BEHIND` or `DIRTY` → one rebase round onto the base — an `sin-flow:implementer` (grid role `rebase`)
    rebases and pushes with `--force-with-lease` (the shipper never rewrites history) — your branch, not a question.
    Size the check by `git range-diff <old base>..<old head> <new base>..HEAD`: only docs, deploy-notes numbering or
    generated API docs in it, and no new base commit touches a non-doc file of the branch → the range-diff plus the
@@ -339,7 +348,7 @@ the user only when you wait for a person outside this session.
    and push. Then, in both repo cases: run `gh pr ready <url>` and write one line to the user. Other wakes stay as
    they are: the rebase round of step 1, the push, one line to the user. After a rebase wake, start the watcher
    again. A draft stays a draft for a person.
-6. **No fix is pushed unreviewed.** One batched round for every reproduced point and the user's: fix each point
+6. **No fix is pushed unreviewed.** One batched round (grid role `fix`) for every reproduced point and the user's: fix each point
    where it was flagged and in every sibling of the same pattern on the branch (the flagged query → every sibling
    query; the flagged error list → every rescue of that client; a flagged test fixture (a recorded response, a factory, a snapshot) → every
    fixture on the branch against its spec's inputs) — points fixed in one place only came back three times. Then Final review step 6 on the fix commits, then `sin-flow:shipper` `commit` — commit and push (a new commit shows the reviewer only the change), then a reply in each thread with
@@ -355,7 +364,7 @@ product does now, not how the run went. Plain words, in the chat language, ≤ 1
 - The result: what changed in the product and how it works after the merge
   (behind a flag: off, then on). A step the deploy needs is one line.
 - What differs from the ticket or the plan, one line each (asked → now → why): a `Ruling:` that changed behaviour,
-  a unit that did not ship, a user's order that reversed the plan, an item left «not checked». Only when there is one.
+  a `Stale decision:` line of the plan, a unit that did not ship, a user's order that reversed the plan, an item left «not checked». Only when there is one.
 - The merge waits for another PR or a deploy (a plan `after:` row, a stacked base, a contract that another repo's PR
   ships) → one line: which one, and whether it merged. Only when there is one.
 - The ledger has `<NAME> · skipped · <reason>` → one closing line: that extra reviewer did not review this PR, and the reason in
@@ -404,7 +413,7 @@ action` line, write the ledger's hand-off section. An implementer that died mid-
 `git rev-parse --show-toplevel` in this session's own folder, also after a merge and for a new fix plan. When that
 folder is gone, it is the main checkout. Never `repo.path` while this folder exists. Then:
 
-    sin-flow-handoff --cwd <this checkout> --name exec-<id> --model <strong> sin-flow:exec <absolute plan path> "continue: <remaining> PR: <url | none>"
+    sin-flow-handoff --cwd <this checkout> --name exec-<id> --level <the highest builder: of the plan> sin-flow:exec <absolute plan path> "continue: <remaining> PR: <url | none>"
 
 It opens a new tab through the user's `handoff:` preference — never a split, never the user's tab. `opened: …` →
 append `handoff written`, tell the user in one line which tab to write in — any later message belongs there — and end

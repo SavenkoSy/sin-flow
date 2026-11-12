@@ -78,6 +78,8 @@ probe=""
 cwd=""
 name=""
 model=""
+effort=""
+level=""
 goal=""
 prompt=""
 opts=()
@@ -90,7 +92,7 @@ while [ $# -gt 0 ]; do
     --check) check_terminal "${2:?--check needs a terminal}" ;;
     --probe) probe="--probe"; shift ;;
     --new-workspace) opts+=("$1"); shift ;;
-    --cwd|--name|--model|--goal|--prompt) opts+=("$1" "${2:?$1 needs a value}"); printf -v "${1#--}" '%s' "$2"; shift 2 ;;
+    --cwd|--name|--model|--effort|--level|--goal|--prompt) opts+=("$1" "${2:?$1 needs a value}"); printf -v "${1#--}" '%s' "$2"; shift 2 ;;
     --) shift; break ;;
     -*) echo "unknown option: $1" >&2; exit 2 ;;
     *) break ;;
@@ -104,7 +106,7 @@ if [ -n "$prompt" ]; then
   target_dir="$PWD"
   extra=""
 else
-  [ $# -ge 2 ] || { echo "usage: sin-flow-handoff [--detect] [--check TERMINAL] [--probe] [--new-workspace] [--cwd DIR] [--name NAME] [--model M (default: sin-flow-profile model <stage>)] [--goal TEXT] (--prompt TEXT | <sin-flow:stage|stage> <path | review: PR number or URL | ingest: URL or text> [extra])" >&2; exit 2; }
+  [ $# -ge 2 ] || { echo "usage: sin-flow-handoff [--detect] [--check TERMINAL] [--probe] [--new-workspace] [--cwd DIR] [--name NAME] [--level L (the level of the stage row in the model grid)] [--model M] [--effort low|medium|high|xhigh|max] (default: sin-flow-profile model <stage> [L]) [--goal TEXT] (--prompt TEXT | <sin-flow:stage|stage> <path | review: PR number or URL | ingest: URL or text> [extra])" >&2; exit 2; }
   stage="sin-flow:${1#sin-flow:}"
   if { [ "$stage" = sin-flow:review ] && [[ "$2" =~ ^([0-9]+|https://github\.com/[^/]+/[^/]+/pull/[0-9]+/?)$ ]]; } ||
      { [ "$stage" = sin-flow:ingest ] && [ ! -e "$2" ]; }; then
@@ -130,7 +132,10 @@ FLOW_CWD=$(cd "${cwd:-$target_dir}" && (git rev-parse --show-toplevel 2>/dev/nul
 FLOW_NAME="${name:-${stage#sin-flow:}}"
 FLOW_NAME="${FLOW_NAME:-continue-$$}"
 model_name="${stage#sin-flow:}"
-FLOW_MODEL="${model:-$("$(dirname "$adapters")/sin-flow-profile" model "${model_name:-strong}" "$FLOW_CWD")}" || exit 2
+grid=$("$(dirname "$adapters")/sin-flow-profile" model "${model_name:-strong}" ${model_name:+"${level:-*}"} "$FLOW_CWD") || exit 2
+FLOW_MODEL="${model:-${grid%% *}}"
+[ -n "$effort" ] || [ "$grid" = "${grid#* }" ] || effort="${grid#* }"
+case "$effort" in -) effort="" ;; ""|low|medium|high|xhigh|max) ;; *) echo "--effort must be low, medium, high, xhigh or max: $effort" >&2; exit 2 ;; esac
 FLOW_CONFIG_DIR="${FLOW_CONFIG_DIR:-$(pick_account)}"
 case "$FLOW_CONFIG_DIR" in "~"/*) FLOW_CONFIG_DIR="$HOME/${FLOW_CONFIG_DIR#\~/}" ;; esac
 default_account=""
@@ -139,7 +144,7 @@ if [ "${FLOW_CONFIG_DIR%/}" = "$HOME/.claude" ]; then
   [ -z "${CLAUDE_CONFIG_DIR:-}" ] || default_account="env -u CLAUDE_CONFIG_DIR "
 fi
 [ -z "$FLOW_CONFIG_DIR" ] || [ -d "$FLOW_CONFIG_DIR" ] || { echo "FLOW_CONFIG_DIR=$FLOW_CONFIG_DIR is not a directory: no tab opened" >&2; exit 2; }
-FLOW_PROMPT="${default_account}${FLOW_CONFIG_DIR:+CLAUDE_CONFIG_DIR=$(q "$FLOW_CONFIG_DIR") FLOW_EXPECT_CONFIG_DIR=$(q "$FLOW_CONFIG_DIR") }claude -n $(q "$FLOW_NAME") --model $(q "$FLOW_MODEL") $(q "$text")"
+FLOW_PROMPT="${default_account}${FLOW_CONFIG_DIR:+CLAUDE_CONFIG_DIR=$(q "$FLOW_CONFIG_DIR") FLOW_EXPECT_CONFIG_DIR=$(q "$FLOW_CONFIG_DIR") }claude -n $(q "$FLOW_NAME") --model $(q "$FLOW_MODEL")${effort:+ --effort $(q "$effort")} $(q "$text")"
 export FLOW_CWD FLOW_NAME FLOW_MODEL FLOW_PROMPT FLOW_CONFIG_DIR
 line="cd $(q "$FLOW_CWD") && $FLOW_PROMPT"
 
@@ -165,7 +170,7 @@ if [ "${CLAUDE_CODE_ENTRYPOINT:-}" = claude-desktop ]; then
   if [ "$stage" = sin-flow:exec ]; then
     echo "A linked session named $FLOW_NAME exists and is not this one: SendMessage to its local_ id from the \"Linked sessions now\" list (a name does not resolve), message \"Invoke the skill $stage with the Skill tool, argument: $target$extra\" and stop here."
   else
-    echo "Exec waits in its own session: $start, cwd $FLOW_CWD, name exec-${FLOW_NAME#plan-}, model $("$(dirname "$adapters")/sin-flow-profile" model exec "$FLOW_CWD"), prompt \"Wait: $FLOW_NAME sends you the exec command.\""
+    echo "Exec waits in its own session: $start, cwd $FLOW_CWD, name exec-${FLOW_NAME#plan-}, model $("$(dirname "$adapters")/sin-flow-profile" model exec "$FLOW_CWD" | cut -d' ' -f1), prompt \"Wait: $FLOW_NAME sends you the exec command.\""
   fi
   echo "On a turn the user typed: $start, cwd $FLOW_CWD, name $FLOW_NAME, model $FLOW_MODEL, prompt \"$next\"."
   if [ -f "$due" ]; then IFS=$'\t' read -r lcwd lnext < "$due"; rm -f "$due"; echo "Also: $start, cwd $lcwd, name learning, prompt \"$lnext\"."; fi

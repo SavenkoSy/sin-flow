@@ -145,8 +145,8 @@ code cited as a permalink at the base SHA, a local source or evidence file summa
 
 ## Hand-off (plan, epic, hotfix)
 
-**The next stage never inherits this session's model:** hand off on `<strong>`
-(`sin-flow-handoff` resolves it from `--cwd <wt>`).
+**The next stage never inherits this session's model:** `sin-flow-handoff` takes the model and the effort of the
+stage from the model grid, for `--cwd <wt>`. A `hotfix` adds `--level mid`, the level of its one unit.
 
 ```
 sin-flow-handoff --cwd <wt> --name <stage>-<id> <sin-flow:plan | sin-flow:exec> <work>/plan.md

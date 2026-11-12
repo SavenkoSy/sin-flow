@@ -73,7 +73,7 @@ How deep, by what the diff changed — the deepest kind present wins:
   item — Playwright's WebKit skips exactly those (copy passed on Chromium with a mock, skipped on WebKit, dead on the
   phone). Drive the simulator through the `mobile` MCP tools when the profile's `## Run` names them; screenshots go to
   the same folder.
-- Who: one `sin-flow:implementer` (`<mid>`, effort medium) writes and runs the script and returns
+- Who: one `sin-flow:implementer` (grid role `visual`) writes and runs the script and returns
   `VISUAL: green | red`, the `RESULT` lines, one `FAIL:` line per failure and the `SHOTS` path. Before it returns, it
   opens each screenshot with Read and gives one `SHOT: <path> · <what the image shows>` line for it. When something
   covers or crops the checked element, it takes that shot again first. The orchestrator reads that block only.

@@ -18,7 +18,7 @@ Chat with the user in the `chat_language` option (`sin-flow-profile user chat_la
 
 Depth: an explicit `quick` / `thorough` wins; otherwise `build-package.sh` picks `thorough` when the
 profile folder has `review-team.md` and `quick` when it does not. `quick` = context + `all` + verify;
-`thorough` splits the finder into `code` (`<strong>`) and `fit` (`<mid>`). `--at <sha>` reviews the PR as it
+`thorough` splits the finder into `code` and `fit`. `--at <sha>` reviews the PR as it
 was at that commit. `--base <sha>` sets the fork point explicitly — for a PR whose base branch was
 rewritten after that commit.
 
@@ -35,7 +35,7 @@ plugin, a profile or memory in this chat.
 
 Inside the product repo that owns the PR. `git rev-parse --show-toplevel` must succeed; if it does
 not, say in one line which repo the review needs and stop. `KEY=$(sin-flow-profile key)`; no profile →
-one line "no profile for this repo — running setup", run `sin-flow:setup`'s onboard in this session, then continue. Resolve `<strong>` and `<mid>` once: `sin-flow-profile model strong`, `sin-flow-profile model mid`.
+one line "no profile for this repo — running setup", run `sin-flow:setup`'s onboard in this session, then continue. The model grid gives the model and the effort of each dispatch: `sin-flow-profile model <role>` prints both. The lens rows are in `reference/pipeline.md`.
 
 User preferences are the plugin options, read with `sin-flow-profile user <key>`. `REVIEWS` = the `reviews_dir` option (default
 `~/.claude/sin-flow/reviews`). The verdict tokens `reproduces` / `possible` / `invented` and the
@@ -115,7 +115,7 @@ grep '^lens .* failed' "$REVIEW"
 
    The count must equal the numbers asked; a number with no row → name it and stop.
 5. Dispatch `sin-flow:review-poster`: Agent tool, `subagent_type: "sin-flow:review-poster"`,
-   `model: <mid>`, prompt `PR: https://github.com/<REPO>/pull/<PR>. post.json: <PKG>/post.json.` — nothing else.
+   the model and the effort of the grid row `review-poster`, prompt `PR: https://github.com/<REPO>/pull/<PR>. post.json: <PKG>/post.json.` — nothing else.
 6. Relay the review URL, the inline and body counts, and anything it skipped.
 
 ## Recheck

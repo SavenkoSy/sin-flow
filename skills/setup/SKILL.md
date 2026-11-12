@@ -159,6 +159,14 @@ A repo profile may set `models.strong`, `models.mid`, `models.cheap` and `models
 `plan`, `exec`, `review`, `learning`: the session a hand-off opens for that stage); it wins over the options for that repo. `sin-flow-profile model <tier|stage>`
 prints what a stage will use.
 
+**Model grid.** `${CLAUDE_PLUGIN_ROOT}/examples/models.tsv` names the model and the effort of each session and each
+subagent. Its columns are `role`, `level`, `model` and `effort`, tab-separated. To change rows for every repo, write
+the header line and only those rows in `~/.claude/sin-flow/models.tsv`. To change rows for one repo, write them in
+`~/.claude/sin-flow/profiles/<key>/models.tsv`. `${CLAUDE_PLUGIN_ROOT}/ARCHITECTURE.md` § Model grid has the order of the layers.
+`model` is `strong`, `mid` or `cheap` (the three options above), or `opus`, `sonnet`, `haiku`, `fable`. `effort` is
+`low`, `medium`, `high`, `xhigh`, `max` or `-` (none). `sin-flow-profile model <role> [level]` prints the row in use.
+A user with no grid file gets the default grid.
+
 ### Your own scripts
 
 Each step that acts on a system outside the flow reads one key. The value is `off`, a built-in name, or an absolute

@@ -32,7 +32,8 @@ RULING_NEEDED: measure before exec — <units>          ← only when Step 4 cou
 | unit | verdict | layer | wave | builder | audit | files owned | depends on | UI |
 verdict ∈ ✅ CONFIRMED · ⚠️ CONFIRMED, root cause re-attributed · ⚠️ PARTIALLY — scope shrinks ·
 ❌ NOT REPRODUCIBLE · 🔴 NOT OURS — upstream · 🆕 STORY (an intake story, nothing to reproduce)
-A forcing-list hit names its trigger in the row.
+builder ∈ cheap · mid · hard · strong. A forcing-list hit names its trigger in the row.
+`strong` also names the check that is missing.
 
 ## Waves
 | wave | units | why one wave |
@@ -115,5 +116,6 @@ commit them.
 
 ## Rulings
 - Ruling: <what>. Why: <why>. Cost if wrong: <cost>.
+- Stale decision: <the locked decision> · newer: <the comment, its date> · call: <what the plan does> · evidence: <number and filter, or file:line>
 ingest-miss: <quoted seed line that leaves it open> → <the call> (rejected: <alternative>)
 ```

@@ -183,6 +183,13 @@ repo, which helps when it runs under another Claude account. The profile also se
 hand-off opens for that stage. Plan on Fable, exec on Opus: `models.plan: fable` in the profile.
 `sin-flow-profile model strong` (or `model plan`) prints what the flow will use here.
 
+The model grid `examples/models.tsv` names the model and the effort of each session and each subagent: `role`,
+`level`, `model`, `effort`, tab-separated. To change rows, write only those rows below the header line in
+`~/.claude/sin-flow/models.tsv` (every repo) or in `~/.claude/sin-flow/profiles/<key>/models.tsv` (one repo).
+`model` is a tier (`strong`, `mid`, `cheap`) or a model name. `effort` is `low`, `medium`, `high`, `xhigh`, `max` or `-`.
+`sin-flow-profile model implementer hard` prints the row that the flow will use. `ARCHITECTURE.md` § Model grid
+has the order in which the layers apply.
+
 ### Extra reviewers
 
 The `extra_reviewers` option is a space-separated list of more reviewers for the exec review: `codex`, your

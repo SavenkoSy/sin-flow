@@ -214,7 +214,7 @@ words=$(claude() { printf '%s\n' "$@"; }; cd() { :; }; eval "$line")
 expect_eq "case 28" "-n
 ingest
 --model
-$(sin-flow-profile model ingest "$plain")
+$(sin-flow-profile model ingest "$plain" | cut -d" " -f1)
 /sin-flow:ingest $text extra" "$words"
 
 fresh_home print
@@ -259,4 +259,13 @@ out=$(sin-flow-handoff --probe --cwd "$plain" --prompt x | account_of)
 expect_eq "case 34 a home outside the account folders is never chosen" "$CLAUDE_CONFIG_DIR $CLAUDE_CONFIG_DIR" "$out"
 HOME=$saved_home
 
-echo "ok: 34 cases"
+fresh_home print
+out=$(sin-flow-handoff --probe --cwd "$plain" --model sonnet --effort high --prompt x | sed -n 2p)
+case "$out" in *"--model 'sonnet' --effort 'high' 'x'") ;; *) fail "case 35: got $out" ;; esac
+out=$(sin-flow-handoff --probe --cwd "$plain" --model sonnet --prompt x | sed -n 2p)
+case "$out" in *"--effort"*) fail "case 36: got $out" ;; esac
+rc=0
+sin-flow-handoff --probe --cwd "$plain" --effort top --prompt x >/dev/null 2>&1 || rc=$?
+expect_eq "case 37 a bad effort opens no tab" 2 "$rc"
+
+echo "ok: 37 cases"

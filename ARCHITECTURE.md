@@ -11,6 +11,23 @@ sin-flow has three layers. Each change goes to exactly one of them.
 The user and profile layers are never in this repo. The plugin declares `userConfig` in `.claude-plugin/plugin.json`, and
 the answers live in the user's settings, not in the plugin. `sin-flow-profile user <key>` is the one reader.
 
+## Model grid
+
+The model grid names the model and the effort of each session and each dispatch. Its columns are `role`, `level`,
+`model` and `effort`. `sin-flow-profile model <role> [level]` is the one reader. It resolves in this order:
+
+| step | source | layer | rule |
+|---|---|---|---|
+| 1 | `profiles/<key>/models.tsv` | profile | the row with the same `role` and `level` |
+| 2 | `~/.claude/sin-flow/models.tsv` | user | the row with the same `role` and `level` |
+| 3 | `examples/models.tsv` | plugin | the row with the same `role` and `level` |
+| 4 | steps 1 to 3 again | | the row with the same `role` and the level `*` |
+| 5 | profile key `models.<stage>` | profile | replaces the model of that stage session, and the effort stays |
+| 6 | profile key `models.<tier>`, then option `models_<tier>` | profile, user | resolves a tier word (`strong`, `mid`, `cheap`) to a model |
+
+Layers merge by row, never by file. A file with three rows changes three rows. The reader skips a row
+that is not valid, prints a message, and uses the row below it.
+
 ## Rules
 
 1. A mechanism for one tool or one practice (Orca, Codex, CircleCI, a terminal, a team's reviewer habit) does
