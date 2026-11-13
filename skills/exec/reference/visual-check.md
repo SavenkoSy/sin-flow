@@ -45,13 +45,13 @@ How deep, by what the diff changed — the deepest kind present wins:
 - The port is held by a server whose cwd (`lsof -a -p <pid> -d cwd -Fn`) is another worktree → another session
   runs its check. Never stop it. Run `lsof` again every 2 minutes for up to 30 minutes, then start yours. Still
   held after 30 minutes → `VISUAL: blocked` with that worktree's name in the reason.
-- The script: `<workspace>/playwright/check.js`, outside the repo, never committed. It only holds the checks:
+- The script: `<workspace>/playwright/check.js`, outside the repo, never committed. Write it and run it in the work folder, never in a repo folder (this repo or another). `playwright` and the sign-in come from the harness folder. It only holds the checks:
 
   ```js
   const { run } = require(`<this file's folder>/playwright/harness.js`);
 
   run('<id>', async (t) => {
-    const page = await t.newPage();
+    const page = await t.newPage({ as: '<role>' });
     await page.goto('/fresh');
     const chip = page.locator('[data-testid="genre-chip"]').first();
     t.check(await chip.getAttribute('rel') === 'nofollow', '/fresh chip has rel=nofollow');
@@ -61,20 +61,43 @@ How deep, by what the diff changed — the deepest kind present wins:
   });
   ```
 
-  Run with the profile values in the environment:
-  `FLOW_UI_SERVER=<ui.server> FLOW_UI_DEVICE=<ui.device> FLOW_UI_SHOTS=<ui.screenshots> node check.js`
+  `t.newPage()` opens a page with no sign-in. `t.newPage({ as: '<role>' })` signs in as that role of `ui.roles` one
+  time for each engine, and gives the page a fresh copy of that session. A check script never signs in by itself.
+  Run it with the profile values in the environment. A key that is absent → do not set its variable.
+
+  | profile key | variable | meaning |
+  |---|---|---|
+  | `ui.server` | `FLOW_UI_SERVER` | the origin that `page.goto('/<path>')` opens |
+  | `ui.device` | `FLOW_UI_DEVICE` | a Playwright device name; absent → `iPhone 13` |
+  | `ui.screenshots` | `FLOW_UI_SHOTS` | the screenshot folder |
+  | `ui.env_file` | `FLOW_ENV_FILE` | the env file with the sign-in values; the harness loads it and never prints it |
+  | `ui.signin` | `FLOW_UI_SIGNIN` | the sign-in page URL, on the host of `FLOW_UI_SERVER` |
+  | `ui.signin_ready` | `FLOW_UI_SIGNIN_READY` | a JS expression that is true after the sign-in; absent → `true` |
+  | `ui.roles` | `FLOW_UI_ROLES` | a JSON object: role → [email variable, password variable]; names only |
+  | `ui.error_text` | `FLOW_UI_ERROR_TEXT` | a regex of the text on the app's error screens |
+  | `ui.console_allow` | `FLOW_UI_CONSOLE_ALLOW` | a regex of console errors that do not fail a page |
+  | `ui.sweep` | `FLOW_UI_SWEEP` | a JSON list of `"<path> <role>"` items for the route sweep; `-` = no sign-in |
+
+  On a local server, `FLOW_UI_SERVER` and `FLOW_UI_SIGNIN` are the local URLs that the measure doc names.
+  `FLOW_UI_EMAIL_LABEL` and `FLOW_UI_PASSWORD_LABEL` (defaults `Email` and `Password`) only when the measure doc names
+  other labels. Then `node check.js`.
   (`FLOW_UI_SERVER_CHROMIUM` when the profile's `## Run` names a separate host for Chromium; `FLOW_UI_LOCALE` when it
   names a locale). `ui.screenshots` absent → `~/.claude/sin-flow/work/<key>/<id>/screens`. `playwright` is installed next to the harness (no `node_modules/` in `reference/playwright/` → `npm ci` there first),
   the browsers in the Playwright browser cache; a launch that says a browser is missing → `npx playwright install
   chromium webkit` inside `reference/playwright/`.
 - The harness runs every check on Chromium and WebKit, on the device viewport. Navigation waits for
   `domcontentloaded` — WebKit's `load` never fires on some pages.
+- A page fails on its own errors, also on the sign-in page. Each `console.error` is a `FAIL` line
+  `<path>: console.error <text> @ <source>`, and each uncaught page error is a `FAIL` line `<path>: pageerror <message>`
+  with no source, unless `ui.console_allow` matches the text after `<path>: `. An engine whose script made no
+  `t.check` call gets `FAIL no checks`. An allow entry goes into the profile only for an error that was measured on 5 or
+  more loads of the same page, and the measure doc names its cause.
 - Real iOS Safari: for an item the plan marks `iOS simulator: yes` and for every copy, paste or on-screen-keyboard
   item — Playwright's WebKit skips exactly those (copy passed on Chromium with a mock, skipped on WebKit, dead on the
   phone). Drive the simulator through the `mobile` MCP tools when the profile's `## Run` names them; screenshots go to
   the same folder.
 - Who: one `sin-flow:implementer` (grid role `visual`) writes and runs the script and returns
-  `VISUAL: green | red`, the `RESULT` lines, one `FAIL:` line per failure and the `SHOTS` path. Before it returns, it
+  `VISUAL: green | red`, the `RESULT` lines, one `FAIL:` line per failure (console errors, page errors and `no checks` included) and the `SHOTS` path. Before it returns, it
   opens each screenshot with Read and gives one `SHOT: <path> · <what the image shows>` line for it. When something
   covers or crops the checked element, it takes that shot again first. The orchestrator reads that block only.
 
@@ -92,12 +115,26 @@ How deep, by what the diff changed — the deepest kind present wins:
 
 ## After the merge
 
-The merged diff changed a rendered surface, and the profile sets `ui.after_merge: <url>` or the ledger says `blocked`,
-`red` or has a `SKIP` → once the deploy of the merge commit is live on `ui.after_merge` (absent → `ui.server`), the
-same check there, through the profile's sign-in route. A `FAIL` → a fix
-PR at once, from a one-block plan, in this same workspace in a new tab: the § Hand-off command of the exec skill
-with `--cwd <this checkout>`. The new exec switches to the plan's branch in place (Setup 4). Then one line to the
-user. Green → one line to the user.
+Once the deploy of the merge commit is live on `ui.after_merge` (absent → `ui.server`), dispatch one
+`sin-flow:implementer` (grid role `visual`) for each job below whose condition holds, with `FLOW_UI_SERVER` set to
+that URL. `FLOW_UI_SIGNIN` stays `ui.signin` only when its origin is the origin of that URL. With another origin, use the
+sign-in URL that the measure doc names for that host, and when it names none, the job is `blocked`.
+
+- Route sweep: the profile sets `ui.sweep`. It runs after every merge, also when the merged diff changed no rendered
+  surface. The agent runs `node <this file's folder>/playwright/harness.js sweep <id>-sweep` with the variables of
+  § How, and writes no script. Each item gets these checks: the page opens (one retry after a `goto` error, then an
+  HTTP status below 400), it stays on its path, and, when the profile sets `ui.error_text`, it shows none of that text. Its console errors fail it as
+  § How says. The agent returns `SWEEP: green | red | blocked`, the `RESULT` lines, one `FAIL:` line per failure and
+  one `SHOT:` line for each item with a `FAIL` and a screenshot (an item that fails `signs in`, or fails `opens` after two
+  `goto` errors, has none). No `ui.sweep` → no sweep. Ledger `Sweep: <green | red | blocked>`.
+- Merge check: the merged diff changed a rendered surface, and the profile sets `ui.after_merge` or the ledger says
+  `blocked`, `red` or has a `SKIP`. The same check as before the merge, through the profile's sign-in route.
+
+A `FAIL` of either job → a fix PR at once, from a one-block plan that names each failing item, in this same workspace
+in a new tab: the § Hand-off command of the exec skill with `--cwd <this checkout>`. The new exec switches to the
+plan's branch in place (Setup 4). Then one line to the user. `blocked` (every sign-in fails, a `signs in` FAIL that says `the email or the password variable is not set`, or the
+host is down) →
+one line to the user with the reason, and no fix PR. Green → one line to the user.
 
 Then the user's close word («close», «done»): when the worktree is still there, `sin-flow-worktree --remove <its path>`
 removes it as the `workspace` option made it and deletes the local branch. Drop the worktree DB only when the profile

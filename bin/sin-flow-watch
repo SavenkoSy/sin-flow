@@ -15,12 +15,12 @@ if key=$(sin-flow-profile key 2>/dev/null); then
 fi
 
 read_state() {
-  gh pr view "$url" --json author,baseRefName,mergeStateStatus,reviews,comments 2>/dev/null \
+  gh pr view "$url" --json author,baseRefName,mergeStateStatus,reviews,comments,state 2>/dev/null \
     | jq -r --arg bots "$deploy_bots" '
         .author.login as $author
         | ($bots | split(" ") | map(select(. != "") | sub("\\[bot\\]$"; ""))) as $skip
         | ([(.reviews[], .comments[]) | .author.login | select(. != $author and ((sub("\\[bot\\]$"; "") | IN($skip[])) | not))] | length) as $seen
-        | "\(.baseRefName) \(.mergeStateStatus) \($seen)"' 2>/dev/null
+        | "\(.baseRefName) \(.mergeStateStatus) \($seen) \(.state)"' 2>/dev/null
 }
 
 first=""
@@ -29,7 +29,7 @@ until [ -n "$first" ]; do
   first=$(read_state)
   [ -n "$first" ] || sleep "$INTERVAL"
 done
-read -r base0 _ seen0 <<<"$first"
+read -r base0 _ seen0 _ <<<"$first"
 default=$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name 2>/dev/null)
 
 while [ "$(date +%s)" -lt "$deadline" ]; do
@@ -37,7 +37,8 @@ while [ "$(date +%s)" -lt "$deadline" ]; do
   git fetch -q origin 2>/dev/null
   now=$(read_state)
   [ -n "$now" ] || continue
-  read -r base merge seen <<<"$now"
+  read -r base merge seen state <<<"$now"
+  [ "$state" = MERGED ] && { echo "WAKE merged: $url"; exit 0; }
   [ "$base" = "$base0" ] || { echo "WAKE base: $base0 -> $base"; exit 0; }
   case "$merge" in BEHIND | DIRTY) echo "WAKE $merge"; exit 0 ;; esac
   [ "$seen" -gt "$seen0" ] && { echo "WAKE activity: $(( seen - seen0 )) new review or comment"; exit 0; }

@@ -2,12 +2,18 @@ const pw = require('playwright');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { signIn } = require('./signin.js');
+
+if (process.env.FLOW_ENV_FILE) process.loadEnvFile(process.env.FLOW_ENV_FILE.replace(/^~(?=\/)/, os.homedir()));
 
 const SERVER = process.env.FLOW_UI_SERVER;
 if (!SERVER) throw new Error('FLOW_UI_SERVER is not set: pass the profile ui.server');
 const HOSTS = { chromium: process.env.FLOW_UI_SERVER_CHROMIUM || SERVER, webkit: SERVER };
 const DEVICE = process.env.FLOW_UI_DEVICE || 'iPhone 13';
 const LOCALE = process.env.FLOW_UI_LOCALE || 'en-US';
+const ROLES = JSON.parse(process.env.FLOW_UI_ROLES || '{}');
+const CONSOLE_ALLOW = process.env.FLOW_UI_CONSOLE_ALLOW ? new RegExp(process.env.FLOW_UI_CONSOLE_ALLOW) : null;
+const ERROR_SCREEN = process.env.FLOW_UI_ERROR_TEXT ? new RegExp(process.env.FLOW_UI_ERROR_TEXT) : null;
 
 function silenceMedia() {
   const proto = HTMLMediaElement.prototype;
@@ -34,14 +40,60 @@ async function run(label, checks, engines = Object.keys(HOSTS)) {
     const base = HOSTS[engine];
     const browser = await pw[engine].launch(engine === 'chromium' ? { args: ['--mute-audio'] } : {});
     const results = [];
+    let made = 0;
     const record = (status, name, detail = '') => {
       results.push(status);
       console.log(`${engine} ${status} ${name}${detail ? ' — ' + detail : ''}`);
     };
-    const newPage = async (options = {}) => {
-      const context = await browser.newContext({ ...pw.devices[DEVICE], locale: LOCALE, ...options });
+    const verify = (ok, name, detail) => {
+      made += 1;
+      record(ok ? 'PASS' : 'FAIL', name, detail);
+    };
+    const device = { ...pw.devices[DEVICE], locale: LOCALE };
+    const sessions = new Map();
+    const reported = new Set();
+    const pageFault = (page, text) => {
+      const full = text.split('\n')[0];
+      const line = full.slice(0, 300);
+      const where = new URL(page.url()).pathname;
+      if (CONSOLE_ALLOW?.test(full) || reported.has(where + line)) return;
+      reported.add(where + line);
+      record('FAIL', `${where}: ${line}`);
+    };
+    const watch = (page) => {
+      page.on('console', (message) => {
+        if (message.type() !== 'error') return;
+        const source = message.location().url;
+        pageFault(page, `console.error ${message.text().split('\n')[0]}${source ? ` @ ${source}` : ''}`);
+      });
+      page.on('pageerror', (error) => pageFault(page, `pageerror ${error.message}`));
+    };
+    const session = (role) => {
+      if (!sessions.has(role)) {
+        const vars = ROLES[role];
+        if (!vars) throw new Error(`role ${role} is not in FLOW_UI_ROLES`);
+        const signing = signIn(browser, {
+          url: process.env.FLOW_UI_SIGNIN,
+          ready: process.env.FLOW_UI_SIGNIN_READY,
+          emailLabel: process.env.FLOW_UI_EMAIL_LABEL,
+          passwordLabel: process.env.FLOW_UI_PASSWORD_LABEL,
+          email: process.env[vars[0]],
+          password: process.env[vars[1]],
+          context: device,
+          init: silenceMedia,
+          watch,
+        }).then((signedIn) => signedIn.context);
+        signing.catch(() => sessions.delete(role));
+        sessions.set(role, signing);
+      }
+      return sessions.get(role).then((context) => context.storageState());
+    };
+    const newPage = async ({ as, ...options } = {}) => {
+      const storageState = as ? await session(as) : undefined;
+      const context = await browser.newContext({ ...device, ...(storageState ? { storageState } : {}), ...options });
       await context.addInitScript(silenceMedia);
       const page = await context.newPage();
+      watch(page);
       const goto = page.goto.bind(page);
       page.goto = (url, opts) => goto(url.startsWith('/') ? base + url : url, { waitUntil: 'domcontentloaded', ...opts });
       return page;
@@ -50,7 +102,7 @@ async function run(label, checks, engines = Object.keys(HOSTS)) {
       engine,
       base,
       newPage,
-      check: (ok, name, detail) => record(ok ? 'PASS' : 'FAIL', name, detail),
+      check: verify,
       skip: (name, why) => record('SKIP', name, why),
       shot: (page, name) => page.screenshot({ path: path.join(dir, `${engine}-${name}.png`) }),
       phone: async (page, name, sheetOpen = false) => {
@@ -64,9 +116,9 @@ async function run(label, checks, engines = Object.keys(HOSTS)) {
           });
           return { small, tail: document.documentElement.scrollHeight - bottom, vh: window.innerHeight, locked };
         });
-        record(r.small ? 'FAIL' : 'PASS', `${name}: inputs ≥ 16px, no focus zoom on iPhone`, `${r.small} below 16px`);
-        record(r.tail > r.vh / 5 ? 'FAIL' : 'PASS', `${name}: no empty tail below the content`, `${Math.round(r.tail)}px`);
-        if (sheetOpen) record(r.locked ? 'PASS' : 'FAIL', `${name}: the page behind the open sheet does not scroll`, r.locked ? '' : 'html and body still scroll');
+        verify(!r.small, `${name}: inputs ≥ 16px, no focus zoom on iPhone`, `${r.small} below 16px`);
+        verify(r.tail <= r.vh / 5, `${name}: no empty tail below the content`, `${Math.round(r.tail)}px`);
+        if (sheetOpen) verify(r.locked, `${name}: the page behind the open sheet does not scroll`, r.locked ? '' : 'html and body still scroll');
       },
       stayedInPlace: async (page, action) => {
         await page.evaluate(() => { window.__stayedInPlace = true; });
@@ -79,6 +131,7 @@ async function run(label, checks, engines = Object.keys(HOSTS)) {
     } catch (e) {
       record('FAIL', 'script error', e.message.split('\n')[0]);
     }
+    if (!made) record('FAIL', 'no checks', 'the script made no t.check call');
     await browser.close();
     const count = (status) => results.filter((r) => r === status).length;
     failed += count('FAIL');
@@ -88,4 +141,42 @@ async function run(label, checks, engines = Object.keys(HOSTS)) {
   process.exitCode = failed ? 1 : 0;
 }
 
-module.exports = { run, HOSTS };
+const samePath = (a, b) => a.replace(/\/+$/, '') === b.replace(/\/+$/, '');
+
+function sweep(label, routes = JSON.parse(process.env.FLOW_UI_SWEEP || '[]')) {
+  return run(label, async (t) => {
+    for (const item of routes) {
+      const [route, role] = item.trim().split(/\s+/);
+      const name = `${route} as ${role}`;
+      const page = await t.newPage(role === '-' ? {} : { as: role }).catch((error) => error);
+      if (page instanceof Error) {
+        t.check(false, `${name}: signs in`, page.message.split('\n')[0]);
+        continue;
+      }
+      const open = () => page.goto(route).catch((error) => error);
+      let response = await open();
+      if (response instanceof Error) response = await open();
+      if (response instanceof Error) {
+        t.check(false, `${name}: opens`, response.message.split('\n')[0]);
+        await page.context().close();
+        continue;
+      }
+      await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => {});
+      t.check(Boolean(response) && response.status() < 400, `${name}: opens`, response ? `HTTP ${response.status()}` : 'no response');
+      const landed = new URL(page.url());
+      const wanted = new URL(t.base + route);
+      t.check(landed.origin === wanted.origin && samePath(landed.pathname, wanted.pathname), `${name}: stays on its path`, landed.origin === wanted.origin ? landed.pathname : landed.origin + landed.pathname);
+      if (ERROR_SCREEN) {
+        const hit = (await page.locator('body').innerText()).match(ERROR_SCREEN);
+        t.check(!hit, `${name}: no error screen`, hit ? hit[0] : '');
+      }
+      const slug = route.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'home';
+      await t.shot(page, `${slug}-${role}`);
+      await page.context().close();
+    }
+  });
+}
+
+if (require.main === module && process.argv[2] === 'sweep') sweep(process.argv[3] || 'sweep');
+
+module.exports = { run, sweep, HOSTS };
