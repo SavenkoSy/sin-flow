@@ -33,8 +33,8 @@ EOF
 chmod +x "$scratch/bin/gh" "$scratch/bin/git" "$scratch/bin/sin-flow-profile"
 
 pr() {
-  jq -n --arg base "$1" --arg merge "$2" --argjson logins "$3" --arg body "$4" \
-    '{author: {login: "me"}, baseRefName: $base, mergeStateStatus: $merge, reviews: [],
+  jq -n --arg base "$1" --arg merge "$2" --argjson logins "$3" --arg body "$4" --arg state "${5:-OPEN}" \
+    '{author: {login: "me"}, baseRefName: $base, mergeStateStatus: $merge, state: $state, reviews: [],
       comments: [$logins[] | {author: {login: .}, body: $body}]}'
 }
 
@@ -107,7 +107,15 @@ EOF
 )
 [ "$out" = "WAKE DIRTY" ] || fail "case 8: review.deploy_bots skips the bot with and without [bot]: got $out"
 
+out=$(run_case <<'EOF'
+main CLEAN '[]' x
+main CLEAN '[]' x OPEN
+main UNKNOWN '[]' x MERGED
+EOF
+)
+[ "$out" = "WAKE merged: https://github.com/o/r/pull/1" ] || fail "case 9: the merge of the PR itself wakes: got $out"
+
 [ "$(head -1 "$root/bin/sin-flow-watch")" = "#!/usr/bin/env bash" ] || fail "case 5: no bash shebang"
 grep -q 'echo "\$s" | jq' "$root/bin/sin-flow-watch" && fail "case 6: parses JSON through echo"
 
-echo "ok: 8 cases"
+echo "ok: 9 cases"

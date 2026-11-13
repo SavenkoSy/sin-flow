@@ -229,6 +229,7 @@ Follow `reference/visual-check.md` (one source; do not restate it). Dispatch one
 that path, every unit's `### UI checklist`, the ledger's `Ruling:` lines that changed a rendered surface, the profile's
 `ui.*` values, `## Run` and the UI section of its `measure.doc`, and the label `<id>`. It returns `VISUAL / RESULT /
 FAIL / SHOTS`; ledger it, and act on it as § After of that file says.
+The route sweep after a merge needs no UI surface. § After the merge of that file runs it when the profile sets `ui.sweep`.
 
 ## Finish — ship, then report. The PR happens before the final message.
 
@@ -298,7 +299,7 @@ merged PRs means team. **Team → the post-PR loop. Solo → the user's review.*
    merges by that method (squash when empty) and prints the merge commit. What it removed (a branch, the worktree) is
    only what its output and the disk show, never what this text or the example says. Ledger
    `Plan <id>: merged <sha>`, `status: merged` in the plan header; one line back; then § After the merge of
-   `reference/visual-check.md`. The profile sets `ci.after_merge: on` → watch each workflow run on the merge commit
+   `reference/visual-check.md` (one `sin-flow:implementer`, grid role `visual`: the route sweep and the merge check). The profile sets `ci.after_merge: on` → watch each workflow run on the merge commit
    to its end (`gh run list --commit <sha>`, then `gh run watch <id> --exit-status`). A red run → a fix PR at once,
    as § After the merge of that file says for a `FAIL`. No key → no watch. Exit 3 — the PR conflicts with its
    base → the rebase round of Team step 1, then `merge.sh` once more, no question. Any other non-zero exit → paste its
@@ -310,8 +311,10 @@ The PR is ready until a point reproduces. The goal of this phase is an approved 
 After each push, run step 1 again before you write to the user. Act on every new point without a question. Write to
 the user only when you wait for a person outside this session.
 
-1. **State.** `gh pr view <url> --json state,reviewDecision,reviews,comments,mergeStateStatus > <workspace>/pr.json`,
-   grep it. `BEHIND` or `DIRTY` → one rebase round onto the base — an `sin-flow:implementer` (grid role `rebase`)
+1. **State.** `gh pr view <url> --json state,reviewDecision,reviews,comments,mergeStateStatus,mergeCommit > <workspace>/pr.json`,
+   grep it. `state` is `MERGED` → ledger `Plan <id>: merged <mergeCommit.oid>`, `status: merged` in the plan header, then
+   § After the merge of `reference/visual-check.md` (one `sin-flow:implementer`, grid role `visual`: the route sweep and
+   the merge check), once, and the loop ends; a `WAKE merged` takes this same path. `BEHIND` or `DIRTY` → one rebase round onto the base — an `sin-flow:implementer` (grid role `rebase`)
    rebases and pushes with `--force-with-lease` (the shipper never rewrites history) — your branch, not a question.
    Size the check by `git range-diff <old base>..<old head> <new base>..HEAD`: only docs, deploy-notes numbering or
    generated API docs in it, and no new base commit touches a non-doc file of the branch → the range-diff plus the
@@ -342,7 +345,7 @@ the user only when you wait for a person outside this session.
    `sin-flow-watch <url> <first repo> <first branch>` (the `repo` cell of the `after:` row in the spec; the first PR as
    in `sin-flow:plan` Step 1). It checks every 10 min for up to 24 h and prints one `WAKE <reason>` line: base
    changed, `BEHIND` / `DIRTY`, new activity by anyone but the author and a deploy bot, new commits on a feature-branch
-   base, or the first PR merged. A failed or empty `gh` read is never a wake. Every wake → step 4 first. A `WAKE activity` needs
+   base, the first PR merged, or this PR merged (`WAKE merged: <url>`). A failed or empty `gh` read is never a wake. Every wake → step 4 first, except `WAKE merged`, which runs step 1 only and ends the loop. A `WAKE activity` needs
    nothing more: start the watcher again. For a draft PR whose first PR merged, in the same repo: if `baseRefName` is still the first
    branch, run `gh pr edit <url> --base <profile base>`. Then run the rebase round of step 1 onto the profile base,
    and push. Then, in both repo cases: run `gh pr ready <url>` and write one line to the user. Other wakes stay as

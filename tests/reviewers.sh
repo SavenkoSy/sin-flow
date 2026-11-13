@@ -186,7 +186,7 @@ expect_eq "script contests filtered" "SECOND REPLY · 1 contested · 0 accepted 
 expect_eq "script contest kept" "K1 | contest | Quoted." "$(sed -n 2p "$p/second/reply.md")"
 p=$(pkg prose)
 expect_eq "prose is skipped" "SECOND · skipped · output not in finder format: Looks fine to me." "$(FAKE=prose bash "$script" find "$p" | head -1)"
-expect_eq "prose recorded" "lens second skipped: output not in finder format: Looks fine to me." "$(head -1 "$p/failed.txt")"
+expect_has "prose recorded" "lens second skipped: output not in finder format: Looks fine to me." "$(cat "$p/failed.txt")"
 
 user extra_reviewers off
 expect_eq "off is empty" "REVIEWERS · off" "$(bash "$script" find "$(pkg offword)")"

@@ -1,5 +1,6 @@
-import { chromium } from "@playwright/test";
 import { existsSync, mkdirSync, writeFileSync } from "fs";
+import { createRequire } from "module";
+import { homedir } from "os";
 import { join } from "path";
 
 const env = (name, fallback) => {
@@ -8,7 +9,11 @@ const env = (name, fallback) => {
   return value;
 };
 
-if (process.env.FLOW_ENV_FILE) process.loadEnvFile(process.env.FLOW_ENV_FILE);
+if (process.env.FLOW_ENV_FILE) process.loadEnvFile(process.env.FLOW_ENV_FILE.replace(/^~(?=\/)/, homedir()));
+
+const harness = createRequire(join(env("FLOW_HARNESS_DIR"), "harness.js"));
+const { chromium } = harness("playwright");
+const { signIn } = harness("./signin.js");
 
 const BASE = env("FLOW_BASE_URL");
 const API = env("FLOW_API_URL", BASE);
@@ -33,17 +38,17 @@ async function login() {
   const password = process.env[PASSWORD_VAR];
   if (!password) throw new Error(`${PASSWORD_VAR} missing for ${EMAIL}`);
   const browser = await chromium.launch(LAUNCH);
-  const page = await browser.newPage();
-  await page.goto(`${BASE}${SIGNIN_PATH}`);
-  await page.getByLabel(EMAIL_LABEL).fill(EMAIL);
-  const passwordField = page.getByLabel(PASSWORD_LABEL, { exact: true });
-  await passwordField.fill(password);
-  await passwordField.press("Enter");
-  await page.waitForFunction(READY_EXPR, null, { timeout: 90_000 });
-  await page.waitForURL((url) => !url.pathname.startsWith(SIGNIN_PATH), { timeout: 90_000 });
+  const { context, landed } = await signIn(browser, {
+    url: `${BASE}${SIGNIN_PATH}`,
+    email: EMAIL,
+    password,
+    ready: READY_EXPR,
+    emailLabel: EMAIL_LABEL,
+    passwordLabel: PASSWORD_LABEL,
+  });
   mkdirSync(STATE_DIR, { recursive: true });
-  writeFileSync(STATE_FILE, JSON.stringify(await page.context().storageState(), null, 2));
-  console.log(`signed in as ${EMAIL} → ${STATE_FILE}\nlanded on ${page.url()}`);
+  writeFileSync(STATE_FILE, JSON.stringify(await context.storageState(), null, 2));
+  console.log(`signed in as ${EMAIL} → ${STATE_FILE}\nlanded on ${landed}`);
   await browser.close();
 }
 

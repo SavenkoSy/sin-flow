@@ -215,10 +215,9 @@ set. A local or test DB does not count. If it shows the change needs an index (c
 change or work moved into a job, that is part of this unit — never a separate ticket.
 
 **Browser route** (the measure doc names a browser harness). Copy `reference/harness-template.mjs`
-to the script directory the doc names, set its env from the doc (`probe-traps.md` § Browser harness),
+to `work/<key>/<id>/verify-<id>.mjs` and run it there, set its env from the doc (`probe-traps.md` § Browser harness),
 sign in **as the account the ticket names**, and write the `deploy` probe first. The script is never
-committed: after the last probe copy it to `work/<key>/<id>/verify-<id>.mjs`; the plan cites that
-path and exec copies it back to re-verify. A probe that mutates shared state captures a baseline
+committed. The plan cites that path, and exec runs it from there to re-verify. A probe that mutates shared state captures a baseline
 first and restores it last, printing both. One probe per ticket, named for it; keep the variants.
 
 **Deploy state.** Before believing a reopen, establish what the environment is running by whatever

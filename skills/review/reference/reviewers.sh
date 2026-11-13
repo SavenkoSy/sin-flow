@@ -67,12 +67,15 @@ orca_worktree_set() {
 }
 
 status_line() {
-  local watch
+  local watch held=""
   watch=$(pref reviewer_watch)
   case "$watch" in
     orca)
+      for _ in $(seq 200); do mkdir "$PKG/.card.lock" 2>/dev/null && { held=1; break; }; sleep 0.05; done
+      [ -z "$held" ] || trap 'rmdir "$PKG/.card.lock" 2>/dev/null; exit 143' INT TERM HUP
       printf '%s\n' "$1" > "$D/watch"
-      orca_worktree_set --comment "$(cat "$PKG"/*/watch 2>/dev/null | paste -sd ';' -)" ;;
+      orca_worktree_set --comment "$(cat "$PKG"/*/watch 2>/dev/null | paste -sd ';' -)"
+      [ -z "$held" ] || { rmdir "$PKG/.card.lock" 2>/dev/null; trap - INT TERM HUP; } ;;
     /*|"~"/*) watch="${watch/#\~/$HOME}"; [ -x "$watch" ] && (cd "$TREE" && "$watch" "$1") >/dev/null 2>&1 || true ;;
   esac
 }

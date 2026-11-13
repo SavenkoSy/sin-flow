@@ -84,14 +84,15 @@ assertion indefinitely — a one-way field cannot be re-tested otherwise.
 
 ## Browser harness
 
-`harness-template.mjs` carries sign-in with `storageState` reuse, an in-page authenticated `call()`
+`harness-template.mjs` signs in through `signin.js` of the visual-check harness and keeps the session as a `storageState` file, an in-page authenticated `call()`
 that returns status, headers and body (several defects are only visible in a response header),
 console and HTTP-failure logging, and `example` / `mutating` / `node` probes to copy. It reads every
 repo value from env; the profile's measure doc names them:
 
 | env | meaning |
 |---|---|
-| `FLOW_ENV_FILE` | env file loaded first (credentials); never printed |
+| `FLOW_HARNESS_DIR` | the visual-check harness folder, `${CLAUDE_PLUGIN_ROOT}/skills/exec/reference/playwright`; `playwright` and `signin.js` load from it (no `node_modules/` there → `npm ci` there first) |
+| `FLOW_ENV_FILE` | env file loaded first (credentials); never printed. An absolute path or `~/…`: the probe runs in the work folder, so a relative path does not resolve |
 | `FLOW_BASE_URL`, `FLOW_API_URL` | app and API origins |
 | `FLOW_SIGNIN_PATH` | sign-in page path |
 | `FLOW_EMAIL_LABEL`, `FLOW_PASSWORD_LABEL` | form labels for the two fields |
@@ -101,5 +102,5 @@ repo value from env; the profile's measure doc names them:
 | `FLOW_STATE_DIR` | where sessions are stored, one file per account |
 | `FLOW_BLOCK_HOSTS` | regex of hosts to abort (third-party scripts that break headless) |
 
-Run it from the directory the doc names, `login` first, headless always (`HEADED=1` only after the
-user says yes). Copy the finished script to `work/<key>/<id>/verify-<id>.mjs`; never commit it.
+Copy it to `work/<key>/<id>/verify-<id>.mjs` and run it there, never in a repo folder. `login` first, headless always (`HEADED=1` only after the
+user says yes). Never commit it.
