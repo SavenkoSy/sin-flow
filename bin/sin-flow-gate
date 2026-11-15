@@ -70,17 +70,25 @@ record_green() {
 }
 
 cmd_run() {
-  local log=$1 commands=$2 section status tests gated=0
+  local log=$1 commands=$2 section status tests after gated=0
   [ -f "$commands" ] || usage
   rm -f "$log.tail" "$log.green"
   section=$(mktemp)
   { echo "commands:"; split_commands "$commands" | sed 's/^/  /'; } >"$log"
+  tracked=$(git rev-parse --is-inside-work-tree >/dev/null 2>&1 && tree_with --update)
   while IFS= read -r cmd; do
     [ "$cmd" = true ] || gated=1
     echo "=== $cmd ===" >>"$log"
     bash -c "$cmd" >"$section" 2>&1
     status=$?
     cat "$section" >>"$log"
+    after=$([ -n "$tracked" ] && tree_with --update)
+    if [ -n "$tracked" ] && [ "$after" != "$tracked" ]; then
+      git diff --name-only "${tracked#tree }" "${after#tree }" >"$log.tail"
+      rm -f "$section"
+      echo "red: $cmd wrote tracked files ($(wc -l <"$log.tail" | tr -d ' ') in git diff)"
+      return 1
+    fi
     tests=$(count_tests "$section")
     echo "=== exit $status · tests ${tests:-none} ===" >>"$log"
     if [ "$status" -ne 0 ]; then

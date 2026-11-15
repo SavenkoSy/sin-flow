@@ -90,7 +90,8 @@ Body:
    reader gives it. In all other cases it is `k/R` of the sessions read, and the line says so. A mode on a single
    session goes to a **Watch** list at the end of this section, not to a proposal. A mode seen only in old-skill
    runs, whose sin-flow:* successor no longer has that line, is listed as `gone in sin-flow:<stage>` and proposes
-   nothing.
+   nothing. A mode that an `accepted cost <date>:` line in `LD/ledger.md` names gets one line with its count and that
+   date, and proposes nothing. New rows that contradict the reason of that line make it a ranked mode again.
 6. **Diff proposals**, by `proposals.md`. Sections 0 to 5 hold no proposal. Each proposal in 6 points back to 0 to 5.
 
 Stage exec only: copy the `===` final-message block of one read session whole from `<sid8>.long.txt` to

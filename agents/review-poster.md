@@ -46,9 +46,16 @@ jq -n --arg commit "$HEAD" --arg event "$EVENT" --slurpfile c "$JSON" --rawfile 
      else {} end)' > "$WORK/review-payload.json"
 ```
 
-Check before sending: the number of entries in `post.json` must equal inline + body entries in the
-payload; an entry without `path`, `line` or `body` was dropped by the filter — name it under
-"skipped".
+Check before sending, with these three commands only (`post.json` is an array, the payload an object):
+
+```bash
+total=$(jq 'length' "$JSON")
+kept=$(jq '[.[] | select(.path and .line and .body)] | length' "$JSON")
+inline=$(jq '.comments | length' "$WORK/review-payload.json")
+```
+
+`inline` + body entries = `kept`, so body entries = `kept - inline`. `total` > `kept` → an entry without `path`,
+`line` or `body` was dropped by the filter — name it under "skipped".
 
 - `--dry-run`: `cat "$WORK/review-payload.json"` and stop. Nothing is posted.
 - Otherwise: `gh api -X POST "repos/$REPO/pulls/$N/reviews" --input "$WORK/review-payload.json" -q .html_url`.

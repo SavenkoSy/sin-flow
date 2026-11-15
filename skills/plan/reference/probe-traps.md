@@ -53,7 +53,7 @@ Write "the API returns X" or "the page renders Y" — never "the tile shows X" u
 - **Check-then-write races:** measure each sequential order. Never pipe an every-copy grep through
   `head`. End a harness with `process.exit(0)`.
 - **Camera or media surfaces** leave `play()` pending headless, so headless "not reproducible" there
-  is not evidence — ask the user before a headed run; never launch one on your own.
+  is not evidence. Write that claim as not checked; never run headed.
 
 ## The detached node
 
@@ -98,9 +98,8 @@ repo value from env; the profile's measure doc names them:
 | `FLOW_EMAIL_LABEL`, `FLOW_PASSWORD_LABEL` | form labels for the two fields |
 | `FLOW_READY_EXPR` | JS expression, truthy once signed in |
 | `FLOW_TOKEN_EXPR` | JS expression returning a bearer token; unset → cookies only |
-| `FLOW_EMAIL`, `FLOW_PASSWORD_VAR` | the account (the one the ticket names) and the env var holding its password |
+| `FLOW_EMAIL_VAR`, `FLOW_PASSWORD_VAR` | the env vars holding the account (the one the ticket names) and its password, read after `FLOW_ENV_FILE`. `FLOW_EMAIL` sets the address itself and wins over `FLOW_EMAIL_VAR` |
 | `FLOW_STATE_DIR` | where sessions are stored, one file per account |
 | `FLOW_BLOCK_HOSTS` | regex of hosts to abort (third-party scripts that break headless) |
 
-Copy it to `work/<key>/<id>/verify-<id>.mjs` and run it there, never in a repo folder. `login` first, headless always (`HEADED=1` only after the
-user says yes). Never commit it.
+Run it in the work folder, never in a repo folder. `login` first, headless always.

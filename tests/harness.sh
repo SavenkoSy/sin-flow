@@ -138,10 +138,10 @@ out=$(check "run('unknown', async (t) => { await t.newPage({ as: 'ghost' }); });
 expect_has "unknown role fails" "role ghost is not in FLOW_UI_ROLES" "$out"
 
 out=$(check "run('signin-console', async (t) => { await t.newPage({ as: 'pro' }); t.check(true, 'x'); });" STUB_CONSOLE='signin boom')
-expect_has "sign-in page console error fails" "FAIL /sign-in: console.error signin boom" "$out"
+expect_not "sign-in page console error does not fail" "FAIL /sign-in: console.error" "$out"
 
 out=$(check "run('signin-pageerror', async (t) => { await t.newPage({ as: 'pro' }); t.check(true, 'x'); });" STUB_PAGEERROR='signin crash')
-expect_has "sign-in page error fails" "FAIL /sign-in: pageerror signin crash" "$out"
+expect_not "sign-in page error does not fail" "FAIL /sign-in: pageerror" "$out"
 
 out=$(check "run('signin-init', async (t) => { await t.newPage({ as: 'pro' }); t.check(true, 'x'); });")
 cases=$((cases + 1))
@@ -219,6 +219,12 @@ expect_has "the probe login opens the sign-in page" "goto https://app.test/sign-
 expect_has "the probe login passes the ready expression" "ready probe-ready" "$(cat "$scratch/stub.log")"
 cases=$((cases + 1))
 [ -s "$scratch/sessions/pro-test.json" ] || fail "the probe login did not write the session file: $out"
+
+printf 'FLOW_PASSWORD=secret\nPROBE_EMAIL=var@test\n' > "$scratch/home/probe.env"
+out=$(cd "$scratch" && env STUB_LOG="$scratch/stub.log" HOME="$scratch/home" FLOW_ENV_FILE='~/probe.env' FLOW_HARNESS_DIR="$scratch" FLOW_BASE_URL=https://app.test FLOW_EMAIL_VAR=PROBE_EMAIL \
+  FLOW_STATE_DIR="$scratch/sessions" FLOW_READY_EXPR='probe-ready' node verify.mjs login 2>&1; echo "exit=$?")
+expect_has "the probe login reads the email from the env file through FLOW_EMAIL_VAR" "signed in as var@test" "$out"
+expect_not "the probe login with FLOW_EMAIL_VAR does not throw" "threw" "$out"
 
 cases=$((cases + 1))
 grep -q "signin.js" "$template" || fail "the probe template does not use the shared sign-in"

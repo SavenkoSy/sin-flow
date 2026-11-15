@@ -74,7 +74,8 @@ column, not a separate flow.
    The script also takes a sample of the clean sessions of each stage: a tenth of them, and at least 2. The sample
    grows until flagged plus sampled sessions are a third of the stage. Readers open only these sessions. The
    numbers in `stages.tsv` cover every row.
-5. **Consolidators.** Each stage with 3 or more rows goes to one consolidator, at most 4 in flight. A stage with
+5. **Consolidators.** Each stage with 3 or more rows goes to one consolidator, at most 4 in flight. The stage
+   `learning` gets none: its rows are the rows of `reference/self.md`. A stage with
    fewer rows, or a stage the user leaves out, is skipped and named in the ledger entry. The brief names the stage,
    `D`, `MODE`, the two model names, the open `inbox.md` rows that the stage owns, and the user's question. It tells
    the consolidator to follow `$S/../reference/consolidator.md`. An inbox row that touches more than one stage gets
@@ -93,11 +94,14 @@ The conclusion and the path, in the `chat_language` option, in 15 lines or fewer
 «your settings», «only for you», then «the plugin, for everyone». Each proposal goes to the list that its **switch**
 names. A plugin option or a profile key goes to «your settings» under that key. `author` goes to «only for you».
 `none` goes to «the plugin, for everyone». Before the report, read each «for everyone» line as a user with another
-setup. When it changes nothing for that user, its switch is wrong: fix it in the digest and move the line.
+setup. When it changes nothing for that user, its switch is wrong: fix it in the digest and move the line. When it
+changes a default to this user's own choice, make it an option whose default keeps today's behaviour, and put this
+user's value under «your settings».
 
 Inside each list, show the proposals as one block «today → after the change». Group them by what the user sees, with
 one short bold topic for each group. Each topic gives what happens today and what changes against today, in plain
-words, with no file name. Do not give one line for each proposal or each file. In user mode, one more line names
+words, with no file name. Do not give one line for each proposal or each file. Each list ends with the sum of the
+**size** field of its proposals. In user mode, one more line names
 `proposals-for-author.md` and the count of blocks added. After the lists, give one inbox block: one line for each
 `P<n>` with the row numbers it takes or covers, then each declined row with its reason. The 15 lines do not count
 this block. Counts carry their filter set in the digest.
@@ -113,9 +117,8 @@ that line exists in the transcript.
 
 - The run ends with no open `inbox.md` row of a stage it covered. A row of a skipped stage stays open, and the ledger
   entry names it. Never walk the open rows with the user one at a time. Decide each open row yourself: take it into
-  a numbered proposal with its layer, mark it covered by `P<n>`, or decline it with a one-line reason. Show that list
-  in the same chat report as the proposals, and the user approves it once with them. A taken row goes through the
-  apply scripts like every other proposal.
+  a numbered proposal with its layer, mark it covered by `P<n>`, or decline it with a one-line reason. A taken row
+  goes through the apply scripts like every other proposal.
 - After the applies, follow `reference/close.md`: the scorecard rows, the ledger entry and the inbox marks.
 - On `CTX GUARD` or `LIMIT GUARD`: let the readers in flight finish. Write the digests, the ledger entry and
   `D/continue.md` (the steps left and the inbox verdicts). Hand off with `sin-flow-handoff --cwd <this cwd> --name

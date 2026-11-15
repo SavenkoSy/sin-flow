@@ -7,6 +7,8 @@
   covered, rows read, digest path, ranked modes (one line each), the user line with its HH:MM, proposals applied
   (with backup paths), declined and written for the author, and the PR link in author mode. The ledger is the memory
   of this stage.
+- For each mode that the user approved as an accepted cost, append one line `accepted cost <date>: <mode> · <count
+  with its filter set> · <reason>` to that entry. Later digests read it by `consolidator.md` § 3 item 5.
 - In `inbox.md`, mark each row that this run turned into a proposal: `proposed <digest>`, then `applied <date>`,
   `declined <date>` or `for author <date>`. Closed rows move to `inbox-archive.md`.
 - Append one row for flow `learning`: what in this skill got in the way this run, or "nothing".

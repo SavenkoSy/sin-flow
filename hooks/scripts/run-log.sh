@@ -3,13 +3,13 @@ set -u
 input=$(cat)
 sid=$(jq -r '.session_id // empty' <<<"$input")
 tp=$(jq -r '.transcript_path // empty' <<<"$input")
-cwd=$(jq -r '.cwd // empty' <<<"$input")
 [ -n "$sid" ] && [ -n "$tp" ] && [ -f "$tp" ] || exit 0
 source "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/stage.sh"
 stage_line=$(flow_stage "$sid" "$tp")
 [ -n "$stage_line" ] || exit 0
 read -r stage n skill <<<"$stage_line"
-[ -n "$cwd" ] || cwd=$(jq -r 'select(.cwd) | .cwd' "$tp" | head -1)
+cwd=$(jq -r 'select(.cwd) | .cwd' "$tp" | head -1)
+[ -n "$cwd" ] && [ -d "$cwd" ] || cwd=$(jq -r '.cwd // empty' <<<"$input")
 repo=$(flow_repo_key "$cwd" "$stage" "$n")
 log="${FLOW_RUNS_LOG:-$HOME/.claude/sin-flow/runs.tsv}"
 mkdir -p "$(dirname "$log")"

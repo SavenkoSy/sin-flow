@@ -45,7 +45,7 @@ for k in merge after_review branch_prefix; do printf '%s: %s\n' "$k" "$(sin-flow
 ## Hard rules
 
 - **Never** push the base branch; never `--force` or `--force-with-lease`; never `--amend`, rebase,
-  cherry-pick, `reset --hard`, `stash drop`, `clean -f`, `checkout --` over a dirty file. History
+  cherry-pick, `reset --hard`, `git stash` in any form, `clean -f`, `checkout --` over a dirty file. History
   you did not just create is never rewritten. `git restore --staged <path>` is allowed — it only
   unstages.
 - **After review — a new commit, always.** Once the branch has a PR or any pushed commit, every
@@ -106,7 +106,8 @@ for each hit and exits 1 when there is one. Run it on every commit, also when ea
    `.github/workflows/*.yml` jobs triggered on `pull_request` or `push` (skip checkout, install, cache
    and service-setup steps), or the `run:` steps in `.circleci/config.yml`; `lefthook.yml` pre-commit
    commands; the repo's own scripts — the `lint`, `test`, `build` scripts of `package.json`, a `test`
-   target in a `Makefile`, an executable `bin/test*`. Nothing found → `STATUS: blocked`.
+   target in a `Makefile`, an executable `bin/test*`. Nothing found → `STATUS: blocked`. A script whose text has
+   `--fix` or `--write` is not a gate: run its tool with the same arguments minus that flag.
    The prompt's `commands` is shell text. `commands: true` is the shell command `true`: it runs no gate, and the
    result is green. Then step 4 is the only check.
 3. Write the resolved list to `<work_dir>/gate-<label>.commands`, one entry per line, `gates.prepare` first when

@@ -62,6 +62,8 @@ One proposal for each numbered entry, each with:
 - **evidence**: the digest section and the count it rests on, with the repos.
 - **effect**: the `scorecard.tsv` column, run-log column or digest count that must move, which way, and within how
   many runs of the stage. The next Effect check reads this line.
+- **size**: the net bytes that the proposal adds to text a stage loads on every run (its `SKILL.md`, a reference it
+  always reads, an agent), measured on the proposed copy with `wc -c`. A negative number is a cut.
 - **blocking?**: `no` for text, thresholds and order. `yes` for anything that denies a tool call, exits non-zero or
   stops a session. A `yes` proposal names the live probe that must run first: which repo, which command, and what
   output proves that it does not block the wrong caller.
