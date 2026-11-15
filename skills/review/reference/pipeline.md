@@ -89,6 +89,7 @@ finders work without `context.md`; the render works without `verdict.md`.
 Run as is, with `PKG` set. It prints the review file path.
 
 ```bash
+{ setopt null_glob || shopt -s nullglob; } 2>/dev/null
 . "$PKG/manifest.env"
 if [ "$MODE" = pr ]; then NAME=$KEY-$PR-$(printf %.8s "$SHA"); else NAME=$KEY-$(git -C "$TREE" branch --show-current | tr / -); fi
 DIR=$(sin-flow-profile user reviews_dir)

@@ -87,7 +87,8 @@ How deep, by what the diff changed — the deepest kind present wins:
   chromium webkit` inside `reference/playwright/`.
 - The harness runs every check on Chromium and WebKit, on the device viewport. Navigation waits for
   `domcontentloaded` — WebKit's `load` never fires on some pages.
-- A page fails on its own errors, also on the sign-in page. Each `console.error` is a `FAIL` line
+- A page fails on its own errors. The sign-in flow and the pages it lands on are not checked. To check such a
+  path, list it in `ui.sweep`. Each `console.error` is a `FAIL` line
   `<path>: console.error <text> @ <source>`, and each uncaught page error is a `FAIL` line `<path>: pageerror <message>`
   with no source, unless `ui.console_allow` matches the text after `<path>: `. An engine whose script made no
   `t.check` call gets `FAIL no checks`. An allow entry goes into the profile only for an error that was measured on 5 or

@@ -81,7 +81,6 @@ async function run(label, checks, engines = Object.keys(HOSTS)) {
           password: process.env[vars[1]],
           context: device,
           init: silenceMedia,
-          watch,
         }).then((signedIn) => signedIn.context);
         signing.catch(() => sessions.delete(role));
         sessions.set(role, signing);
@@ -104,7 +103,7 @@ async function run(label, checks, engines = Object.keys(HOSTS)) {
       newPage,
       check: verify,
       skip: (name, why) => record('SKIP', name, why),
-      shot: (page, name) => page.screenshot({ path: path.join(dir, `${engine}-${name}.png`) }),
+      shot: (page, name) => page.screenshot({ path: path.join(dir, `${engine}-${name}.png`), caret: 'initial' }),
       phone: async (page, name, sheetOpen = false) => {
         const r = await page.evaluate(() => {
           const shown = [...document.querySelectorAll('body *')].filter((e) => e.getClientRects().length);

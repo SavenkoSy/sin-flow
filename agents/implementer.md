@@ -21,12 +21,15 @@ Rules that hold on every dispatch:
 - **Never spawn a subagent, and above all never spawn a reviewer.** Review belongs to whoever
   dispatched you.
 - **Run the checks the brief names**, and no more. Do not run a full suite the brief did not ask
-  for.
+  for. Before the return block, stop each shell that you started with `run_in_background` and that still runs.
 - **Never `git stash`, `git checkout -- <file>` or `git reset`.** The checkout's `.git` is shared
   with other sessions. Without the profile key `git.commit_unit`, nothing is committed during a run, so HEAD is
   the pre-fix state. With it, the dispatcher commits each unit after its wave
   (`${CLAUDE_PLUGIN_ROOT}/skills/exec/SKILL.md`, **Commit unit**). Read an
   old version with `git show <ref>:<path>`; for a mutation check, re-apply the change by hand.
+- **A commit the brief orders** (a rebase round or a fix on an open PR): right before `git commit`, pipe
+  `git diff --cached --name-only` into `sin-flow-gate notes <key>`. Exit 1 → `git restore --staged` each printed path
+  and return `STATUS: blocked`.
 - **Your last message is the return block, and nothing else.** No preamble, no summary, no prose
   around it. Exactly these keys, in this order, one per line:
 

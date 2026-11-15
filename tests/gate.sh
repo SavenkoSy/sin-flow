@@ -88,4 +88,12 @@ expect_eq "verdict with a red revert" "Unit u4: complete (abc123, audit skipped,
 : > "$work/canary-u5.log"
 expect_eq "verdict with an empty canary log" "Unit u5: not proven: its specs fail with its code in place" "$(bash "$gate" verdict "$work" u5 abc123 clean)"
 
+echo 'echo two > tracked.txt; echo "3 examples, 0 failures"' > "$work/writes.commands"
+expect_eq "a gate that writes a tracked file is red" "red: echo two > tracked.txt; echo \"3 examples, 0 failures\" wrote tracked files (1 in git diff)" "$(bash "$gate" run "$work/gate-writes.log" "$work/writes.commands" || true)"
+expect_eq "a red write lists the file in the tail" "tracked.txt" "$(cat "$work/gate-writes.log.tail")"
+git checkout -q -- tracked.txt
+echo 'echo scratch > untracked.txt; echo "3 examples, 0 failures"' > "$work/untracked.commands"
+expect_eq "a gate that writes an untracked file stays green" "green" "$(bash "$gate" run "$work/gate-untracked.log" "$work/untracked.commands")"
+rm -f untracked.txt
+
 echo "ok: $cases cases"

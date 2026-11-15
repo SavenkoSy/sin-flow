@@ -95,7 +95,8 @@ The dispatching thread is the most expensive place in the chain when it fills wi
    draft against it. After the first unit merges, the target is the profile base (`repo.base` or `## Inferred`). This session already runs in a clean checkout on the
    header's `branch:` → work in place. A clean checkout whose branch is already merged into the
    base (a stage-verify fix plan) → `git switch -c <header's branch:> origin/<base>` there, in place, no new
-   worktree. The header's `worktree:` exists and this session is not in it → the § Hand-off
+   worktree. `git diff --name-only <old HEAD> HEAD` lists a lockfile → the first gate's `commands` start with the
+   install step of the repo's CI workflow. The header's `worktree:` exists and this session is not in it → the § Hand-off
    command with `--cwd <that path>`, then end the turn. Otherwise, when this checkout is busy — a dirty tree, another
    branch, another session in it → `sin-flow-worktree --repo <this checkout> --name <id> --branch <header's branch:> --base <base>`,
    then the § Hand-off command with `--cwd <its path:>`, then end the turn. Never `EnterWorktree`: an Orca workspace
@@ -120,7 +121,7 @@ The dispatching thread is the most expensive place in the chain when it fills wi
    its wave. A consumer sits after its producer. Confirm the plan's wave table against the scan — a shared file the
    plan missed moves a unit to a later wave. Write the final waves into the ledger before the first dispatch.
 8. Set the header's `status:` line to `in-progress` (added when the header has none).
-9. `repo.fork` set → § Upstream mode below, before the first dispatch.
+9. `repo.fork` set → read `reference/upstream-mode.md` and follow it, before the first dispatch.
 
 ## Per wave
 
@@ -166,8 +167,10 @@ Never fix findings yourself.
 **Wave gate** — only when the profile says `gates.cadence: wave`. When every implementer of the wave has returned and
 every fix loop is closed: `sin-flow:shipper` mode `gate`, `label: wave-<k>` (log `<workspace>/gate-wave-<k>.log`). It returns
 `STATUS: green | red` and, on red, `TAIL:` — the path to the failing tail. Red → attribute by the failing paths to a unit in this
-wave and run one fix round there (the tail is the finding); a red you cannot attribute is a plan defect — `Ruling:`
-and stop the wave as blocked.
+wave and run one fix round there (the tail is the finding). A failing spec that no unit touches → one `sin-flow:implementer`
+(grid role `fix`) runs that spec alone 3 times on `origin/<base>` in a scratch `git worktree add --detach`, then removes it.
+Red on the base → ledger `Ruling: base red — <spec>`, the next gate runs without that spec, and the final message names it
+under what differs from the ticket. Green on the base → a plan defect: `Ruling:` and stop the wave as blocked.
 
 **`sin-flow:shipper` prompt**, every mode: `mode`, `profile: <key>`, `id: <id>`, `work_dir: <workspace>`, plus the mode's own
 fields (`${CLAUDE_PLUGIN_ROOT}/agents/shipper.md` § Prompt). Its return block (`MODE / STATUS / PROFILE / BRANCH / COMMITS / LOG /
@@ -255,19 +258,8 @@ The route sweep after a merge needs no UI surface. § After the merge of that fi
    A script path and a `ticket:` other than `none` → `<script> put <ticket> <file>` with the `sin-flow-mirror plan.md` copy. Append `Plan <id>: shipped <URL>` to the ledger.
 4. **The final message** (below), then the post-PR phase that fits the repo — same turn, no pause.
 
-**Never ask before pushing or opening the PR** — except § Upstream mode's first public write — and blocked units do not hold it: a plan where 8 of 9 units are
+**Never ask before pushing or opening the PR** — except the first public write of `reference/upstream-mode.md` — and blocked units do not hold it: a plan where 8 of 9 units are
 green ships those 8, and the ninth is a line in the final message under what differs from the ticket.
-
-## Upstream mode — `repo.fork` set
-
-`U=${CLAUDE_PLUGIN_ROOT}/skills/ingest/reference/upstream.md`. Read the files of `U` § Rules to read at `origin/<base>`
-(`git show origin/<base>:<path>`) at Setup 9 and again before the PR body. An AI ban → `Plan <id>: blocked` with the
-quoted line. A required trailer → `trailer` on every `sin-flow:shipper` `local` / `commit`; a subject or title format →
-every `title`; `## Gates` → every gate's `commands`. No plan mirror (Setup 2, Finish 3). The PR body follows `U` § PR
-body (the diff-stat reconcile stays). `upstream.first_issue` absent → the PR is the first public write: show the exact
-title and body, dispatch `ship` only on the user's "yes", then add `upstream.first_issue: <PR URL>` to the profile
-frontmatter (`U` § Write policy). After the PR: the team loop; replies follow `U` § Review replies («Done in <short
-sha>» for a fix), no «The plan and evidence are in #<issue>» reply, no «ready to merge», no re-request.
 
 ## After the PR — who merges decides the loop
 
@@ -292,7 +284,7 @@ merged PRs means team. **Team → the post-PR loop. Solo → the user's review.*
    `gh pr list -R <first repo> --head <first branch> --state merged --json url -q '.[0].url'`. Find the first repo
    and branch as in `sin-flow:plan` Step 1. If the output is empty, stop and write one line: the first unit merges first.
    If the first PR is merged, the repo is the same, and `baseRefName` is still the first branch, run
-   `gh pr edit <PR> --base <profile base>`, then the rebase round of Team step 1. For a plan with no `after:`, if
+   `gh pr edit <PR> --base <profile base>`, then the rebase round (`reference/team-loop.md` step 1). For a plan with no `after:`, if
    `baseRefName` is not the profile base, stop and write the same line. Then, if `isDraft` is `true`, run `gh pr ready <PR>`, then
    `bash ~/.claude/sin-flow/merge.sh <PR> <MERGE from the ship block>` — the user's copy of
    `${CLAUDE_PLUGIN_ROOT}/examples/merge.sh.example` (absent → copy it there first, `chmod +x`). It waits for checks,
@@ -302,61 +294,12 @@ merged PRs means team. **Team → the post-PR loop. Solo → the user's review.*
    `reference/visual-check.md` (one `sin-flow:implementer`, grid role `visual`: the route sweep and the merge check). The profile sets `ci.after_merge: on` → watch each workflow run on the merge commit
    to its end (`gh run list --commit <sha>`, then `gh run watch <id> --exit-status`). A red run → a fix PR at once,
    as § After the merge of that file says for a `FAIL`. No key → no watch. Exit 3 — the PR conflicts with its
-   base → the rebase round of Team step 1, then `merge.sh` once more, no question. Any other non-zero exit → paste its
+   base → the rebase round (`reference/team-loop.md` step 1), then `merge.sh` once more, no question. Any other non-zero exit → paste its
    output and stop; never re-run its lines by hand.
 
 ### Team — the post-PR loop
 
-The PR is ready until a point reproduces. The goal of this phase is an approved PR, and the team merges it, not the user.
-After each push, run step 1 again before you write to the user. Act on every new point without a question. Write to
-the user only when you wait for a person outside this session.
-
-1. **State.** `gh pr view <url> --json state,reviewDecision,reviews,comments,mergeStateStatus,mergeCommit > <workspace>/pr.json`,
-   grep it. `state` is `MERGED` → ledger `Plan <id>: merged <mergeCommit.oid>`, `status: merged` in the plan header, then
-   § After the merge of `reference/visual-check.md` (one `sin-flow:implementer`, grid role `visual`: the route sweep and
-   the merge check), once, and the loop ends; a `WAKE merged` takes this same path. `BEHIND` or `DIRTY` → one rebase round onto the base — an `sin-flow:implementer` (grid role `rebase`)
-   rebases and pushes with `--force-with-lease` (the shipper never rewrites history) — your branch, not a question.
-   Size the check by `git range-diff <old base>..<old head> <new base>..HEAD`: only docs, deploy-notes numbering or
-   generated API docs in it, and no new base commit touches a non-doc file of the branch → the range-diff plus the
-   repo's doc checks, then push — no full gate, CI runs the suite. Any code or spec line, or a base commit in a
-   non-doc file the branch touches → `sin-flow:shipper` `gate`.
-2. **Bot review.** One call: does any of the repo's last 5 merged PRs carry a review-bot comment? None → ledger
-   `bot: none (0 of 5 PR)`. Any → the bot's comments are a teammate's points: step 4.
-3. **The user's review** → one fix round. The user's questions about code → a `sin-flow:read-only-analyst`. A
-   question that reopens a product decision is not a task here: answer from the plan's `ingest-miss:` line and the rejected alternative
-   beside it; reversing it is the user's call.
-4. **A teammate's review.** Re-run step 1 first. Then run `sin-flow-unanswered <url>`: each line it prints is a point of
-   this step (a thread whose last comment is not yours, or a PR comment after your last one), and its reply goes in that
-   thread. Never find points by a time window. Per point, by its severity label (none → low, unless it names a wrong result that a user or a caller sees):
-   - **low** → a reply, never a fix.
-   - **medium** → reproduce it: a failing spec, a measured row, a read-only query by the profile's `## Measure`.
-     Not reproduced → a reply, no fix.
-   - **high** → the same re-verification; reproduced → step 6, not reproduced → a reply.
-   - **A request for the plan, docs or evidence in the PR** → never a fix, never a docs commit; one reply, verbatim:
-     «The plan and evidence are in #<issue> — everything is there.»
-
-   A rare or unobserved case — a volume, a limit, a race, a row that may not exist — with zero rows is not
-   reproduced. Every reply is short, in English, and argues the PR is ready: what was checked, the number or the
-   reason, «not changing; ready to merge». Only reproduced points reach step 6; only a point that reopens a product
-   decision goes to the user, all such points in one question. The user comes back after your final message → this step for everything posted since, then
-   your answer.
-5. **Base watcher** — every team PR, and any PR whose base is another feature branch. Before ending the turn, start
-   one background Bash (`run_in_background`) in this checkout: `sin-flow-watch <url>`, or for a plan with `after:`
-   `sin-flow-watch <url> <first repo> <first branch>` (the `repo` cell of the `after:` row in the spec; the first PR as
-   in `sin-flow:plan` Step 1). It checks every 10 min for up to 24 h and prints one `WAKE <reason>` line: base
-   changed, `BEHIND` / `DIRTY`, new activity by anyone but the author and a deploy bot, new commits on a feature-branch
-   base, the first PR merged, or this PR merged (`WAKE merged: <url>`). A failed or empty `gh` read is never a wake. Every wake → step 4 first, except `WAKE merged`, which runs step 1 only and ends the loop. A `WAKE activity` needs
-   nothing more: start the watcher again. For a draft PR whose first PR merged, in the same repo: if `baseRefName` is still the first
-   branch, run `gh pr edit <url> --base <profile base>`. Then run the rebase round of step 1 onto the profile base,
-   and push. Then, in both repo cases: run `gh pr ready <url>` and write one line to the user. Other wakes stay as
-   they are: the rebase round of step 1, the push, one line to the user. After a rebase wake, start the watcher
-   again. A draft stays a draft for a person.
-6. **No fix is pushed unreviewed.** One batched round (grid role `fix`) for every reproduced point and the user's: fix each point
-   where it was flagged and in every sibling of the same pattern on the branch (the flagged query → every sibling
-   query; the flagged error list → every rescue of that client; a flagged test fixture (a recorded response, a factory, a snapshot) → every
-   fixture on the branch against its spec's inputs) — points fixed in one place only came back three times. Then Final review step 6 on the fix commits, then `sin-flow:shipper` `commit` — commit and push (a new commit shows the reviewer only the change), then a reply in each thread with
-   the fix SHA. When the profile sets `review.request`, run `sin-flow-rerequest <PR url>` after every reply batch, with a push or without one: it re-requests
-   the profile's `review.request` and everyone who reviewed the PR, and skips an approved PR.
+Read `reference/team-loop.md` and follow it. Its step 1 holds the rebase round that § Solo also uses.
 
 ## Final message — the one definition
 
