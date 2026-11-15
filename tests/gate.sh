@@ -95,5 +95,11 @@ git checkout -q -- tracked.txt
 echo 'echo scratch > untracked.txt; echo "3 examples, 0 failures"' > "$work/untracked.commands"
 expect_eq "a gate that writes an untracked file stays green" "green" "$(bash "$gate" run "$work/gate-untracked.log" "$work/untracked.commands")"
 rm -f untracked.txt
+echo dirty > added.txt
+echo 'echo two > tracked.txt; git add tracked.txt; echo "3 examples, 0 failures"' > "$work/stages.commands"
+bash "$gate" run "$work/gate-stages.log" "$work/stages.commands" >/dev/null || true
+expect_eq "a red write lists only the files the gate wrote" "tracked.txt" "$(cat "$work/gate-stages.log.tail")"
+git reset -q -- tracked.txt
+git checkout -q -- tracked.txt added.txt
 
 echo "ok: $cases cases"

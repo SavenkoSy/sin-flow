@@ -169,7 +169,8 @@ every fix loop is closed: `sin-flow:shipper` mode `gate`, `label: wave-<k>` (log
 `STATUS: green | red` and, on red, `TAIL:` — the path to the failing tail. Red → attribute by the failing paths to a unit in this
 wave and run one fix round there (the tail is the finding). A failing spec that no unit touches → one `sin-flow:implementer`
 (grid role `fix`) runs that spec alone 3 times on `origin/<base>` in a scratch `git worktree add --detach`, then removes it.
-Red on the base → ledger `Ruling: base red — <spec>`, the next gate runs without that spec, and the final message names it
+Red on the base → ledger `Ruling: base red — <spec>`, the next gate passes `commands`: the lines of the last
+`gate-<label>.commands` with that spec left out through the runner's own exclude option, and the final message names it
 under what differs from the ticket. Green on the base → a plan defect: `Ruling:` and stop the wave as blocked.
 
 **`sin-flow:shipper` prompt**, every mode: `mode`, `profile: <key>`, `id: <id>`, `work_dir: <workspace>`, plus the mode's own
