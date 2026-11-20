@@ -413,8 +413,9 @@ that name — all of it, unless the prompt lists the ticket numbers, then exactl
 
 ## 11. Record the claim, then assign only when `assign=on` or `assign=own`
 
-With `assign=own`, first drop from the take every ticket whose assignees are not empty and not only the user
+With `assign=own`, first drop from the take every ticket whose assignees are not empty and do not include the user
 (state.json `owner`). Write nothing for it, and put `held: <prefix><n> by <login>` in the TAKE DIGEST `NOTES` slot.
+A ticket that has the user among its assignees stays in the take. It gets no assign write, so each teammate on it stays.
 
 Then, in each mode, write `claims[<n>] = {"batch": "<batch name>", "at": "<today>", "from":
 "<status>", "was": [<assignee logins>]}` into `state.json` for each ticket of the take. `from` and `was`

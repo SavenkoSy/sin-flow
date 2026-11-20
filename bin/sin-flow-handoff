@@ -75,6 +75,7 @@ handoff=${handoff:-auto}
 case "$handoff" in "~"/*) handoff="$HOME/${handoff#\~/}" ;; esac
 
 probe=""
+new_ws=""
 cwd=""
 name=""
 model=""
@@ -91,7 +92,7 @@ while [ $# -gt 0 ]; do
       ;;
     --check) check_terminal "${2:?--check needs a terminal}" ;;
     --probe) probe="--probe"; shift ;;
-    --new-workspace) opts+=("$1"); shift ;;
+    --new-workspace) opts+=("$1"); new_ws=1; shift ;;
     --cwd|--name|--model|--effort|--level|--goal|--prompt) opts+=("$1" "${2:?$1 needs a value}"); printf -v "${1#--}" '%s' "$2"; shift 2 ;;
     --) shift; break ;;
     -*) echo "unknown option: $1" >&2; exit 2 ;;
@@ -204,6 +205,7 @@ case "$mode" in
     [ -n "$prompt" ] || args+=("$stage" "$target" "$@")
     ;;
 esac
+[ -z "$new_ws" ] || [ -z "${terminal:-}" ] || { echo "--new-workspace: the $terminal adapter opens the tab in --cwd ($FLOW_CWD) and makes no workspace. Make it with sin-flow-worktree, then pass --cwd <its path>" >&2; exit 2; }
 
 rc=0
 "$launcher" ${args[@]+"${args[@]}"} || rc=$?

@@ -52,8 +52,7 @@ a single key.
 yours: decide it, write it into the plan's Rulings (Step 6), move on.
 
 Models: source analysts are `sin-flow:read-only-analyst` on the grid role `analyst`. Use the level `hard`
-only for a unit that adds a table, a migration or an abstraction other units build on. Name the
-model and the effort on every dispatch, and only from the grid.
+only for a unit that adds a table, a migration or an abstraction other units build on.
 
 ---
 
@@ -277,8 +276,8 @@ alone in its wave**; a consumer sits after its producer. One line per wave sayin
   reverted; re-verify asserts the ticket's symptoms 1:1 at the rendered layer.
 - `UI checklist` — numbered, each item `URL → what must be visible`, on the profile's `ui.device`
   first when set; exec turns each into one browser check, so each item is checkable or says why not.
-- A defect found while verifying is fixed in this plan as its own unit — never `Not in scope`, never a
-  follow-up issue, never a deferred-work file. Only a fix in another team's repo is listed, as prose.
+- A defect found while verifying is fixed in this plan as its own unit, never `Not in scope`. Only a fix
+  in another team's repo is listed, as prose.
 
 **Gates** come from the profile: `gates.commands` when set, else the `gates:` line of `## Inferred`
 (what CI runs); `gates.cadence` (`wave` = full gates after every wave; default final); `gates.prepare`

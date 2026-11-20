@@ -72,6 +72,13 @@ record_green() {
 cmd_run() {
   local log=$1 commands=$2 section status tests after gated=0
   [ -f "$commands" ] || usage
+  GATE_LOCK="$(dirname "$log")/gate.pid"
+  if [ -f "$GATE_LOCK" ] && kill -0 "$(cat "$GATE_LOCK")" 2>/dev/null; then
+    echo "running: pid $(cat "$GATE_LOCK") holds $GATE_LOCK; wait for its tail"
+    return 4
+  fi
+  echo $$ >"$GATE_LOCK"
+  trap 'rm -f "$GATE_LOCK"' EXIT
   rm -f "$log.tail" "$log.green"
   section=$(mktemp)
   { echo "commands:"; split_commands "$commands" | sed 's/^/  /'; } >"$log"
@@ -125,8 +132,9 @@ cmd_canary() {
   local work=$1 unit=$2 base=$3 spec_cmd=$4
   shift 4
   local log="$work/canary-$unit.log" patch="$work/canary-$unit.patch" aside="$work/canary-$unit-aside"
-  local tests=() code=() untracked=() f status count
-  for f in "$@"; do
+  local tests=() code=() untracked=() files=() f status count
+  while IFS= read -r f; do files+=("$f"); done < <(printf '%s\n' "$@" | tr -s ' \t' '\n' | grep -v '^$')
+  for f in "${files[@]}"; do
     if grep -qE "$SUPPORT_PATH" <<<"$f"; then continue
     elif grep -qE "$TEST_PATH" <<<"$f"; then [ -e "$f" ] && tests+=("$f")
     else code+=("$f")

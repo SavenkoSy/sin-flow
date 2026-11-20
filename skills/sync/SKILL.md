@@ -26,7 +26,7 @@ Profile keys that sync reads. The contract for a local adapter is
 | `tracker.adapter` | absent | path of a local tracker adapter. When set, sync reads and writes through it and ignores `tracker.board` |
 | `tracker.board` | absent | `<org>#<project number>` of a GitHub Projects board, the built-in adapter |
 | `tracker.write.light` | `off` | push the light of each classified ticket to the tracker |
-| `tracker.write.assign` | `off` | in take mode, make the user the only assignee. `own`: take only tickets with no assignee or the user as assignee, and never remove a teammate |
+| `tracker.write.assign` | `off` | in take mode, make the user the only assignee. `own`: take only tickets with no assignee or the user among the assignees, and never remove a teammate |
 | `tracker.write.status` | `off` | in take mode, move the taken tickets to `In progress` |
 | `group_by` | `milestone` | the groups on the page: `epic`, `milestone`, `priority`, `label`, `rules` (the batches of `board/rules.md`), or `field:<name>` (the values of that single-select field of the board) |
 | `tracker.skip_milestones` | absent | a comma list of milestones. The page shows their tickets in a group of their own, and a batch proposal never holds them |
@@ -129,6 +129,9 @@ Agent(subagent_type: "sin-flow:board", model: "<model>", effort: "<effort>", des
 Write `mode: new` in place of `mode: sync` for the `new` invocation or a missing `board/state.json`.
 
 Keep the agent's id. You will send decisions back to it.
+
+When a notice says that the agent stopped with no hand-back, or that it waits on its own background work, read
+`board/digest.md`. When the last `runs.log` line is from after your dispatch, that file is the hand-back. Go on to step 2.
 
 **When the digest `BOARD` line has `FAILED` in place of the `published` slot** (the fetch failed), or a `NOTES`
 line you cannot resolve, report exactly that and stop. Do not retry by doing the work yourself.
@@ -248,7 +251,7 @@ table and the ticket list cover the same set as before, plus what changed.
 - Deferred tickets, the tickets in the digest's `HELD BY OPEN PR` slot, the `Claimed` group and the tickets
   of a milestone in `tracker.skip_milestones` are excluded from the proposal. Name each held ticket with its PR
   and author in one line.
-- With `assign=own`, a ticket whose brief names another assignee is excluded too. Name those tickets in one line
+- With `assign=own`, a ticket with assignees that do not include the user is excluded too. Name those tickets in one line
   with their assignee.
 
 Then **stop.** Do not assign, do not move statuses, do not write a plan, do not launch anything,
@@ -336,8 +339,8 @@ FLOW_CONFIG_DIR=<other config dir> sin-flow-handoff --cwd <worktree path> --name
 
 `<id>`, `<slug>` and `<branch>` follow `sin-flow:ingest` (§ Ids and the notes folder, `reference/exits.md` §
 Worktree). Set the `<id>` of every batch in one pass, before the first hand-off. The first `batch-<M>` id takes
-`<M>` by the ingest rule, and each next one takes the next number: `<M+1>`, `<M+2>` and so on. The other config dir is the one the user names. When the user names none and one other `~/.claude*`
-config dir is next to the config dir of this session, use that one. Never open another batch in the primary checkout.
+`<M>` by the ingest rule, and each next one takes the next number: `<M+1>`, `<M+2>` and so on. The other config dir is the one the user names. When the user names none, drop the
+`FLOW_CONFIG_DIR=` prefix: the batch opens on the account of this session. Never open another batch in the primary checkout.
 
 **`CTX GUARD` in a tool result before the invocation:** finish the in-flight dispatch. Then say in one line
 that the talk continues in a new session: `/sin-flow:ingest <key> <tickets>` for a batch already taken, else

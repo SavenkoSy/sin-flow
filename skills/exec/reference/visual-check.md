@@ -141,6 +141,9 @@ Then the user's close word («close», «done»): when the worktree is still the
 removes it as the `workspace` option made it and deletes the local branch. Drop the worktree DB only when the profile
 names one. One line back.
 
+A check before or after the merge that changes stage data (a name, a photo, a setting) reads the old value first
+and writes it back through the app when the check ends. A value it cannot write back is a `FAIL:` line that names it.
+
 ## Pitfalls met so far
 
 - A stream-response link is not a full client-side visit: a non-stream error response reloads the whole page. Check

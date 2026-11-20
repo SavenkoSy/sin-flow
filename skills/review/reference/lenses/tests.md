@@ -80,4 +80,4 @@ to DECLINED:
 
 ## Sources
 
-- `tests bmad-code-org/BMAD-METHOD skills/bmad-code-review/review-prompts/verification-gap.md`
+- `tests bmad-code-org/BMAD-METHOD skills/method/bmad-code-review/review-prompts/verification-gap.md`

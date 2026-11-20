@@ -74,7 +74,7 @@ to DECLINED:
 
 ## Sources
 
-- `intent bmad-code-org/BMAD-METHOD skills/bmad-code-review/customize.toml`
+- `intent bmad-code-org/BMAD-METHOD skills/method/bmad-code-review/customize.toml`
   (Intent Alignment Auditor)
-- `intent bmad-code-org/BMAD-METHOD skills/bmad-code-review/references/claims-check.md`
+- `intent bmad-code-org/BMAD-METHOD skills/method/bmad-code-review/references/claims-check.md`
   (the narrative as testimony, falsify each claim).

@@ -75,6 +75,14 @@
       "min": 1,
       "max": 100
     },
+    "max_live_agents": {
+      "type": "number",
+      "title": "Max live agents",
+      "description": "How many subagents exec keeps live at a time. A larger wave goes out in batches of this size.",
+      "default": 4,
+      "min": 1,
+      "max": 20
+    },
     "limit_guard": {
       "type": "string",
       "title": "Limit guard",

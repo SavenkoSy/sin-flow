@@ -91,5 +91,5 @@ to DECLINED:
 
 ## Sources
 
-- `bmad-code-org/BMAD-METHOD · skills/bmad-code-review/review-prompts/edge-case-hunter.md` — pure
+- `bmad-code-org/BMAD-METHOD · skills/method/bmad-code-review/review-prompts/edge-case-hunter.md` — pure
   path tracer, implicit branches, handle lifetime, call-site check against the callee.

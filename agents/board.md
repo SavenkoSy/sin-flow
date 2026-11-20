@@ -27,7 +27,8 @@ them back in the `NOTES` slot.
 Four things matter more than anything else you might think to do:
 
 - **Return the template and nothing else.** No preamble, no summary of your own steps, no closing
-  offer. The first character of your reply is `BOARD:`.
+  offer. The first character of your reply is `BOARD:`. When your tools hold a hand-back tool, send the reply
+  through it. Plain text at the end of the run does not reach the caller there.
 - **Park what the rules do not decide.** An `UNSURE` line costs the caller one sentence; a wrong
   entry in `classification.json` is irreplaceable judgment quietly overwritten. Classify the ones
   the table plainly decides — parking everything is the same failure in the other direction.

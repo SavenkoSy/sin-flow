@@ -119,6 +119,11 @@ expect_eq "no new keys" "OK p" "$out"
 
 run sin-flow-profile p mirror
 expect_eq "mirror absent, no inferred line" off "$out"
+run sin-flow-profile nosuch dir
+expect_eq "unknown key dir rc" 2 "$rc"
+expect_has "unknown key dir names the profiles" "profiles: p" "$out"
+run sin-flow-profile p dir
+expect_eq "known key dir" "$FLOW_HOME/profiles/p" "$out"
 mk p
 printf '## Inferred 2026-11-05\nnotes: work/<key>/<id>/; plan mirrored to the issue (issues enabled).\n' >> "$FLOW_HOME/profiles/p/profile.md"
 run sin-flow-profile p mirror
@@ -219,6 +224,10 @@ run sin-flow-profile user context_guard
 expect_eq "user number from settings" 30 "$out"
 run sin-flow-profile model plan "$nongit"
 expect_eq "stage model falls to tier" "fable -" "$out"
+run sin-flow-profile model implementer hard "$nongit"
+two_words=$out
+run sin-flow-profile model "implementer hard" "$nongit"
+expect_eq "role and level in one word are split" "$two_words" "$out"
 out=$(CLAUDE_PLUGIN_OPTION_HANDOFF=iterm sin-flow-profile user handoff)
 expect_eq "user env wins" iterm "$out"
 

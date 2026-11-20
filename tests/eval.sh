@@ -43,6 +43,7 @@ printf '%s\n' \
   "$(rc 11 "" me "root")" "$(rc 12 11 author "You are mistaken, it is done elsewhere")" \
   "$(rc 13 "" me "root")" "$(rc 14 13 author "Fixed? No, I won't change it")" \
   "$(rc 15 "" me "root")" "$(rc 16 15 lead "Done")" "$(rc 17 15 author "Good catch, taken")" \
+  "$(rc 18 "" me "root")" "$(rc 19 18 author "Agreed, thanks. Fixed in abc. I left the other rake as is on purpose")" \
   | jq -s . > "$DATA/comments.json"
 
 out=$(PATH="$scratch/bin:$PATH" bash "$root/skills/review/reference/eval.sh" responses demo 7 | cut -f3,6)
@@ -53,8 +54,9 @@ expected=$'1\twrong
 9\tintentional
 11\twrong
 13\twrong
-15\tfixed'
+15\tfixed
+18\tfixed'
 [ "$out" = "$expected" ] || fail "responses: want [$expected], got [$out]"
-[ "$(wc -l < "$scratch/reviews/responses.tsv")" -eq 8 ] || fail "responses.tsv does not hold 8 rows"
+[ "$(wc -l < "$scratch/reviews/responses.tsv")" -eq 9 ] || fail "responses.tsv does not hold 9 rows"
 
-echo "ok: 8 cases"
+echo "ok: 9 cases"

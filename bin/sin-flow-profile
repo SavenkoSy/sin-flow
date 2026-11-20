@@ -366,6 +366,9 @@ case "$1" in
     fi ;;
   model)
     [ $# -ge 2 ] || usage
+    if [[ $2 == *" "* ]]; then
+      split=$2; shift 2; set -- model "${split%% *}" "${split#* }" "$@"
+    fi
     if [ -n "${3:-}" ] && [ -d "$3" ]; then
       resolve_model "$2" "*" "$3"
     else
@@ -384,6 +387,7 @@ case "$1" in
   *)
     key="$1"
     [ $# -ge 2 ] || usage
+    [ -f "$PROFILES/$key/profile.md" ] || team_file_for "$key" > /dev/null || { echo "no profile: $key (profiles: $(ls "$PROFILES" | tr '\n' ' '))" >&2; exit 2; }
     case "$2" in
       dir) printf '%s\n' "$PROFILES/$key" ;;
       file) printf '%s\n' "$PROFILES/$key/profile.md" ;;
