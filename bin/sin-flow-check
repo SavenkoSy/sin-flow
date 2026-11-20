@@ -285,6 +285,7 @@ if top=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null); then
           case "$problem" in
             *"is not chmod 600"*) fix="chmod 600 $(sed -E 's/^sources\.[^:]*: (.*) is not chmod 600$/\1/' <<<"$problem")" ;;
             *"is not git-ignored"*) fix="add to .gitignore" ;;
+            *" (set in "*")") fix="correct the profile key that it names in $(sed -E 's/.* \(set in (.*)\)$/\1/' <<<"$problem")" ;;
             *) fix="correct the profile key that it names in $profile" ;;
           esac
           row '✗' project profile "$problem" "$fix"
@@ -347,7 +348,7 @@ if top=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null); then
     fi
 
     row '?' project gates-named "the session names the gates again and compares them with the stored gates lines" "reference/check.md § Session checks"
-    sources=$(frontmatter "$profile" | sed -n 's/^sources\.\([A-Za-z0-9_-]*\)\..*/\1/p' | sort -u | tr '\n' ' ')
+    sources=$(sin-flow-profile "$key" fields | sed -n 's/^sources\.\([A-Za-z0-9_-]*\)\..*/\1/p' | sort -u | tr '\n' ' ')
     sources=${sources% }
     [ -z "$sources" ] || row '?' project sources "the session runs the preflight and the verify call of: $sources" "reference/check.md § Session checks"
 

@@ -241,6 +241,17 @@ has "case 17" "is not git-ignored → fix: add to .gitignore"
 has "case 17" "✗ project base           base release is not a branch on origin"
 has "case 17" "? project sources        the session runs the preflight and the verify call of: db"
 
+mkdir -p "$flow/profiles/sh"
+printf -- '---\nkey: sh\nmeasure.doc: none\nsources.db.env_file: .env.db_readonly\nsources.db.var: DB_URL\n---\n' > "$flow/profiles/sh/profile.md"
+printf -- '---\nkey: demo\nrepo.slug: %s\nextends: sh\nmeasure.doc: none\n---\n' "$HOME/demo-origin" > "$flow/profiles/demo/profile.md"
+sin-flow-infer --write demo "$repo" >/dev/null
+run "$repo"
+has "case 17b" "? project sources        the session runs the preflight and the verify call of: db"
+printf -- '---\nkey: sh\nmeasure.doc: none\nsources.db.env_file: %s/absent.env\nsources.db.var: DB_URL\n---\n' "$scratch" > "$flow/profiles/sh/profile.md"
+run "$repo"
+has "case 17c" "sources.db: $scratch/absent.env missing (set in $flow/profiles/sh/profile.md) → fix: correct the profile key that it names in $flow/profiles/sh/profile.md"
+rm -rf "$flow/profiles/sh"
+
 printf -- '---\nkey: demo\nrepo.slug: %s\nmeasure.doc: none\ngates.commands: no-such-binary-of-the-test run; git status\n---\n' "$HOME/demo-origin" > "$flow/profiles/demo/profile.md"
 run "$repo"
 has "case 18" "! project gate-tools     not on PATH: no-such-binary-of-the-test → fix: install no-such-binary-of-the-test"

@@ -73,7 +73,8 @@ Repeat form: `/sin-flow:ingest [key] <source> [<source> …]`. Sources can be in
 checkout (the parent of `git rev-parse --path-format=absolute --git-common-dir`), so any worktree
 maps to its repo. A GitHub issue or repo URL (or `owner/repo`) in the source decides the key — the profile whose `repo.slug` is that slug (`grep -lE "^repo\.slug:[[:space:]]*\"?<slug>\"?([[:space:]]|$)" ~/.claude/sin-flow/profiles/*/profile.md`, the match of `agents/shipper.md:30`); none → setup's onboard with that URL (§ Onboard step 0) — only when the cwd's
 repo has no profile, or the slug is neither its `repo.slug` nor in that profile's `consumers`; a consumer slug keeps the cwd's key. With several sources, the first source decides the key. A source in another repo with a profile becomes a unit of that repo (`exits.md` § Ticket map). When the cwd is in no repo with a profile and no key or URL was given, ask in one line which repo —
-never guess. Read `profile.md` once (`sin-flow-profile <key> dir`); hand an agent only the section it needs.
+never guess. Read the profile once. Use `sin-flow-profile <key> fields` for the keys and
+`sin-flow-profile <key> section <heading>` for the prose. Hand an agent only the section it needs.
 Resolve the grid row `ingest-reader` once for the resolved key's checkout (`sin-flow-profile <key> get repo.path`, `~` expanded; none → the cwd): `sin-flow-profile model ingest-reader <checkout>`. It prints the model and the effort of each read-only dispatch. An effort of `-` means: pass no effort.
 
 Then, whatever validate printed: `sin-flow-profile <key> get repo.fork` prints a slug → upstream mode: read
@@ -155,10 +156,11 @@ the ticket is theirs. Say who, and drop it from the units.
 
 ## 3. Measure
 
-The route is the profile's and nothing else: `measure.doc` (a path, or `none`), `measure.preflight`,
-the `## Measure` section and each `sources.<name>` (`kind`, `env_file`, `var`, `purpose`, `tunnel`,
-`preflight`). Pick the source by `purpose`/`kind`; read `measure.doc` for the commands and the
-rules it binds (roles, `LIMIT`, forbidden columns, how to close a tunnel).
+The route is the profile's, its `extends` profile included, and nothing else: `measure.doc` (a path, or `none`),
+`measure.preflight`, the `## Measure` section and each `sources.<name>` (`kind`, `env_file`, `var`, `purpose`,
+`tunnel`, `preflight`). Pick the source by `purpose`/`kind`; read `measure.doc` for the commands and the
+rules it binds (roles, `LIMIT`, forbidden columns, how to close a tunnel). If the `extends` profile has a different
+`measure.doc`, read that doc too.
 
 - **Preflight: check, do not ask.** Run `measure.preflight` or the source's `preflight` silently. On
   failure with `tunnel` set: run the `tunnel` string verbatim as its own Bash call, nothing chained to
@@ -235,7 +237,7 @@ names, then read that terminal once to confirm the tab took it.
 |---|---|---|---|
 | `plan` | a defect or change with decisions to lock, or anything failing a `hotfix` criterion | tracker unit(s), own worktree each, seed `plan.md` + evidence | `sin-flow:plan` in a new tab |
 | `hotfix` | all five hotfix criteria below | own worktree, one-block `plan.md` with `exit: hotfix` | `sin-flow:exec` in a new tab → PR, no question |
-| `data-fix` | the code is right, specific rows are wrong | a recipe in the profile's `support/` + a reply draft | a human runs it |
+| `data-fix` | the code is right, specific rows are wrong | a recipe in the `support/` of the profile or of its `extends` profile + a reply draft | a human runs it |
 | `answer` | nobody needs code | a reply draft, evidence linked | the user |
 | `investigation` | the mechanism is not proven, the behaviour is by design, or the fix belongs to work not yet taken | `work/<key>/<id>/investigation.md` | the user, and the exit the finding names |
 
