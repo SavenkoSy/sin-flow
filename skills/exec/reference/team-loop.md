@@ -24,7 +24,7 @@ the user only when you wait for a person outside this session.
    this step (a thread whose last comment is not yours, or a PR comment after your last one), and its reply goes in that
    thread. Never find points by a time window. Per point, by its severity label (none → low, unless it names a wrong result that a user or a caller sees):
    - **low** → a reply, never a fix.
-   - **medium** → reproduce it: a failing spec, a measured row, a read-only query by the profile's `## Measure`.
+   - **medium** → reproduce it: a failing spec, a measured row, a read-only query by the profile's `## Measure` (`sin-flow-profile <key> section Measure`).
      Not reproduced → a reply, no fix.
    - **high** → the same re-verification; reproduced → step 6, not reproduced → a reply.
    - **A request for the plan, docs or evidence in the PR** → never a fix, never a docs commit; one reply, verbatim:

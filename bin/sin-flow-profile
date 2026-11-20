@@ -14,7 +14,7 @@ usage: sin-flow-profile key [DIR]
        sin-flow-profile model <role> [LEVEL] [DIR]
        sin-flow-profile resolve [KEY]
        sin-flow-profile list
-       sin-flow-profile <key> dir|file|get FIELD|section HEADING|mirror
+       sin-flow-profile <key> dir|file|fields|get FIELD|section HEADING|mirror
        sin-flow-profile validate [--all | KEY...]
        sin-flow-profile user KEY
        sin-flow-profile migrate-user
@@ -64,6 +64,38 @@ team_file_for() {
   printf '%s\n' "$top/.claude/flow.md"
 }
 
+parent_of() {
+  local p
+  [ -f "$PROFILES/$1/profile.md" ] || return 1
+  p=$(field_in "$PROFILES/$1/profile.md" extends)
+  [ -n "$p" ] && [ -f "$PROFILES/$p/profile.md" ] || return 1
+  printf '%s\n' "$p"
+}
+
+profile_field() {
+  local v="" parent
+  [ ! -f "$PROFILES/$1/profile.md" ] || v=$(field_in "$PROFILES/$1/profile.md" "$2")
+  if [ -z "$v" ] && parent=$(parent_of "$1"); then v=$(field_in "$PROFILES/$parent/profile.md" "$2"); fi
+  [ -n "$v" ] || return 1
+  printf '%s\n' "$v"
+}
+
+extended() {
+  local f
+  for f in "$PROFILES"/*/profile.md; do
+    [ -f "$f" ] && [ "$(field_in "$f" extends)" = "$1" ] && return 0
+  done
+  return 1
+}
+
+fields_of() {
+  local own="$PROFILES/$1/profile.md" parent
+  [ -f "$own" ] || return 0
+  frontmatter "$own"
+  parent=$(parent_of "$1") || return 0
+  frontmatter "$PROFILES/$parent/profile.md" | awk -F: 'NR == FNR { own[$1]; next } !($1 in own)' <(frontmatter "$own") -
+}
+
 key_for_dir() {
   local dir="${1:-$PWD}" slug top f
   slug=$(slug_of "$dir") || return 1
@@ -83,10 +115,8 @@ key_for_dir() {
 }
 
 get_field() {
-  local key="$1" field="$2" v="" team
-  if [ -f "$PROFILES/$key/profile.md" ]; then
-    v=$(field_in "$PROFILES/$key/profile.md" "$field")
-  fi
+  local key="$1" field="$2" v team
+  v=$(profile_field "$key" "$field") || v=""
   if [ -z "$v" ] && [[ $field != tracker.write.* && $field != group_by && $field != tracker.skip_milestones && $field != tracker.adapter ]] && team=$(team_file_for "$key"); then
     v=$(field_in "$team" "$field")
   fi
@@ -244,15 +274,17 @@ mirror_route() {
 }
 
 validate_key() {
-  local key="$1" here="${2:-}" f="$PROFILES/$1/profile.md" errs=() notes=() slug doc src env_file main var
+  local key="$1" here="${2:-}" f="$PROFILES/$1/profile.md" errs=() notes=() slug doc src env_file main var v
   if [ ! -f "$f" ]; then
     printf 'FAIL %s: no profile at %s\n' "$key" "$f"
     return 1
   fi
   [ "$(field_in "$f" key)" = "$key" ] || errs+=("key field does not match the folder name")
   slug=$(field_in "$f" repo.slug) || true
-  [ -n "$slug" ] || errs+=("repo.slug missing")
-  doc=$(field_in "$f" measure.doc) || true
+  [ -n "$slug" ] || extended "$key" || errs+=("repo.slug missing")
+  v=$(field_in "$f" extends) || true
+  [ -z "$v" ] || [ -f "$PROFILES/$v/profile.md" ] || errs+=("extends $v: no profile at $PROFILES/$v/profile.md")
+  doc=$(profile_field "$key" measure.doc) || true
   if [ -z "$doc" ]; then
     errs+=("measure.doc missing (a path or none)")
   elif [ "$doc" != "none" ]; then
@@ -266,7 +298,7 @@ validate_key() {
         fi ;;
     esac
   fi
-  local sw v
+  local sw
   for sw in light assign status; do
     v=$(field_in "$f" "tracker.write.$sw") || true
     case "$sw:$v" in
@@ -284,9 +316,9 @@ validate_key() {
   if [ -n "$v" ] && { [ ! -f "$(expand_home "$v")" ] || [ ! -x "$(expand_home "$v")" ]; }; then errs+=("tracker.adapter $v is not an executable file"); fi
   v=$(field_in "$f" notes.mirror) || true
   [ -z "$v" ] || v=$(mirror_route "$key" 2>&1) || errs+=("$v")
-  for src in $(frontmatter "$f" | sed -n 's/^sources\.\([A-Za-z0-9_-]*\)\.env_file:.*/\1/p' | sort -u); do
-    env_file=$(field_in "$f" "sources.$src.env_file")
-    var=$(field_in "$f" "sources.$src.var") || true
+  for src in $(fields_of "$key" | sed -n 's/^sources\.\([A-Za-z0-9_-]*\)\.env_file:.*/\1/p' | sort -u); do
+    env_file=$(profile_field "$key" "sources.$src.env_file") || true
+    var=$(profile_field "$key" "sources.$src.var") || true
     case "$env_file" in
       /*|"~"/*) env_file=$(expand_home "$env_file") ;;
       *)
@@ -391,8 +423,9 @@ case "$1" in
     case "$2" in
       dir) printf '%s\n' "$PROFILES/$key" ;;
       file) printf '%s\n' "$PROFILES/$key/profile.md" ;;
+      fields) fields_of "$key" ;;
       get) [ $# -ge 3 ] || usage; get_field "$key" "$3" ;;
-      section) [ $# -ge 3 ] || usage; section_of "$PROFILES/$key/profile.md" "$3" ;;
+      section) [ $# -ge 3 ] || usage; section_of "$PROFILES/$key/profile.md" "$3"; if parent=$(parent_of "$key"); then section_of "$PROFILES/$parent/profile.md" "$3"; fi ;;
       mirror) mirror_route "$key" ;;
       *) usage ;;
     esac ;;

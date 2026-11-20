@@ -41,8 +41,9 @@ The model grid gives the model and the effort of each dispatch. `sin-flow-profil
 prints both, for example `sonnet medium`. Pass the first word as `model` and the second word as `effort`.
 An effort of `-` means: pass no effort.
 
-Read once and keep for the whole run: the profile frontmatter, `## Inferred` (base, gates, tracker,
-team, notes, sensitive), `## Measure`, `## Run`, `## Never`. Read via `sin-flow-profile <key> get <k>` for
+Read once and keep for the whole run: the profile frontmatter (`sin-flow-profile <key> fields`),
+`## Inferred` (base, gates, tracker, team, notes, sensitive), `## Measure`, `## Run`, `## Never`.
+Read each section with `sin-flow-profile <key> section <heading>`. Read via `sin-flow-profile <key> get <k>` for
 a single key.
 
 **Upstream mode** ⇔ `sin-flow-profile <key> get repo.fork` prints a slug: read
@@ -183,7 +184,8 @@ Upstream § AI ban found → the plan header `status: blocked — <quoted line>`
 
 ## Step 4 — The measurement route
 
-The route is the profile's `measure.doc` and `sources.*` — nothing else. Read the doc **in full**
+The route is the profile's `measure.doc` and `sources.*`, its `extends` profile included. Nothing else.
+If the `extends` profile has a different `measure.doc`, read that doc in full too. Read the doc **in full**
 before the first probe and measure only the ways it prescribes; never print a credential, a
 connection string or an env file, and never a value the doc marks private. Read
 `reference/probe-traps.md` before writing any probe.

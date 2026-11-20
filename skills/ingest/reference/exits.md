@@ -199,9 +199,9 @@ the same unit.
 
 ## Exit `data-fix`
 
-The code is right, specific rows are wrong. Recipes live in `~/.claude/sin-flow/profiles/<key>/support/`
-— never in the repo. Read its `README.md` first, every time; none → create it from the rules below
-with an index table.
+The code is right, specific rows are wrong. Recipes live in `~/.claude/sin-flow/profiles/<key>/support/` and in the `support/` of its `extends` profile. Never put
+them in the repo. Read each `README.md` first, every time. A profile with `extends` writes a new recipe to the
+`support/` of the `extends` profile. If that folder has no `README.md`, create it from the rules below with an index table.
 
 - `<date>_<slug>.<ext>` in the repo's stack (one statement → `.sql`) — code only: ALL-CAPS inputs at
   the top unset with a raise «fill in …», a guard on the record's owner, BEFORE / AFTER prints of the

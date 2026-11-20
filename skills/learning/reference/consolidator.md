@@ -55,7 +55,8 @@ Each prompt also carries:
   ASSISTANT, TOOL, RESULT, SYSTEM. AGENT is a subagent hand-back or an "Another Claude session" relay, not a user
   turn. SKILL is the skill text that the session loaded.
 - the rule: tag every claim `measured` with the HH:MM it rests on, or `inferred`. Anything else is "not checked".
-- "Open only the files named here and the ledger paths in `.ledger-paths`. Return markdown text. You cannot write
+- "Open only the files named here, the ledger paths in `.ledger-paths`, and files in the checkout of a profiled
+  repo (`sin-flow-profile <key> get repo.path`), read-only. Return markdown text. You cannot write
   files." Add the exceptions that the stage list names.
 
 ## 3. The digest

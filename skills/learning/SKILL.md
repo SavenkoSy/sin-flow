@@ -1,6 +1,6 @@
 ---
 name: learning
-description: 'Self-review stage of the flow for every repo with a flow profile, run outside any product repo. A script computes a fixed scorecard from the run log and the transcripts and flags sessions. Read-only subagents read the flagged sessions and a small sample. One digest for each stage ranks the failure modes and ends in diff proposals that the user approves before anything is edited. `self` reviews sin-flow:learning itself. Use when invoked as `/sin-flow:learning [--dry-run] [repo-key|all|self] [stage] [n] [question]`, when the launch hook opens it, or when the user asks why a flow session behaved as it did: "why did exec-N not hand off", "what went wrong in plan-N", "review the flow runs".'
+description: 'Self-review stage of the flow for every repo with a flow profile, run outside any product repo. It reads each repo that has a flow profile, read-only. A script computes a fixed scorecard from the run log and the transcripts and flags sessions. Read-only subagents read the flagged sessions and a small sample. One digest for each stage ranks the failure modes and ends in diff proposals that the user approves before anything is edited. `self` reviews sin-flow:learning itself. Use when invoked as `/sin-flow:learning [--dry-run] [repo-key|all|self] [stage] [n] [question]`, when the launch hook opens it, or when the user asks why a flow session behaved as it did: "why did exec-N not hand off", "what went wrong in plan-N", "review the flow runs".'
 ---
 
 # sin-flow:learning
@@ -127,8 +127,9 @@ that line exists in the transcript.
 
 ## Boundaries
 
-- Runs outside every product repo and reads none except the `.ledger-paths` files. A claim that needs more says "not
-  checked" and names the path to check.
+- Runs outside every product repo. It reads the `.ledger-paths` files. It can also read any repo that has a flow
+  profile, read-only. It finds the checkout with `sin-flow-profile <key> get repo.path`. A claim that needs more says
+  "not checked" and names the path to check.
 - Never writes to an external system or a product repo except the author-mode plugin PR, and never merges that PR.
 - Never edits a skill, agent, hook, profile, plugin option or launcher without the user's approval and a backup made
   first. In user mode never edits the flow layer.

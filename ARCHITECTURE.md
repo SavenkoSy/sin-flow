@@ -8,6 +8,11 @@ sin-flow has three layers. Each change goes to exactly one of them.
 | user | the plugin options (`userConfig`), saved in the user's Claude Code settings | the preferences of one user: language, terminal, models, Codex, merge method |
 | profile | `~/.claude/sin-flow/profiles/<key>/` | the facts of one repo or one team: base, gates, sources, reviewers, tracker |
 
+A profile can name one shared profile in `extends: <shared-key>`. The shared profile is a folder in `profiles/` with no
+`repo.slug`. `sin-flow-profile <key> get`, `fields` and `section` read the own profile first, then the shared profile.
+The fall back is one level deep. The files in the profile folder stay per key (`board/`, `review-team.md`,
+`models.tsv`, `work/<key>/`). The stages read `support/` in both folders.
+
 The user and profile layers are never in this repo. The plugin declares `userConfig` in `.claude-plugin/plugin.json`, and
 the answers live in the user's settings, not in the plugin. `sin-flow-profile user <key>` is the one reader.
 
@@ -22,8 +27,8 @@ The model grid names the model and the effort of each session and each dispatch.
 | 2 | `~/.claude/sin-flow/models.tsv` | user | the row with the same `role` and `level` |
 | 3 | `examples/models.tsv` | plugin | the row with the same `role` and `level` |
 | 4 | steps 1 to 3 again | | the row with the same `role` and the level `*` |
-| 5 | profile key `models.<stage>` | profile | replaces the model of that stage session, and the effort stays |
-| 6 | profile key `models.<tier>`, then option `models_<tier>` | profile, user | resolves a tier word (`strong`, `mid`, `cheap`) to a model |
+| 5 | profile key (own, then `extends`) `models.<stage>` | profile | replaces the model of that stage session, and the effort stays |
+| 6 | profile key (own, then `extends`) `models.<tier>`, then option `models_<tier>` | profile, user | resolves a tier word (`strong`, `mid`, `cheap`) to a model |
 
 Layers merge by row, never by file. A file with three rows changes three rows. The reader skips a row
 that is not valid, prints a message, and uses the row below it.

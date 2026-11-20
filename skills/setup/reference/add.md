@@ -24,7 +24,10 @@ For a source without a `.env.<source>_readonly` file the user already keeps, or 
    The call shows write rights → say so and do not record the source until the user confirms.
 4. Write to the profile:
    `sources.<name>.{kind, env_file, var, base_url, tunnel, preflight, verify, readonly|status, purpose}` — `env_file` is
-   the file name relative to the main checkout, never a value. Add one `## Measure` line naming when to use the source.
+   the file name relative to the main checkout, never a value. Add one `## Measure` line naming when to use the source,
+   in the same profile as the source.
+   If the profile has `extends`, write the source to the `extends` profile. Write `env_file` as an absolute or `~`
+   path. A relative path resolves against the checkout of each repo.
 5. Offer an allow-rule in the repo's `.claude/settings.local.json` (`Bash(psql *)`, `Bash(curl -s -H * <base_url>/*)`,
    and `Bash(<tunnel>)` with the exact `tunnel` string when it is set, so auto mode does not send it to the
    classifier) — only after a yes.
