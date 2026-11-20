@@ -80,9 +80,19 @@ profile_field() {
   printf '%s\n' "$v"
 }
 
+field_file() {
+  local own="$PROFILES/$1/profile.md" parent
+  if [ -n "$(field_in "$own" "$2")" ] || ! parent=$(parent_of "$1"); then
+    printf '%s\n' "$own"
+  else
+    printf '%s\n' "$PROFILES/$parent/profile.md"
+  fi
+}
+
 extended() {
   local f
   for f in "$PROFILES"/*/profile.md; do
+    [ "$f" != "$PROFILES/$1/profile.md" ] || continue
     [ -f "$f" ] && [ "$(field_in "$f" extends)" = "$1" ] && return 0
   done
   return 1
@@ -93,7 +103,17 @@ fields_of() {
   [ -f "$own" ] || return 0
   frontmatter "$own"
   parent=$(parent_of "$1") || return 0
-  frontmatter "$PROFILES/$parent/profile.md" | awk -F: 'NR == FNR { own[$1]; next } !($1 in own)' <(frontmatter "$own") -
+  frontmatter "$PROFILES/$parent/profile.md" | awk -F: '
+    NR == FNR {
+      v = substr($0, length($1) + 2)
+      sub(/^[ \t]+/, "", v)
+      sub(/[ \t]+#.*$/, "", v)
+      sub(/[ \t]+$/, "", v)
+      if (v ~ /^".*"$/) v = substr(v, 2, length(v) - 2)
+      if (v != "") own[$1]
+      next
+    }
+    !($1 in own)' <(frontmatter "$own") -
 }
 
 key_for_dir() {
@@ -274,7 +294,7 @@ mirror_route() {
 }
 
 validate_key() {
-  local key="$1" here="${2:-}" f="$PROFILES/$1/profile.md" errs=() notes=() slug doc src env_file main var v
+  local key="$1" here="${2:-}" f="$PROFILES/$1/profile.md" errs=() notes=() slug doc src env_file main var v owner
   if [ ! -f "$f" ]; then
     printf 'FAIL %s: no profile at %s\n' "$key" "$f"
     return 1
@@ -283,7 +303,15 @@ validate_key() {
   slug=$(field_in "$f" repo.slug) || true
   [ -n "$slug" ] || extended "$key" || errs+=("repo.slug missing")
   v=$(field_in "$f" extends) || true
-  [ -z "$v" ] || [ -f "$PROFILES/$v/profile.md" ] || errs+=("extends $v: no profile at $PROFILES/$v/profile.md")
+  if [ -n "$v" ]; then
+    if [ "$v" = "$key" ]; then
+      errs+=("extends $v: a profile cannot extend itself")
+    elif [ ! -f "$PROFILES/$v/profile.md" ]; then
+      errs+=("extends $v: no profile at $PROFILES/$v/profile.md")
+    elif [ -n "$(field_in "$PROFILES/$v/profile.md" extends)" ]; then
+      errs+=("extends $v: $v has its own extends, and only one level is read")
+    fi
+  fi
   doc=$(profile_field "$key" measure.doc) || true
   if [ -z "$doc" ]; then
     errs+=("measure.doc missing (a path or none)")
@@ -330,12 +358,14 @@ validate_key() {
         env_file="$main/$env_file" ;;
     esac
     if [ ! -f "$env_file" ]; then
-      errs+=("sources.$src: $env_file missing")
+      owner=$(field_file "$key" "sources.$src.env_file")
+      errs+=("sources.$src: $env_file missing$([ "$owner" = "$f" ] || printf ' (set in %s)' "$owner")")
       continue
     fi
     [ "$(stat -c %a "$env_file" 2>/dev/null || stat -f %Lp "$env_file")" = "600" ] || errs+=("sources.$src: $env_file is not chmod 600")
     if [ -n "$var" ] && ! grep -q "^$var=" "$env_file"; then
-      errs+=("sources.$src: variable $var not in $env_file")
+      owner=$(field_file "$key" "sources.$src.var")
+      errs+=("sources.$src: variable $var not in $env_file$([ "$owner" = "$f" ] || printf ' (set in %s)' "$owner")")
     fi
     if git -C "$(dirname "$env_file")" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
       git -C "$(dirname "$env_file")" check-ignore -q "$env_file" || errs+=("sources.$src: $env_file is not git-ignored")

@@ -285,6 +285,7 @@ if top=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null); then
           case "$problem" in
             *"is not chmod 600"*) fix="chmod 600 $(sed -E 's/^sources\.[^:]*: (.*) is not chmod 600$/\1/' <<<"$problem")" ;;
             *"is not git-ignored"*) fix="add to .gitignore" ;;
+            *" (set in "*")") fix="correct the profile key that it names in $(sed -E 's/.* \(set in (.*)\)$/\1/' <<<"$problem")" ;;
             *) fix="correct the profile key that it names in $profile" ;;
           esac
           row '✗' project profile "$problem" "$fix"

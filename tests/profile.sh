@@ -325,6 +325,9 @@ sources.db.var: DB_URL"
   shared_sources "sources.db.var: DB_URL"
   child_extends "sources.db.env_file: $env"
   run sin-flow-profile validate c
+  case "$env" in
+    */other.env) plain="$plain (set in $FLOW_HOME/profiles/sh/profile.md)" ;;
+  esac
   expect_eq "own env_file with shared var, $(basename "$env")" "$plain" "$out"
 done
 expect_has "shared var is checked in the own env file" "variable DB_URL not in $scratch/other.env" "$out"
@@ -332,6 +335,47 @@ mkdir -p "$FLOW_HOME/profiles/zz2"
 printf -- '---\nkey: zz2\nmeasure.doc: none\n---\n' > "$FLOW_HOME/profiles/zz2/profile.md"
 run sin-flow-profile validate zz2
 expect_eq "profile nobody extends needs a slug" "FAIL zz2: repo.slug missing" "$out"
+rm -rf "$FLOW_HOME/profiles/sh" "$FLOW_HOME/profiles/c" "$FLOW_HOME/profiles/zz2"
+
+mkdir -p "$FLOW_HOME/profiles/sh" "$FLOW_HOME/profiles/c" "$FLOW_HOME/profiles/zz2"
+printf -- '---\nkey: sh\nmeasure.doc: none\nsources.db.var: DB_URL\n---\n' > "$FLOW_HOME/profiles/sh/profile.md"
+printf -- '---\nkey: c\nrepo.slug: acme/c\nextends: sh\nsources.db.var:\n---\n' > "$FLOW_HOME/profiles/c/profile.md"
+run sin-flow-profile c get sources.db.var
+expect_eq "empty own value reads the shared value in get" DB_URL "$out"
+run sin-flow-profile c fields
+expect_has "empty own value reads the shared value in fields" "sources.db.var: DB_URL" "$out"
+printf -- '---\nkey: c\nrepo.slug: acme/c\nextends: sh\nsources.db.var: OWN_URL\n---\n' > "$FLOW_HOME/profiles/c/profile.md"
+run sin-flow-profile c fields
+case "$out" in *"sources.db.var: DB_URL"*) fail "fields shows the shared value of a field with an own value" ;; esac
+
+printf -- '---\nkey: c\nextends: c\nmeasure.doc: none\n---\n' > "$FLOW_HOME/profiles/c/profile.md"
+run sin-flow-profile validate c
+expect_has "a profile that extends itself needs a slug" "repo.slug missing" "$out"
+expect_has "a profile cannot extend itself" "extends c: a profile cannot extend itself" "$out"
+
+printf -- '---\nkey: sh\nextends: zz2\nmeasure.doc: none\n---\n' > "$FLOW_HOME/profiles/sh/profile.md"
+printf -- '---\nkey: zz2\nmeasure.doc: none\nsources.db.var: GRAND_URL\n---\n' > "$FLOW_HOME/profiles/zz2/profile.md"
+printf -- '---\nkey: c\nrepo.slug: acme/c\nextends: sh\nmeasure.doc: none\n---\n' > "$FLOW_HOME/profiles/c/profile.md"
+run sin-flow-profile validate c
+expect_has "a shared profile with its own extends is an error" "extends sh: sh has its own extends, and only one level is read" "$out"
+run sin-flow-profile c get sources.db.var
+expect_eq "extends reads one level, get rc" 1 "$rc"
+expect_eq "extends reads one level, get" "" "$out"
+run sin-flow-profile c fields
+case "$out" in *"GRAND_URL"*) fail "fields reads the parent of the parent" ;; esac
+
+printf 'DB_URL=x\n' > "$scratch/inherited.env"
+chmod 600 "$scratch/inherited.env"
+printf -- '---\nkey: sh\nmeasure.doc: none\nsources.db.env_file: %s/absent.env\nsources.db.var: DB_URL\n---\n' "$scratch" > "$FLOW_HOME/profiles/sh/profile.md"
+printf -- '---\nkey: c\nrepo.slug: acme/c\nextends: sh\n---\n' > "$FLOW_HOME/profiles/c/profile.md"
+run sin-flow-profile validate c
+expect_has "a missing shared env file names the shared profile" "sources.db: $scratch/absent.env missing (set in $FLOW_HOME/profiles/sh/profile.md)" "$out"
+run sin-flow-profile validate sh
+expect_has "a missing own env file names no other profile" "sources.db: $scratch/absent.env missing" "$out"
+case "$out" in *"(set in"*) fail "an own env file error names another profile" ;; esac
+printf -- '---\nkey: sh\nmeasure.doc: none\nsources.db.env_file: %s\nsources.db.var: NOPE_URL\n---\n' "$scratch/inherited.env" > "$FLOW_HOME/profiles/sh/profile.md"
+run sin-flow-profile validate c
+expect_has "a missing shared var names the shared profile" "variable NOPE_URL not in $scratch/inherited.env (set in $FLOW_HOME/profiles/sh/profile.md)" "$out"
 rm -rf "$FLOW_HOME/profiles/sh" "$FLOW_HOME/profiles/c" "$FLOW_HOME/profiles/zz2"
 out=$(CLAUDE_PLUGIN_OPTION_HANDOFF=iterm sin-flow-profile user handoff)
 expect_eq "user env wins" iterm "$out"
