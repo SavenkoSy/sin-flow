@@ -54,8 +54,7 @@ You can raise `builder:` or `audit:` with the reason in the ledger. Raise cheap 
 exact code. Raise mid → hard when the diff hits the plan's forcing list.
 Never lower one, never raise one because you are unsure. A row with no value is a plan defect: treat it as mid / run
 and ledger it.
-Purpose-made agents only — never `general-purpose`. A model comes only from the grid. Do not name a model
-that the grid does not give. No subagent has a turn cap (`maxTurns` is inert, measured): keep briefs small and split a unit rather
+Purpose-made agents only — never `general-purpose`. No subagent has a turn cap (`maxTurns` is inert, measured): keep briefs small and split a unit rather
 than trust an implementer to stop.
 
 ## The orchestrator does not run the work
@@ -96,7 +95,9 @@ The dispatching thread is the most expensive place in the chain when it fills wi
    header's `branch:` → work in place. A clean checkout whose branch is already merged into the
    base (a stage-verify fix plan) → `git switch -c <header's branch:> origin/<base>` there, in place, no new
    worktree. `git diff --name-only <old HEAD> HEAD` lists a lockfile → the first gate's `commands` start with the
-   install step of the repo's CI workflow. The header's `worktree:` exists and this session is not in it → the § Hand-off
+   install step of the repo's CI workflow. A `node_modules` here that is a symlink (`find . -maxdepth 2 -name
+node_modules -type l`) holds another checkout's packages: before the first dispatch, one `sin-flow:shipper` `gate`,
+`label: install`, `commands:` `rm <link> && cd <its folder> && <the install step of the repo's CI workflow>`. The header's `worktree:` exists and this session is not in it → the § Hand-off
    command with `--cwd <that path>`, then end the turn. Otherwise, when this checkout is busy — a dirty tree, another
    branch, another session in it → `sin-flow-worktree --repo <this checkout> --name <id> --branch <header's branch:> --base <base>`,
    then the § Hand-off command with `--cwd <its path:>`, then end the turn. Never `EnterWorktree`: an Orca workspace
@@ -134,7 +135,9 @@ the specs and files the brief names. Exact values live only in the brief; a suba
 Write every brief in its own message, before the dispatch message: a Write can be denied, and an implementer
 dispatched beside a denied Write starts with no brief.
 
-**Dispatch the wave's implementers in ONE message** (parallel when files are disjoint), each with
+**Dispatch the wave's implementers in one message** (parallel when files are disjoint). At most `max_live_agents`
+(`sin-flow-profile user max_live_agents`) agents are live at a time, audits included: a larger wave goes out in
+batches of that size, the next agent when one returns. Each dispatch carries
 one line on where the unit fits, the brief path, the report path `briefs/unit-<u>-report.md`, the branch, its model
 and effort. Same-shape small edits in different files → one implementer, one brief, the highest `builder:` and
 `audit:` of the merged rows. Never two implementers on overlapping files: the later unit waits.
@@ -171,7 +174,9 @@ wave and run one fix round there (the tail is the finding). A failing spec that 
 (grid role `fix`) runs that spec alone 3 times on `origin/<base>` in a scratch `git worktree add --detach`, then removes it.
 Red on the base → ledger `Ruling: base red — <spec>`, the next gate passes `commands`: the lines of the last
 `gate-<label>.commands` with that spec left out through the runner's own exclude option, and the final message names it
-under what differs from the ticket. Green on the base → a plan defect: `Ruling:` and stop the wave as blocked.
+under what differs from the ticket. Write the exclude as `**/<file name>`: `(`, `)`, `[` and `]` are glob syntax and match
+nothing. Green on the base → the same implementer runs it alone 3 times on this branch. Green → `Ruling: flaky under load —
+<spec>`, excluded as above. Red → the diff breaks it: one fix round for the unit whose files the spec imports.
 
 **`sin-flow:shipper` prompt**, every mode: `mode`, `profile: <key>`, `id: <id>`, `work_dir: <workspace>`, plus the mode's own
 fields (`${CLAUDE_PLUGIN_ROOT}/agents/shipper.md` § Prompt). Its return block (`MODE / STATUS / PROFILE / BRANCH / COMMITS / LOG /
@@ -257,7 +262,9 @@ The route sweep after a merge needs no UI surface. § After the merge of that fi
 3. **Mirror**. Set `status: shipped` in the plan header. Route `github` and mirrored (Setup 2) → write `sin-flow-mirror --comment plan.md` back to
    the comment it came from; over 60 000 bytes → `sin-flow-mirror --comment plan.md <dir>`, each part back to its own comment.
    A script path and a `ticket:` other than `none` → `<script> put <ticket> <file>` with the `sin-flow-mirror plan.md` copy. Append `Plan <id>: shipped <URL>` to the ledger.
-4. **The final message** (below), then the post-PR phase that fits the repo — same turn, no pause.
+4. **The final message** (below), then the post-PR phase that fits the repo — same turn, no pause. Solo: start
+   `gh pr checks <PR> --watch --fail-fast` with `run_in_background`. A red check is a finding: one fix round, `gate`,
+   `commit`, one line to the user.
 
 **Never ask before pushing or opening the PR** — except the first public write of `reference/upstream-mode.md` — and blocked units do not hold it: a plan where 8 of 9 units are
 green ships those 8, and the ninth is a line in the final message under what differs from the ticket.
@@ -305,7 +312,8 @@ Read `reference/team-loop.md` and follow it. Its step 1 holds the rebase round t
 ## Final message — the one definition
 
 Every flow stage that ships a PR ends with this message, and only this one. The user reads it to learn what the
-product does now, not how the run went. Plain words, in the chat language, ≤ 15 non-blank lines.
+product does now, not how the run went. Plain words, in the chat language, ≤ 15 non-blank lines. Write it to
+`<workspace>/final-message.md` first: `grep -cv '^[[:space:]]*$'` on it prints 15 or less, else cut it and count again.
 
 - The ticket or plan id and the PR link.
 - The result: what changed in the product and how it works after the merge

@@ -1,6 +1,6 @@
 ---
 name: review
-description: 'Review stage of the flow, for any repo with a flow profile. Reviews a PR through the review pipeline — a package of the code at the PR''s SHA, a context pass (what the PR does, the flow from its entry point, three files to read first), one finder agent at quick, two at thorough (code checklists; team, docs, tests, intent) and one verify pass that sorts every finding into reproduces / possible / invented with a quoted file:line. Depth comes from the profile: review-team.md in the profile folder → thorough, none → quick. Writes the review to the reviews folder from the user preferences as <key>-<pr>-<sha8>.md and summarizes it in chat in the chat language. The `review_action` option decides what happens next: `none` (default) shows the review in chat only, `post` posts the high/med reproduces findings as ONE review with event COMMENT through the review-poster agent, `post-approve` also approves the PR when nothing is left open. `recheck` reviews only the commits since the last review. Must run inside the product repo. Use when invoked as "/sin-flow:review <PR>" or "/sin-flow:review post <n,n>", or when the user says "look at this PR", "review a teammate''s PR", "what is in this PR".'
+description: 'Review stage of the flow, for any repo with a flow profile. Reviews a PR through the review pipeline — a package of the code at the PR''s SHA, a context pass (what the PR does, the flow from its entry point, three files to read first), one finder agent at quick, two at thorough (code checklists; team, docs, tests, intent) and one verify pass that sorts every finding into reproduces / possible / invented with a quoted file:line. Depth comes from the profile: review-team.md in the profile folder → thorough, none → quick. Writes the review to the reviews folder from the user preferences as <key>-<pr>-<sha8>.md and summarizes it in chat in the chat language. The `review_action` option decides what happens next: `none` (default) shows the review in chat only, `post` posts the high/med reproduces findings, settle-confirmed ones included, as ONE review with event COMMENT through the review-poster agent, `post-approve` also approves the PR when nothing is left open. `recheck` reviews only the commits since the last review. Must run inside the product repo. Use when invoked as "/sin-flow:review <PR>" or "/sin-flow:review post <n,n>", or when the user says "look at this PR", "review a teammate''s PR", "what is in this PR".'
 argument-hint: "<PR number|url> [quick|thorough] [--at <sha>] [--base <sha>] | post <n,n,…> | recheck <PR>"
 ---
 
@@ -56,11 +56,14 @@ review file headings are format: they stay English, in chat too.
    and run each one yourself by `measure.doc`, its preflight first — a measurement is yours, never an
    agent's. Each row gets one number with its query and filter. When the number refutes the row (zero
    rows, a value that no writer sets), the row is `settled — <number, filter>` and does not count for
-   the verdict. When the number confirms the row, the number stays beside it. When the preflight fails
+   the verdict. When the number confirms the row, the number stays beside it and the row counts as
+   `reproduces` for step 6. When the preflight fails
    or `measure.doc` is `none`, relay as usual and add one line: the human step that the preflight names.
 6. **After the review:** `ACTION=$(sin-flow-profile user review_action)`. `post` or `post-approve`: every K
    row that is `high` or `med` and `reproduces` goes through Post, below, in this invocation. Nothing else is
-   posted. None qualifies → post nothing. `none`: post nothing; the user posts with `post <n,…>`.
+   posted. None qualifies → post nothing. With `post` or `post-approve`, a high or med row that this step does
+   not post does not count for the verdict and shows `not posted` in FINDINGS. `none`: post nothing; the user
+   posts with `post <n,…>`, and every high or med row counts for the verdict.
 7. `ACTION` is `post-approve` and the VERDICT below is `approve` → Approve, below, without asking.
 8. Chat, below.
 
@@ -77,9 +80,9 @@ grep -cE '^- R[0-9]+ \|' "$REVIEW"
 grep '^lens .* failed' "$REVIEW"
 ```
 
-- **VERDICT** — the first line: `approve` when no K row is high or med (rows that step 5 settled do
-  not count) and verify said `blocking no`; else `don't approve — K<n>, …` (those rows). Advice
-  unless `ACTION` is `post-approve`.
+- **VERDICT** — the first line: `approve` when no K row is high or med (rows that step 5 settled do not count,
+  and with `post` or `post-approve` rows that step 6 did not post do not count) and verify said `blocking no`;
+  else `don't approve — K<n>, …` (those rows). Advice unless `ACTION` is `post-approve`.
 - **WHAT IT DOES** — the `## What it does` sentences.
 - **ENTRY POINT** — the `## Entry points` rows.
 - **FLOW** — the `## Flow` lines, then the three `## Read first` files.
@@ -98,9 +101,9 @@ grep '^lens .* failed' "$REVIEW"
 2. `REVIEW` = the review file this session rendered; if none, the newest `$REVIEWS/$KEY-*.md` — name
    it in the relay. From its `REPO=… PR=… SHA=…` line take `REPO`, `PR`, `SHA`; from its last line
    take `PKG`. `PR=-` is an exec-mode review: nothing to post, say so and stop.
-3. `gh pr view "$PR" --repo "$REPO" --json headRefOid -q .headRefOid` differs from `SHA` → post
-   nothing: the PR got new commits since the review, its line numbers may have moved; tell the user
-   `<SHA8> → <head8>` and that `/sin-flow:review recheck <PR>` goes first. Stop.
+3. `gh pr view "$PR" --repo "$REPO" --json headRefOid -q .headRefOid` differs from `SHA` → run Recheck,
+   below, in this invocation. Then post its selection, or for the user's `post <n,…>` the named rows that are
+   still open at the new head. Name each named row that Recheck closed. Never hand the recheck to the user.
 4. Build `post.json` from the chosen rows (`WANT` = the numbers as `,1,3,`):
 
    ```bash
@@ -117,6 +120,10 @@ grep '^lens .* failed' "$REVIEW"
 5. Dispatch `sin-flow:review-poster`: Agent tool, `subagent_type: "sin-flow:review-poster"`,
    the model and the effort of the grid row `review-poster`, prompt `PR: https://github.com/<REPO>/pull/<PR>. post.json: <PKG>/post.json.` — nothing else.
 6. Relay the review URL, the inline and body counts, and anything it skipped.
+7. `ACTION` is `post-approve` and the PR is not approved → before the turn ends, start one background Bash
+   (`run_in_background`): `sin-flow-watch --review <url>`. It prints one `WAKE` line when the author replies,
+   the head moves, the base changes or the PR merges. `WAKE merged` ends the watch. `WAKE DIRTY` ends the
+   watch too: tell the user that the PR has a merge conflict. Any other wake → Recheck, then this step again.
 
 ## Recheck
 
@@ -134,12 +141,12 @@ rows.
    open at the head, then the new high/med rows, then the answer counts from step 1.
 3. `ACTION` as in Review step 6. Every K row closed and no new high/med row → with `ACTION` `post-approve`, Approve, below, without
    asking; else say that approve is due. Anything else → no approve; the new high/med `reproduces` rows
-   follow Review step 6.
+   follow Review step 6. Then Post 7.
 
 ## Approve
 
 "approve", "approve it", "… but approve", or Recheck step 3. `REVIEW`, `REPO`, `PR`, `SHA` as in Post 2.
-1. Head ≠ `SHA` → no approve; tell the user `<SHA8> → <head8>` and that `recheck` goes first. Stop.
+1. Head ≠ `SHA` → as Post 3.
 2. Numbers named in the same line → Post them first.
 3. `gh pr review "$PR" --repo "$REPO" --approve`, then
    `gh api "repos/$REPO/pulls/$PR/reviews" --jq 'map(select(.state=="APPROVED"))[-1].submitted_at'`.

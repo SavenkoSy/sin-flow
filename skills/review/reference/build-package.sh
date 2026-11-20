@@ -184,15 +184,17 @@ pr_mode() {
     git archive "$SHA" | tar -x -C "$TREE"
     if [ -n "$FORK" ]; then
       mb=$(git rev-parse --verify "$FORK^{commit}") || die "base commit not found: $FORK"
+      git merge-base --is-ancestor "$mb" "$SHA" \
+        || mb=$(git merge-base "origin/$BASE" "$SHA") || die "no merge base between origin/$BASE and $SHA"
     else
       mb=$(git merge-base "origin/$BASE" "$SHA") || die "no merge base between origin/$BASE and $SHA"
     fi
     write_local_diff "$mb" "$SHA"
-    [ -n "$FORK$AT" ] && FOREIGN_DROPPED=-
-    [ -n "$FORK$AT" ] || gh api "repos/$REPO/pulls/$PR/files" --paginate \
+    [ -n "$AT" ] && FOREIGN_DROPPED=-
+    [ -n "$AT" ] || gh api "repos/$REPO/pulls/$PR/files" --paginate \
       --jq '.[] | .filename, (.previous_filename // empty)' > "$WORK/pr-paths.txt" 2>/dev/null \
       || : > "$WORK/pr-paths.txt"
-    if [ -z "$FORK$AT" ] && [ -s "$WORK/pr-paths.txt" ]; then
+    if [ -z "$AT" ] && [ -s "$WORK/pr-paths.txt" ]; then
       FOREIGN_DROPPED=$(cut -f1 "$PKG/files.txt" | grep -cvxFf "$WORK/pr-paths.txt" || true)
       pr_paths=()
       while IFS= read -r p; do pr_paths+=("$p"); done < "$WORK/pr-paths.txt"

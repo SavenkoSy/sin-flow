@@ -33,8 +33,8 @@ EOF
 chmod +x "$scratch/bin/gh" "$scratch/bin/git" "$scratch/bin/sin-flow-profile"
 
 pr() {
-  jq -n --arg base "$1" --arg merge "$2" --argjson logins "$3" --arg body "$4" --arg state "${5:-OPEN}" \
-    '{author: {login: "me"}, baseRefName: $base, mergeStateStatus: $merge, state: $state, reviews: [],
+  jq -n --arg base "$1" --arg merge "$2" --argjson logins "$3" --arg body "$4" --arg state "${5:-OPEN}" --arg head "${6:-aaaa1111}" \
+    '{author: {login: "me"}, baseRefName: $base, mergeStateStatus: $merge, state: $state, headRefOid: $head, reviews: [],
       comments: [$logins[] | {author: {login: .}, body: $body}]}'
 }
 
@@ -50,9 +50,9 @@ run_case() {
       *) eval "pr $row" > "$QUEUE/$i.json" ;;
     esac
   done
-  pr main BEHIND '[]' x > "$QUEUE/last.json"
+  pr main DIRTY '[]' x > "$QUEUE/last.json"
   PATH="$scratch/bin:$PATH" SIN_FLOW_WATCH_INTERVAL=0 SIN_FLOW_WATCH_HOURS=1 \
-    "$root/bin/sin-flow-watch" https://github.com/o/r/pull/1
+    "$root/bin/sin-flow-watch" ${WATCH_FLAGS:-} https://github.com/o/r/pull/1
 }
 
 out=$(BOTS="other, vercel" run_case <<'EOF'
@@ -74,9 +74,10 @@ main CLEAN '[]' x
 FAIL
 RAW:{"baseRefName": null}
 main CLEAN '[]' x
+main BEHIND '[]' x
 EOF
 )
-[ "$out" = "WAKE BEHIND" ] || fail "case 2: got $out"
+[ "$out" = "WAKE DIRTY" ] || fail "case 2: got $out"
 
 out=$(run_case <<'EOF'
 main CLEAN '[]' x
@@ -115,7 +116,29 @@ EOF
 )
 [ "$out" = "WAKE merged: https://github.com/o/r/pull/1" ] || fail "case 9: the merge of the PR itself wakes: got $out"
 
+out=$(WATCH_FLAGS=--review run_case <<'CASE'
+main CLEAN '[]' x
+main CLEAN '["me"]' x
+CASE
+)
+[ "$out" = "WAKE activity: 1 new review or comment" ] || fail "case 10: --review counts the author's reply: got $out"
+
+out=$(WATCH_FLAGS=--review run_case <<'CASE'
+main CLEAN '[]' x OPEN aaaa1111
+main CLEAN '[]' x OPEN bbbb2222
+CASE
+)
+[ "$out" = "WAKE head: aaaa1111 -> bbbb2222" ] || fail "case 11: --review wakes on a new head: got $out"
+
+out=$(run_case <<'CASE'
+main CLEAN '[]' x OPEN aaaa1111
+main CLEAN '[]' x OPEN bbbb2222
+main DIRTY '[]' x
+CASE
+)
+[ "$out" = "WAKE DIRTY" ] || fail "case 12: without --review a new head is no wake: got $out"
+
 [ "$(head -1 "$root/bin/sin-flow-watch")" = "#!/usr/bin/env bash" ] || fail "case 5: no bash shebang"
 grep -q 'echo "\$s" | jq' "$root/bin/sin-flow-watch" && fail "case 6: parses JSON through echo"
 
-echo "ok: 9 cases"
+echo "ok: 12 cases"

@@ -9,7 +9,7 @@ the user only when you wait for a person outside this session.
 1. **State.** `gh pr view <url> --json state,reviewDecision,reviews,comments,mergeStateStatus,mergeCommit > <workspace>/pr.json`,
    grep it. `state` is `MERGED` → ledger `Plan <id>: merged <mergeCommit.oid>`, `status: merged` in the plan header, then
    § After the merge of `reference/visual-check.md` (one `sin-flow:implementer`, grid role `visual`: the route sweep and
-   the merge check), once, and the loop ends; a `WAKE merged` takes this same path. `BEHIND` or `DIRTY` → one rebase round onto the base — an `sin-flow:implementer` (grid role `rebase`)
+   the merge check), once, and the loop ends; a `WAKE merged` takes this same path. `DIRTY` → one rebase round onto the base. `BEHIND` alone is no reason to rebase: the team merges it as is, and GitHub asks for an update when a rule needs one. A rebase round — an `sin-flow:implementer` (grid role `rebase`)
    rebases and pushes with `--force-with-lease` (the shipper never rewrites history) — your branch, not a question.
    Size the check by `git range-diff <old base>..<old head> <new base>..HEAD`: only docs, deploy-notes numbering or
    generated API docs in it, and no new base commit touches a non-doc file of the branch → the range-diff plus the
@@ -39,13 +39,14 @@ the user only when you wait for a person outside this session.
    one background Bash (`run_in_background`) in this checkout: `sin-flow-watch <url>`, or for a plan with `after:`
    `sin-flow-watch <url> <first repo> <first branch>` (the `repo` cell of the `after:` row in the spec; the first PR as
    in `sin-flow:plan` Step 1). It checks every 10 min for up to 24 h and prints one `WAKE <reason>` line: base
-   changed, `BEHIND` / `DIRTY`, new activity by anyone but the author and a deploy bot, new commits on a feature-branch
+   changed, `DIRTY`, new activity by anyone but the author and a deploy bot, new commits on a feature-branch
    base, the first PR merged, or this PR merged (`WAKE merged: <url>`). A failed or empty `gh` read is never a wake. Every wake → step 4 first, except `WAKE merged`, which runs step 1 only and ends the loop. A `WAKE activity` needs
    nothing more: start the watcher again. For a draft PR whose first PR merged, in the same repo: if `baseRefName` is still the first
    branch, run `gh pr edit <url> --base <profile base>`. Then run the rebase round of step 1 onto the profile base,
    and push. Then, in both repo cases: run `gh pr ready <url>` and write one line to the user. Other wakes stay as
    they are: the rebase round of step 1, the push, one line to the user. After a rebase wake, start the watcher
-   again. A draft stays a draft for a person.
+   again. A draft stays a draft for a person. The watcher exits with no `WAKE` line (a kill, the 24 h end) → step 1
+   at once, then start it again.
 6. **No fix is pushed unreviewed.** One batched round (grid role `fix`) for every reproduced point and the user's: fix each point
    where it was flagged and in every sibling of the same pattern on the branch (the flagged query → every sibling
    query; the flagged error list → every rescue of that client; a flagged test fixture (a recorded response, a factory, a snapshot) → every

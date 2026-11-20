@@ -268,4 +268,14 @@ rc=0
 sin-flow-handoff --probe --cwd "$plain" --effort top --prompt x >/dev/null 2>&1 || rc=$?
 expect_eq "case 37 a bad effort opens no tab" 2 "$rc"
 
-echo "ok: 37 cases"
+fresh_home tmux
+rc=0
+err=$(sin-flow-handoff --probe --new-workspace --cwd "$plain" --prompt x 2>&1 >/dev/null) || rc=$?
+expect_eq "case 38 a built-in terminal refuses --new-workspace" 2 "$rc"
+expect_eq "case 38 names sin-flow-worktree" "--new-workspace: the tmux adapter opens the tab in --cwd ($plain) and makes no workspace. Make it with sin-flow-worktree, then pass --cwd <its path>" "$err"
+
+fresh_home "$scratch/script.sh"
+out=$(sin-flow-handoff --probe --new-workspace --name t --prompt "go on" | sed -n 1p)
+expect_eq "case 39 a custom launcher still gets --new-workspace" "--probe --new-workspace --name t --prompt go on" "$out"
+
+echo "ok: 39 cases"

@@ -107,7 +107,8 @@ for each hit and exits 1 when there is one. Run it on every commit, also when ea
    and service-setup steps), or the `run:` steps in `.circleci/config.yml`; `lefthook.yml` pre-commit
    commands; the repo's own scripts — the `lint`, `test`, `build` scripts of `package.json`, a `test`
    target in a `Makefile`, an executable `bin/test*`. Nothing found → `STATUS: blocked`. A script whose text has
-   `--fix` or `--write` is not a gate: run its tool with the same arguments minus that flag.
+   `--fix` or `--write` is not a gate: run its tool with the same arguments minus that flag. This holds for the
+   caller's `commands` too: read the script text of each `npm run <name>` entry before the run.
    The prompt's `commands` is shell text. `commands: true` is the shell command `true`: it runs no gate, and the
    result is green. Then step 4 is the only check.
 3. Write the resolved list to `<work_dir>/gate-<label>.commands`, one entry per line, `gates.prepare` first when
@@ -115,7 +116,9 @@ for each hit and exits 1 when there is one. Run it on every commit, also when ea
    the entries at line ends and at backticked items. A `;` stays inside its command. It runs each with `bash -c`, writes `=== <command> ===` and
    `=== exit <n> · tests <count | none> ===` per entry, stops at the first red, and writes `<log>.tail` when it ends, green
    or red. A gate that can run longer than one Bash call runs with `run_in_background`. Wait for it only with
-   `until [ -f <log>.tail ]`, never with `pgrep -f`, because `pgrep -f` finds the wait loop itself. Before you return,
+   `until [ -f <log>.tail ]`, never with `pgrep -f`, because `pgrep -f` finds the wait loop itself. No `<log>.tail` yet → wait again, as
+   often as it takes; never return while the gate runs, and never start it with a bare `&`. `running: …` with exit 4
+   → another gate of this work folder still runs: wait for its tail, never start a second one. Before you return,
    stop each shell that you started and that still runs. A test runner
    that ran 0 tests is red. Its one line is the result: `green`, or `red: …` → `STATUS: red` with that line in a
    `NOTE`. Never `git checkout` or `git switch` in this mode. Before the script and after it, `git branch

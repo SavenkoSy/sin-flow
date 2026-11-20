@@ -59,7 +59,7 @@ to DECLINED:
 
 ## Sources
 
-- `bmad-code-org/BMAD-METHOD · skills/bmad-code-review/references/deletion-check.md` — asks
+- `bmad-code-org/BMAD-METHOD · skills/method/bmad-code-review/references/deletion-check.md` — asks
   whether a deleted line held behavior or a contract the change neither "re-established nor
   intentionally retired".
 - `Piebald-AI/claude-code-system-prompts · system-prompts/skill-code-review-correctness-finder-angles.md`

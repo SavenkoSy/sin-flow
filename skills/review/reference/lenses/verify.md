@@ -89,6 +89,8 @@ the reverse case: its shape is a premise (Reality) until TREE holds a received o
    while one can reach it. No path → `invented`, quoting the dead end (the grep and its scope, the
    unreachable branch, the ruling constant). A hop you cannot resolve (dynamic dispatch, a producer
    outside TREE) caps it at possible, `settle` naming that hop; an external consumer is no such hop.
+   Read each condition on the path from its opening through its last branch before you decide what
+   it permits: a quote that starts or ends inside a condition proves nothing.
 5. **Name the input** that takes that path to the bad outcome; when `pr.md` names an account,
    record or request, use that one.
    - External input (params, webhook or partner payload, job args) → reproduces when the value
@@ -162,8 +164,9 @@ the reverse case: its shape is a premise (Reality) until TREE holds a received o
     - `comment_en`: a teammate's PR comment, English, ≤4 sentences: what breaks for which input,
       why (the line), the concrete fix when the code makes it clear, else what must hold. No
       praise, no "consider / verify / ensure / double-check", no emojis, no AI attribution.
-    - `settle` (possible only): the one piece of evidence that would make it reproduces — a query
-      with table, column and filter set, the caller that would produce the input, or the log line.
+    - `settle` (possible only): the one piece of evidence that would make it reproduces — a read-only
+      query with table, column and filter set, the caller that would produce the input, or the log
+      line. Never an experiment that writes, fails a job on purpose or changes state.
     - R refutation: the code or ticket `file:line` that disproves this claim («What refutes»). A
       true fact about nearby code is not one; "self-heals" or "the next run picks it up" refutes
       only with the line showing the next run reaches that row.
@@ -191,7 +194,7 @@ the reverse case: its shape is a premise (Reality) until TREE holds a received o
 - `verify obra/superpowers skills/receiving-code-review/SKILL.md`
 - `verify EveryInc/compound-engineering-plugin skills/ce-code-review/references/subagent-template.md`
 - `verify kodustech/kodus-ai libs/code-review/infrastructure/agents/prompts/verifier-prompt.ts`
-- `verify bmad-code-org/BMAD-METHOD skills/bmad-code-review/step-03-triage.md`
+- `verify bmad-code-org/BMAD-METHOD skills/method/bmad-code-review/step-03-triage.md`
 - `verify EveryInc/compound-engineering-plugin skills/ce-code-review/references/validator-batch-template.md`
 - `verify affaan-m/ECC agents/code-reviewer.md`
 - Not in the lock: the user's own rules, if any.
