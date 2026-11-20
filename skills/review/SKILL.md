@@ -61,8 +61,9 @@ review file headings are format: they stay English, in chat too.
    or `measure.doc` is `none`, relay as usual and add one line: the human step that the preflight names.
 6. **After the review:** `ACTION=$(sin-flow-profile user review_action)`. `post` or `post-approve`: every K
    row that is `high` or `med` and `reproduces` goes through Post, below, in this invocation. Nothing else is
-   posted. None qualifies → post nothing. A high or med row that this step does not post does not count for
-   the verdict and shows `not posted` in FINDINGS. `none`: post nothing; the user posts with `post <n,…>`.
+   posted. None qualifies → post nothing. With `post` or `post-approve`, a high or med row that this step does
+   not post does not count for the verdict and shows `not posted` in FINDINGS. `none`: post nothing; the user
+   posts with `post <n,…>`, and every high or med row counts for the verdict.
 7. `ACTION` is `post-approve` and the VERDICT below is `approve` → Approve, below, without asking.
 8. Chat, below.
 
@@ -79,9 +80,9 @@ grep -cE '^- R[0-9]+ \|' "$REVIEW"
 grep '^lens .* failed' "$REVIEW"
 ```
 
-- **VERDICT** — the first line: `approve` when no K row is high or med (rows that step 5 settled or step 6
-  did not post do not count) and verify said `blocking no`; else `don't approve — K<n>, …` (those rows). Advice
-  unless `ACTION` is `post-approve`.
+- **VERDICT** — the first line: `approve` when no K row is high or med (rows that step 5 settled do not count,
+  and with `post` or `post-approve` rows that step 6 did not post do not count) and verify said `blocking no`;
+  else `don't approve — K<n>, …` (those rows). Advice unless `ACTION` is `post-approve`.
 - **WHAT IT DOES** — the `## What it does` sentences.
 - **ENTRY POINT** — the `## Entry points` rows.
 - **FLOW** — the `## Flow` lines, then the three `## Read first` files.
@@ -101,7 +102,8 @@ grep '^lens .* failed' "$REVIEW"
    it in the relay. From its `REPO=… PR=… SHA=…` line take `REPO`, `PR`, `SHA`; from its last line
    take `PKG`. `PR=-` is an exec-mode review: nothing to post, say so and stop.
 3. `gh pr view "$PR" --repo "$REPO" --json headRefOid -q .headRefOid` differs from `SHA` → run Recheck,
-   below, in this invocation and post its selection instead. Never hand the recheck to the user.
+   below, in this invocation. Then post its selection, or for the user's `post <n,…>` the named rows that are
+   still open at the new head. Name each named row that Recheck closed. Never hand the recheck to the user.
 4. Build `post.json` from the chosen rows (`WANT` = the numbers as `,1,3,`):
 
    ```bash
@@ -120,8 +122,8 @@ grep '^lens .* failed' "$REVIEW"
 6. Relay the review URL, the inline and body counts, and anything it skipped.
 7. `ACTION` is `post-approve` and the PR is not approved → before the turn ends, start one background Bash
    (`run_in_background`): `sin-flow-watch --review <url>`. It prints one `WAKE` line when the author replies,
-   the head moves, the base changes or the PR merges. `WAKE merged` ends the watch. Any other wake → Recheck,
-   then this step again.
+   the head moves, the base changes or the PR merges. `WAKE merged` ends the watch. `WAKE DIRTY` ends the
+   watch too: tell the user that the PR has a merge conflict. Any other wake → Recheck, then this step again.
 
 ## Recheck
 
