@@ -50,8 +50,18 @@ if [ -n "$existing" ]; then
   exit 0
 fi
 if git -C "$repo" show-ref --verify --quiet "refs/heads/$branch"; then
-  echo "branch $branch exists with no worktree; check it out by hand or pick another branch" >&2
-  exit 1
+  tip=$(git -C "$repo" rev-parse "refs/heads/$branch")
+  pushed=$(git -C "$repo" rev-parse -q --verify "refs/remotes/origin/$branch" || true)
+  rc=0
+  git -C "$repo" ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1 || rc=$?
+  if [ "$tip" = "$pushed" ] && [ "$rc" = 2 ]; then
+    git -C "$repo" branch -q -D "$branch"
+    git -C "$repo" update-ref -d "refs/remotes/origin/$branch"
+    echo "deleted stale branch $branch ($tip): pushed in full and gone from origin" >&2
+  else
+    echo "branch $branch exists with no worktree; check it out by hand or pick another branch" >&2
+    exit 1
+  fi
 fi
 
 case "$base" in

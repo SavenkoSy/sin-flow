@@ -112,12 +112,12 @@ for each hit and exits 1 when there is one. Run it on every commit, also when ea
    The prompt's `commands` is shell text. `commands: true` is the shell command `true`: it runs no gate, and the
    result is green. Then step 4 is the only check.
 3. Write the resolved list to `<work_dir>/gate-<label>.commands`, one entry per line, `gates.prepare` first when
-   set. Copy the caller's `commands` text as it came. Then run `sin-flow-gate run <log> <that file>`. The script splits
+   set. Copy the caller's `commands` text as it came. Then run `sin-flow-gate run <log> <that file>` from the checkout, never from `<work_dir>`. The script splits
    the entries at line ends and at backticked items. A `;` stays inside its command. It runs each with `bash -c`, writes `=== <command> ===` and
    `=== exit <n> · tests <count | none> ===` per entry, stops at the first red, and writes `<log>.tail` when it ends, green
    or red. A gate that can run longer than one Bash call runs with `run_in_background`. Wait for it only with
    `until [ -f <log>.tail ]`, never with `pgrep -f`, because `pgrep -f` finds the wait loop itself. No `<log>.tail` yet → wait again, as
-   often as it takes; never return while the gate runs, and never start it with a bare `&`. `running: …` with exit 4
+   often as it takes; never return while the gate runs. `running: …` with exit 4
    → another gate of this work folder still runs: wait for its tail, never start a second one. Before you return,
    stop each shell that you started and that still runs. A test runner
    that ran 0 tests is red. Its one line is the result: `green`, or `red: …` → `STATUS: red` with that line in a
@@ -194,11 +194,10 @@ the branch is ahead of `<push-remote>` → skip steps 4–6, run the green check
    no `--assignee`, no `--milestone`, no assignee retry. Otherwise `gh pr create --base <base> --head <branch> --assignee @me --title '<title>' --body-file <path>`, plus `--draft` when `draft` is true, plus
    `--milestone '<milestone>'` when `tracker.board` is set and the `Ref #<N>` issue has one
    (`gh issue view <N> -R <repo.slug> --json milestone`);
-   `--reviewer '<review.request>'` when the profile sets `review.request`;
    title = the convention subject. Then run `git log --format=%s origin/<base>..HEAD | grep -oE '\[[A-Z]+-[0-9]+\]' |
    sort -u -t- -k2n | tr -d '\n'`. When it prints more than one id, the title starts with that text. The caller's
-   text follows without its own `[<ID>]`. `--assignee` fails → `gh pr edit <url> --add-assignee @me`; `--reviewer` fails →
-   `gh pr edit <url> --add-reviewer '<review.request>'`, and a failure there is a `NOTE`, never a block.
+   text follows without its own `[<ID>]`. `--assignee` fails → `gh pr edit <url> --add-assignee @me`. Then
+   `sin-flow-rerequest <url>` in the checkout: it requests the profile's `review.request`. A failure there is a `NOTE`, never a block.
 6. Link check, when the profile sets `pr.relink_after_bot: on` and the body has `Ref #<N>`: after 60 s, `gh pr view <url> --json body,closingIssuesReferences`.
    The body now has a `Closes #<N>` line that a bot added and the list is empty → save the same body once more
    with `gh pr edit <url> --body-file <that body>`, then read the list again. Still empty → a `NOTE`, never a block.

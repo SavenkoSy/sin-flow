@@ -72,6 +72,10 @@ record_green() {
 cmd_run() {
   local log=$1 commands=$2 section status tests after gated=0
   [ -f "$commands" ] || usage
+  if [ "$(git rev-parse --show-toplevel 2>/dev/null)" = "$HOME/.claude/sin-flow" ]; then
+    echo "blocked: run from the checkout, not $PWD"
+    return 2
+  fi
   GATE_LOCK="$(dirname "$log")/gate.pid"
   if [ -f "$GATE_LOCK" ] && kill -0 "$(cat "$GATE_LOCK")" 2>/dev/null; then
     echo "running: pid $(cat "$GATE_LOCK") holds $GATE_LOCK; wait for its tail"

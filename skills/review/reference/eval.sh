@@ -29,8 +29,9 @@ threads() {
         for (i = 1; i <= n; i++) {
           split(top[order[i]], f, "\t")
           r = tolower(reply[f[1]])
-          if (r ~ /disagree|not fixed|won(.|’)t|will not/) c = "wrong"
-          else if (r ~ /^(fixed|done|resolved|taken|agreed|confirmed|good catch)/) c = "fixed"
+          if (r ~ /(fixed|added|updated|reverted|removed|replaced|changed|addressed) in [0-9a-f]{7,40}([^0-9a-f]|$)/) c = "fixed"
+          else if (r ~ /disagree|not fixed|won(.|’)t|will not/) c = "wrong"
+          else if (r ~ /^(thanks[^a-z]*)?(fixed|done|resolved|taken|agreed|confirmed|good catch|reproduced|added|updated|reverted|removed|replaced|addressed)/) c = "fixed"
           else if (r ~ /intend|intention|deliberate|by design|on purpose/) c = "intentional"
           else if (r ~ /decision|chose/) c = "intentional"
           else if (r != "") c = "wrong"
