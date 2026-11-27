@@ -135,8 +135,10 @@ response: the consumer side often decides whether the bug is ours at all.
 **Read code at a fetched ref, never at the working tree.** The shared checkout stays on its branch (§ Hard
 boundaries), so its files can be weeks old. Run `git fetch origin`, then read with `git show origin/<branch>:<path>`
 and `git grep <pattern> origin/<branch>`. `<branch>` is the branch that runs where the report comes from, as the
-repo's `CLAUDE.md` names it. None named: `repo.base`. Read a consumer checkout the same way. Each analyst brief
-names that ref. A claim read at another ref is not carried forward.
+repo's `CLAUDE.md` names it. None named: the base its profile resolves (`repo.base`, else the GitHub default branch).
+Every other repo you read, a consumer or a sibling, takes its branch the same way from its own `CLAUDE.md` and
+profile, never from this repo's. Each analyst brief names the ref of each repo. A claim read at another ref is not
+carried forward.
 
 More than two files → fan out `sin-flow:read-only-analyst` agents (grid row `ingest-reader`), one narrow question each, all in
 one message, `file:line` in a reply of ≤ 40 lines; relay only its conclusion, never paste the report. An agent's report is a

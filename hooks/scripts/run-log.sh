@@ -11,6 +11,10 @@ read -r stage n skill <<<"$stage_line"
 cwd=$(jq -r 'select(.cwd) | .cwd' "$tp" | head -1)
 [ -n "$cwd" ] && [ -d "$cwd" ] || cwd=$(jq -r '.cwd // empty' <<<"$input")
 repo=$(flow_repo_key "$cwd" "$stage" "$n")
+if [ "$stage" = review ]; then
+  slug=$(grep -F '<command-name>/sin-flow:review' "$tp" | grep -oE 'github\.com/[^/ "<]+/[^/ "<]+/pull/[0-9]+' | tail -1 | cut -d/ -f2,3)
+  [ -n "$slug" ] && p=$(grep -lx "repo\.slug: $slug" "$HOME"/.claude/sin-flow/profiles/*/profile.md | head -1) && [ -n "$p" ] && repo=$(basename "$(dirname "$p")")
+fi
 log="${FLOW_RUNS_LOG:-$HOME/.claude/sin-flow/runs.tsv}"
 mkdir -p "$(dirname "$log")"
 [ -f "$log" ] || printf 'date\trepo\tstage\tn\tsession_id\taccount\tmodel\tstart\tend\tturns\tuser_turns\tctx_first_k\tctx_last_k\thandoff\tlimit_hits\tskill\n' > "$log"

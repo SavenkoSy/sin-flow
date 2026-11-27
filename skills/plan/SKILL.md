@@ -70,8 +70,6 @@ reopens ship no code, each with its fix:
 |---|---|
 | merged, not deployed | a `deploy` probe first (`probe-traps.md` § stale deploy) and a marker in every fix comment |
 | a test-harness artifact read as a user symptom | drive the real gesture, print before/after |
-| one observation reported as a rate | ≥ 5 reps, print every rep |
-| a benchmark against a different input | publish the query and filter set with every number |
 | a coverage gap with no defect | accept source confirmation; a comment, not a status flip |
 
 Two failure modes, opposite directions. **A fresh ticket** describes a real defect and usually

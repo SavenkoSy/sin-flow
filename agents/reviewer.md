@@ -162,4 +162,5 @@ Exactly one line, nothing before or after it; everything else is in your file:
 `SETTLE · <contested> contested · <changed> changed · <path to verdict.md>`.
 
 `<path>` is the absolute path of the file you wrote. It writes only inside `<pkg>/` and never edits
-the repo.
+the repo. Before the line, `test -s <path>`. A denied write → fix what the denial names and write again. Still
+missing → return `ERROR · <path> not written: <the denial's first line>`.

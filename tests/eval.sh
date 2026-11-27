@@ -44,6 +44,11 @@ printf '%s\n' \
   "$(rc 13 "" me "root")" "$(rc 14 13 author "Fixed? No, I won't change it")" \
   "$(rc 15 "" me "root")" "$(rc 16 15 lead "Done")" "$(rc 17 15 author "Good catch, taken")" \
   "$(rc 18 "" me "root")" "$(rc 19 18 author "Agreed, thanks. Fixed in abc. I left the other rake as is on purpose")" \
+  "$(rc 20 "" me "root")" "$(rc 21 20 author "Added in d8ec51983: the spec now covers the zero case")" \
+  "$(rc 22 "" me "root")" "$(rc 23 22 author "Updated the Known limits section of the PR body")" \
+  "$(rc 24 "" me "root")" "$(rc 25 24 author "Thanks — reproduced, and it was wider. Fixed at the root")" \
+  "$(rc 26 "" me "root")" "$(rc 27 26 author "Fixed in 85f513db6. The old path is not fixed by a retry")" \
+  "$(rc 28 "" me "root")" "$(rc 29 28 author "The behaviour is deliberate, fixed the docs in 17e38d8d5")" \
   | jq -s . > "$DATA/comments.json"
 
 out=$(PATH="$scratch/bin:$PATH" bash "$root/skills/review/reference/eval.sh" responses demo 7 | cut -f3,6)
@@ -55,8 +60,13 @@ expected=$'1\twrong
 11\twrong
 13\twrong
 15\tfixed
-18\tfixed'
+18\tfixed
+20\tfixed
+22\tfixed
+24\tfixed
+26\tfixed
+28\tintentional'
 [ "$out" = "$expected" ] || fail "responses: want [$expected], got [$out]"
-[ "$(wc -l < "$scratch/reviews/responses.tsv")" -eq 9 ] || fail "responses.tsv does not hold 9 rows"
+[ "$(wc -l < "$scratch/reviews/responses.tsv")" -eq 14 ] || fail "responses.tsv does not hold 14 rows"
 
-echo "ok: 9 cases"
+echo "ok: 14 cases"

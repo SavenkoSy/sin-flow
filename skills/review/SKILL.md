@@ -62,8 +62,7 @@ review file headings are format: they stay English, in chat too.
 6. **After the review:** `ACTION=$(sin-flow-profile user review_action)`. `post` or `post-approve`: every K
    row that is `high` or `med` and `reproduces` goes through Post, below, in this invocation. Nothing else is
    posted. None qualifies → post nothing. With `post` or `post-approve`, a high or med row that this step does
-   not post does not count for the verdict and shows `not posted` in FINDINGS. `none`: post nothing; the user
-   posts with `post <n,…>`, and every high or med row counts for the verdict.
+   not post shows `not posted` in FINDINGS. `none`: post nothing; the user posts with `post <n,…>`.
 7. `ACTION` is `post-approve` and the VERDICT below is `approve` → Approve, below, without asking.
 8. Chat, below.
 

@@ -72,7 +72,8 @@ The dispatching thread is the most expensive place in the chain when it fills wi
 1. **Ledger.** `progress.md`, first line `# ledger — plan: <path>`. A ledger already naming this plan means resume:
    every `Unit <u>: complete` line is done — never re-dispatch it. Args with `continue:` → read that text,
    `git status --short` and the ledger's hand-off section before anything else; a named PR URL means this session
-   owns the post-PR phase and nothing is re-implemented.
+   owns the post-PR phase and nothing is re-implemented. A team PR → `pkill -f 'sin-flow-watch <url>'`, then start
+   the watcher of `reference/team-loop.md` step 5 at once: a watcher that another session started wakes only that session.
 2. **Plan vs issue, before anything else.** `sin-flow-profile <key> mirror` prints the route. `off` → skip. `github`: the
    plan is mirrored when the header's `ticket:` is a GitHub issue: the comment that `skills/plan/SKILL.md` Step 6 § Mirror
    edits, never the issue body and never a comment of another plan. Not mirrored → skip. Otherwise `gh` the mirror into
@@ -95,9 +96,11 @@ The dispatching thread is the most expensive place in the chain when it fills wi
    header's `branch:` → work in place. A clean checkout whose branch is already merged into the
    base (a stage-verify fix plan) → `git switch -c <header's branch:> origin/<base>` there, in place, no new
    worktree. `git diff --name-only <old HEAD> HEAD` lists a lockfile → the first gate's `commands` start with the
-   install step of the repo's CI workflow. A `node_modules` here that is a symlink (`find . -maxdepth 2 -name
-node_modules -type l`) holds another checkout's packages: before the first dispatch, one `sin-flow:shipper` `gate`,
-`label: install`, `commands:` `rm <link> && cd <its folder> && <the install step of the repo's CI workflow>`. The header's `worktree:` exists and this session is not in it → the § Hand-off
+   install step of the repo's CI workflow. A folder with a `package.json` that a gate enters has no `node_modules`, or a
+   symlink to another checkout's packages (`find . -maxdepth 2 -name node_modules -type l`): before the first dispatch, one `sin-flow:shipper` `gate`,
+`label: install`, `commands:` `[rm <link> && ]cd <its folder> && <the install step of the repo's CI workflow>`. A hook denies
+   that install → link the main checkout's `node_modules` when its lockfile is the same (`cmp`) and its `.bin` exists. Otherwise
+   ledger `Ruling: packages missing — <folder>`, go on, and name the install command in the final message. The header's `worktree:` exists and this session is not in it → the § Hand-off
    command with `--cwd <that path>`, then end the turn. Otherwise, when this checkout is busy — a dirty tree, another
    branch, another session in it → `sin-flow-worktree --repo <this checkout> --name <id> --branch <header's branch:> --base <base>`,
    then the § Hand-off command with `--cwd <its path:>`, then end the turn. Never `EnterWorktree`: an Orca workspace
@@ -262,7 +265,8 @@ The route sweep after a merge needs no UI surface. § After the merge of that fi
 3. **Mirror**. Set `status: shipped` in the plan header. Route `github` and mirrored (Setup 2) → write `sin-flow-mirror --comment plan.md` back to
    the comment it came from; over 60 000 bytes → `sin-flow-mirror --comment plan.md <dir>`, each part back to its own comment.
    A script path and a `ticket:` other than `none` → `<script> put <ticket> <file>` with the `sin-flow-mirror plan.md` copy. Append `Plan <id>: shipped <URL>` to the ledger.
-4. **The final message** (below), then the post-PR phase that fits the repo — same turn, no pause. Solo: start
+4. **The final message** (below), then the post-PR phase that fits the repo — same turn, no pause. Team: start the
+   watcher of `reference/team-loop.md` step 5 before the message. Solo: start
    `gh pr checks <PR> --watch --fail-fast` with `run_in_background`. A red check is a finding: one fix round, `gate`,
    `commit`, one line to the user.
 
